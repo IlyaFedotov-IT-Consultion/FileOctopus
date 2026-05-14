@@ -4,4 +4,7 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
-
+fs-core = { path = "../fs-core" }
+telemetry = { path = "../telemetry" }
+thiserror = "1"
+vfs = { path = "../vfs" }

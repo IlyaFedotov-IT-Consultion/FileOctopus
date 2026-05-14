@@ -290,6 +290,8 @@ pub enum VfsError {
     InvalidUri { uri: String, reason: String },
     UnsupportedProvider { scheme: String },
     DuplicateProvider { scheme: String },
+    NotFound { uri: String },
+    PermissionDenied { uri: String },
     Internal { message: String },
 }
 
@@ -299,14 +301,28 @@ impl VfsError {
             Self::InvalidUri { .. } => "invalid_uri",
             Self::UnsupportedProvider { .. } => "unsupported_provider",
             Self::DuplicateProvider { .. } => "duplicate_provider",
+            Self::NotFound { .. } => "not_found",
+            Self::PermissionDenied { .. } => "permission_denied",
             Self::Internal { .. } => "internal",
         }
     }
 
-    fn invalid_uri(uri: &str, reason: &str) -> Self {
+    pub fn invalid_uri(uri: &str, reason: &str) -> Self {
         Self::InvalidUri {
             uri: uri.to_string(),
             reason: reason.to_string(),
+        }
+    }
+
+    pub fn not_found(uri: &ResourceUri) -> Self {
+        Self::NotFound {
+            uri: uri.as_str().to_string(),
+        }
+    }
+
+    pub fn permission_denied(uri: &ResourceUri) -> Self {
+        Self::PermissionDenied {
+            uri: uri.as_str().to_string(),
         }
     }
 
@@ -329,6 +345,8 @@ impl fmt::Display for VfsError {
             Self::DuplicateProvider { scheme } => {
                 write!(formatter, "duplicate provider scheme `{scheme}`")
             }
+            Self::NotFound { uri } => write!(formatter, "resource not found `{uri}`"),
+            Self::PermissionDenied { uri } => write!(formatter, "permission denied `{uri}`"),
             Self::Internal { message } => write!(formatter, "{message}"),
         }
     }
