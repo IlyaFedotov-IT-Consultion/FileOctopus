@@ -4,7 +4,14 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
+chrono = { version = "0.4", features = ["serde"] }
 fs-core = { path = "../fs-core" }
+jobs = { path = "../jobs" }
+rusqlite = { version = "0.32", features = ["bundled"] }
 telemetry = { path = "../telemetry" }
 thiserror = "1"
+uuid = { version = "1", features = ["v4"] }
 vfs = { path = "../vfs" }
+
+[dev-dependencies]
+tempfile = "3"
