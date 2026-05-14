@@ -1,10 +1,14 @@
 use std::sync::Arc;
 
-use app_core::{AppCore, AppState};
+use app_core::{AppCore, AppState, OperationHistoryRecord};
 use app_ipc::{
-    DirectoryBatchEventDto, IpcError, ListStartRequest, ListStartResponse, StatRequest,
+    job_event_name, job_event_payload, CancelJobRequest, DirectoryBatchEventDto, IpcError,
+    JobStatusRequest, JobStatusResponse, ListRecentOperationsRequest, ListRecentOperationsResponse,
+    ListStartRequest, ListStartResponse, OperationHistoryRecordDto, PlanFileOperationRequest,
+    PlanFileOperationResponse, StartFileOperationRequest, StartFileOperationResponse, StatRequest,
     StatResponse, DIRECTORY_BATCH_EVENT,
 };
+use jobs::JobEvent;
 use tauri::{AppHandle, Emitter, State};
 use vfs::{DirectoryBatch, ListOptions, ListSessionId, ResourceUri};
 
@@ -90,6 +94,86 @@ async fn fs_list_start(
     Ok(response)
 }
 
+#[tauri::command]
+async fn plan_file_operation(
+    request: PlanFileOperationRequest,
+    state: State<'_, Arc<AppState>>,
+) -> Result<PlanFileOperationResponse, IpcError> {
+    telemetry::debug("plan_file_operation requested");
+
+    let operation = request.operation.try_into()?;
+    let plan = state.operations().plan(operation).map_err(IpcError::from)?;
+
+    Ok(PlanFileOperationResponse { plan: plan.into() })
+}
+
+#[tauri::command]
+async fn start_file_operation(
+    request: StartFileOperationRequest,
+    app: AppHandle,
+    state: State<'_, Arc<AppState>>,
+) -> Result<StartFileOperationResponse, IpcError> {
+    telemetry::debug("start_file_operation requested");
+
+    let plan = request.plan.try_into()?;
+    let sink_app = app.clone();
+    let sink = Arc::new(move |event: JobEvent| {
+        let name = job_event_name(&event);
+        let payload = job_event_payload(event);
+
+        if let Err(error) = sink_app.emit(name, payload) {
+            telemetry::error(&format!("failed to emit job event: {error}"));
+        }
+    });
+    let job = state
+        .operations()
+        .start(plan, sink)
+        .map_err(IpcError::from)?;
+
+    Ok(StartFileOperationResponse { job })
+}
+
+#[tauri::command]
+async fn cancel_job(
+    request: CancelJobRequest,
+    state: State<'_, Arc<AppState>>,
+) -> Result<JobStatusResponse, IpcError> {
+    let job = state
+        .operations()
+        .cancel(&request.job_id)
+        .map_err(IpcError::from)?;
+
+    Ok(JobStatusResponse { job })
+}
+
+#[tauri::command]
+async fn get_job_status(
+    request: JobStatusRequest,
+    state: State<'_, Arc<AppState>>,
+) -> Result<JobStatusResponse, IpcError> {
+    let job = state
+        .operations()
+        .status(&request.job_id)
+        .map_err(IpcError::from)?;
+
+    Ok(JobStatusResponse { job })
+}
+
+#[tauri::command]
+async fn list_recent_operations(
+    request: ListRecentOperationsRequest,
+    state: State<'_, Arc<AppState>>,
+) -> Result<ListRecentOperationsResponse, IpcError> {
+    let operations = state
+        .operations()
+        .recent_history(request.limit.unwrap_or(20))
+        .into_iter()
+        .map(operation_history_record_to_dto)
+        .collect();
+
+    Ok(ListRecentOperationsResponse { operations })
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let app_state = AppCore::boot().expect("failed to boot FileOctopus app core");
@@ -103,8 +187,27 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             app_get_info,
             fs_stat,
-            fs_list_start
+            fs_list_start,
+            plan_file_operation,
+            start_file_operation,
+            cancel_job,
+            get_job_status,
+            list_recent_operations
         ])
         .run(tauri::generate_context!())
         .expect("failed to run FileOctopus");
+}
+
+fn operation_history_record_to_dto(record: OperationHistoryRecord) -> OperationHistoryRecordDto {
+    OperationHistoryRecordDto {
+        job_id: record.job_id,
+        operation_kind: record.operation_kind,
+        source_count: record.source_count,
+        representative_source_path: record.representative_source_path,
+        destination_path: record.destination_path,
+        status: record.status,
+        started_at: record.started_at,
+        completed_at: record.completed_at,
+        error_code: record.error_code,
+    }
 }

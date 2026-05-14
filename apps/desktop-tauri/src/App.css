@@ -26,7 +26,8 @@ body {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
 }
 
@@ -44,7 +45,7 @@ button:disabled {
 
 .fo-shell {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
   gap: 8px;
   min-height: 100vh;
   padding: 8px;
@@ -122,7 +123,7 @@ button:disabled {
 
 .fo-panel-body {
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr);
+  grid-template-rows: auto auto auto minmax(0, 1fr);
   gap: 6px;
   min-height: 0;
   padding: 8px;
@@ -137,11 +138,29 @@ button:disabled {
 
 .fo-panel-tools button,
 .fo-panel-error button,
-.fo-column-button {
+.fo-column-button,
+.fo-operation-toolbar button,
+.fo-job-panel button,
+.fo-dialog button {
   min-height: 30px;
   border: 1px solid #929dac;
   background: #ffffff;
   color: #18202a;
+}
+
+.fo-operation-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.fo-operation-toolbar span {
+  margin-left: auto;
+  color: #526174;
+  font-size: 12px;
+  white-space: nowrap;
 }
 
 .fo-path,
@@ -278,6 +297,122 @@ button:disabled {
   font-size: 12px;
 }
 
+.fo-job-panel {
+  display: grid;
+  gap: 6px;
+  max-height: 220px;
+  overflow: auto;
+  border: 1px solid #aab4c1;
+  background: #f7f9fb;
+  padding: 8px;
+  font-size: 12px;
+}
+
+.fo-job-panel header,
+.fo-job-row,
+.fo-history-row {
+  display: grid;
+  grid-template-columns: 140px minmax(100px, 1fr) minmax(0, 2fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.fo-job-panel header {
+  grid-template-columns: 1fr auto;
+}
+
+.fo-job-row span,
+.fo-history-row span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fo-history {
+  display: grid;
+  gap: 4px;
+}
+
+.fo-history-row {
+  grid-template-columns: 110px 90px minmax(0, 1fr);
+}
+
+.fo-operation-error {
+  border: 1px solid #d08a84;
+  background: #fff1f0;
+  color: #8a1f17;
+  padding: 5px 6px;
+}
+
+.fo-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgb(24 32 42 / 42%);
+  z-index: 20;
+}
+
+.fo-dialog {
+  display: grid;
+  gap: 10px;
+  width: min(560px, 100%);
+  max-height: min(620px, calc(100vh - 32px));
+  overflow: auto;
+  border: 1px solid #66758a;
+  background: #f7f9fb;
+  padding: 12px;
+  box-shadow: 0 18px 42px rgb(24 32 42 / 28%);
+}
+
+.fo-dialog header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.fo-dialog form,
+.fo-dialog label,
+.fo-dialog-summary,
+.fo-dialog-actions {
+  display: grid;
+  gap: 8px;
+}
+
+.fo-dialog input,
+.fo-dialog select {
+  width: 100%;
+  min-height: 30px;
+  border: 1px solid #929dac;
+  background: #ffffff;
+  color: #18202a;
+  padding: 5px 8px;
+}
+
+.fo-dialog-summary {
+  border: 1px solid #c3ccd8;
+  background: #ffffff;
+  padding: 8px;
+  font-size: 12px;
+}
+
+.fo-dialog-summary span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.fo-dialog-actions {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.fo-empty-inline {
+  color: #64748b;
+}
+
 .fo-fatal-error {
   place-items: center;
   color: #8a1f17;
@@ -294,6 +429,11 @@ button:disabled {
 
   .fo-filter {
     grid-column: 1 / -1;
+  }
+
+  .fo-job-row,
+  .fo-history-row {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -321,6 +461,11 @@ button:disabled {
   .fo-panel-tools button,
   .fo-panel-error button,
   .fo-column-button,
+  .fo-operation-toolbar button,
+  .fo-job-panel button,
+  .fo-dialog button,
+  .fo-dialog input,
+  .fo-dialog select,
   .fo-path,
   .fo-filter,
   .fo-row {
@@ -339,7 +484,9 @@ button:disabled {
 
   .fo-topbar p,
   .fo-status,
-  .fo-empty {
+  .fo-empty,
+  .fo-empty-inline,
+  .fo-operation-toolbar span {
     color: #9aa8bb;
   }
 
@@ -347,5 +494,26 @@ button:disabled {
     background: #331b1b;
     border-color: #7a342f;
     color: #ffd1cc;
+  }
+
+  .fo-job-panel {
+    background: #161d27;
+    border-color: #354255;
+  }
+
+  .fo-operation-error {
+    background: #331b1b;
+    border-color: #7a342f;
+    color: #ffd1cc;
+  }
+
+  .fo-dialog {
+    background: #161d27;
+    border-color: #354255;
+  }
+
+  .fo-dialog-summary {
+    background: #111821;
+    border-color: #354255;
   }
 }
