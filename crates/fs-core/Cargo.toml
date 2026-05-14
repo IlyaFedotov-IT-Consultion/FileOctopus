@@ -6,7 +6,10 @@ edition.workspace = true
 [dependencies]
 async-trait = "0.1"
 chrono = "0.4"
+filetime = "0.2"
+jobs = { path = "../jobs" }
 tokio = { version = "1", features = ["rt"] }
+uuid = { version = "1", features = ["v4"] }
 vfs = { path = "../vfs" }
 
 [dev-dependencies]

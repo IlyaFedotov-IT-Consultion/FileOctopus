@@ -8,6 +8,8 @@ use vfs::{
     ProviderCapabilities, ProviderId, ResourceUri, VfsError, VfsProvider,
 };
 
+pub mod file_ops;
+
 #[derive(Debug, Default)]
 pub struct LocalFsProvider;
 
