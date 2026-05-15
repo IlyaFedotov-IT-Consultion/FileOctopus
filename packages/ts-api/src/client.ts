@@ -11,6 +11,7 @@ import type {
   ExportDiagnosticsBundleRequest,
   ExportDiagnosticsBundleResponse,
   DeletePermanentlyRequest,
+  FileEntryDto,
   FolderSizeCompletedEventDto,
   FolderSizeJobResponse,
   FolderSizeRequest,
@@ -44,6 +45,7 @@ import type {
   GetPreferencesResponse,
   SetPreferenceRequest,
   SetPreferenceResponse,
+  UserPreferencesDto,
   OkResponse,
   PathPropertiesRequest,
   PathPropertiesResponse,
@@ -600,6 +602,16 @@ export function createTauriTransport(): IpcTransport {
 
 export function createPreviewTransport(): IpcTransport {
   let sessionIndex = 0;
+  let previewPreferences: UserPreferencesDto = {
+    theme: "system",
+    density: "comfortable",
+    defaultViewMode: "details",
+    showHiddenFiles: false,
+    sidebarWidth: 224,
+    splitRatio: 0.5,
+    activityPanelVisible: true,
+    activityPanelWidth: 288,
+  };
   const batchHandlers = new Set<(payload: DirectoryBatchEventDto) => void>();
   const folderSizeHandlers = new Set<
     (payload: FolderSizeCompletedEventDto) => void
@@ -637,6 +649,46 @@ export function createPreviewTransport(): IpcTransport {
         return { deletedCount: 0 } as TResponse;
       }
 
+      if (command === "operationHistory.listRecent") {
+        return { operations: [] } as TResponse;
+      }
+
+      if (command === "preferences.get") {
+        return { preferences: previewPreferences } as TResponse;
+      }
+
+      if (command === "preferences.set") {
+        const request = args?.request as Partial<SetPreferenceRequest> | undefined;
+        const value = request?.value ?? "";
+
+        previewPreferences = {
+          ...previewPreferences,
+          [request?.key ?? ""]: preferenceValue(request?.key, value),
+        };
+
+        return { preferences: previewPreferences } as TResponse;
+      }
+
+      if (command === "navigation.listFavorites") {
+        return { favorites: [] } as TResponse;
+      }
+
+      if (command === "navigation.listRecent") {
+        return { entries: [] } as TResponse;
+      }
+
+      if (command === "navigation.listStarred") {
+        return { entries: [] } as TResponse;
+      }
+
+      if (
+        command === "navigation.recordVisit" ||
+        command === "navigation.removeFavorite" ||
+        command === "navigation.toggleStarred"
+      ) {
+        return { ok: true } as TResponse;
+      }
+
       if (command === "diagnostics.exportBundle") {
         return {
           path: "preview-diagnostics.zip",
@@ -658,6 +710,30 @@ export function createPreviewTransport(): IpcTransport {
               name: "Documents",
               uri: "local:///Users/ilya/Documents",
               section: "User folders",
+            },
+            {
+              id: "desktop",
+              name: "Desktop",
+              uri: "local:///Users/ilya/Desktop",
+              section: "User folders",
+            },
+            {
+              id: "downloads",
+              name: "Downloads",
+              uri: "local:///Users/ilya/Downloads",
+              section: "User folders",
+            },
+            {
+              id: "pictures",
+              name: "Pictures",
+              uri: "local:///Users/ilya/Pictures",
+              section: "User folders",
+            },
+            {
+              id: "root",
+              name: "/",
+              uri: "local:///",
+              section: "Devices/Volumes",
             },
           ],
         } as TResponse;
@@ -832,10 +908,11 @@ export function createPreviewTransport(): IpcTransport {
               sessionId,
               requestId,
               uri: request?.uri ?? "local:///",
-              entries: [],
+              entries: previewEntriesForUri(request?.uri ?? "local:///"),
               batchIndex: 0,
               isComplete: true,
-              totalHint: 0,
+              totalHint: previewEntriesForUri(request?.uri ?? "local:///")
+                .length,
               error: null,
             });
           }
@@ -884,6 +961,88 @@ export function createPreviewTransport(): IpcTransport {
       return () => batchHandlers.delete(typedHandler);
     },
   };
+}
+
+function preferenceValue(
+  key: string | undefined,
+  value: string,
+): string | number | boolean {
+  if (
+    key === "showHiddenFiles" ||
+    key === "activityPanelVisible"
+  ) {
+    return value === "true";
+  }
+
+  if (
+    key === "sidebarWidth" ||
+    key === "activityPanelWidth" ||
+    key === "splitRatio"
+  ) {
+    return Number(value);
+  }
+
+  return value;
+}
+
+function previewEntriesForUri(uri: string): FileEntryDto[] {
+  const now = "2026-05-15T12:00:00.000Z";
+  const base = uri.replace(/\/$/, "");
+
+  const entry = (
+    name: string,
+    kind: FileEntryDto["kind"],
+    size: number | null,
+    extension: string | null = null,
+  ): FileEntryDto => ({
+    uri: `${base}/${name}`,
+    name,
+    extension,
+    kind,
+    size,
+    modifiedAt: now,
+    createdAt: now,
+    accessedAt: now,
+    isHidden: name.startsWith("."),
+    isSymlink: false,
+    symlinkTarget: null,
+    providerId: "preview",
+    canRead: true,
+    canList: kind === "directory",
+    canWrite: true,
+    canDelete: true,
+    canRename: true,
+  });
+
+  if (uri.includes("/Documents")) {
+    return [
+      entry("Projects", "directory", null),
+      entry("Reports", "directory", null),
+      entry("Invoices", "directory", null),
+      entry("Budget.xlsx", "file", 245000, "xlsx"),
+      entry("Notes.txt", "file", 3200, "txt"),
+      entry("Presentation.pptx", "file", 5800000, "pptx"),
+    ];
+  }
+
+  if (uri.includes("/Pictures")) {
+    return [
+      entry("Camera Roll", "directory", null),
+      entry("Screenshots", "directory", null),
+      entry("Wallpapers", "directory", null),
+      entry("IMG_2024_0001.jpg", "file", 3200000, "jpg"),
+      entry("photo_edit.psd", "file", 45600000, "psd"),
+    ];
+  }
+
+  return [
+    entry("Desktop", "directory", null),
+    entry("Documents", "directory", null),
+    entry("Downloads", "directory", null),
+    entry("Pictures", "directory", null),
+    entry("FileOctopus", "directory", null),
+    entry("README.md", "file", 8200, "md"),
+  ];
 }
 
 function requireListen<TPayload>(

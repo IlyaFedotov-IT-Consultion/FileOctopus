@@ -54,20 +54,20 @@ export function StatusBar({
   const selectionLabel =
     selectedCount === 0
       ? "No selection"
-      : `${selectedCount} selected${selectedSizeLabel ? ` · ${selectedSizeLabel}` : ""}`;
+      : `${selectedCount} selected${selectedSizeLabel ? ` - ${selectedSizeLabel}` : ""}`;
 
   return (
     <footer className="fo-status" aria-label="Application status">
       <span className="fo-status-segment fo-status-readiness">{readiness}</span>
       <span className="fo-status-segment fo-status-pane" title={pathLabel}>
-        {activePanelLabel} · {pathLabel}
-        {filterActive ? " · Filtered" : ""}
+        {activePanelLabel} - {pathLabel}
+        {filterActive ? " - Filtered" : ""}
       </span>
       <span className="fo-status-segment">{selectionLabel}</span>
       <span className="fo-status-segment">{entrySummary(loadState, entryCount)}</span>
       <span className="fo-status-segment">
         {activeJobCount} active job{activeJobCount === 1 ? "" : "s"}
-        {operationError ? " · Errors" : " · No errors"}
+        {operationError ? " - Errors" : " - No errors"}
       </span>
       {showLogPath && logPath ? (
         <span className="fo-status-segment fo-status-log" title={logPath}>

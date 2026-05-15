@@ -1,7 +1,6 @@
 import { Badge, Button, DropdownMenu } from "@fileoctopus/ui";
 
 interface TitleBarProps {
-  readiness: string;
   helpOpen: boolean;
   onToggleHelp: () => void;
   onSettings: () => void;
@@ -10,7 +9,6 @@ interface TitleBarProps {
 }
 
 export function TitleBar({
-  readiness,
   helpOpen,
   onToggleHelp,
   onSettings,
@@ -21,16 +19,10 @@ export function TitleBar({
     <header className="fo-topbar">
       <div className="fo-brand">
         <span className="fo-brand-mark" aria-hidden="true">
-          🐙
+          FO
         </span>
-        <div>
-          <h1>FileOctopus</h1>
-          <Badge tone="default">Rust-powered</Badge>
-        </div>
-      </div>
-      <div className="fo-readiness">
-        <span className="fo-readiness-dot" aria-hidden="true" />
-        <span>{readiness}</span>
+        <h1>FileOctopus</h1>
+        <Badge tone="default">Rust-powered</Badge>
       </div>
       <div className="fo-topbar-actions">
         <Button type="button" variant="ghost" size="sm" onClick={onSettings}>
@@ -45,10 +37,24 @@ export function TitleBar({
             }
           }}
           items={[
-            { id: "shortcuts", label: "Shortcuts", onSelect: onShortcuts },
-            { id: "diagnostics", label: "Diagnostics", onSelect: onDiagnostics },
+            {
+              id: "shortcuts",
+              label: "Keyboard Shortcuts",
+              icon: "Key",
+              shortcut: "Cmd+/",
+              onSelect: onShortcuts,
+            },
+            {
+              id: "diagnostics",
+              label: "Diagnostics",
+              icon: "Log",
+              separatorBefore: true,
+              onSelect: onDiagnostics,
+            },
           ]}
-        />
+        >
+          <span className="fo-menu-trigger">Help</span>
+        </DropdownMenu>
       </div>
     </header>
   );

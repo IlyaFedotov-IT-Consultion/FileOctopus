@@ -14,28 +14,15 @@ exports[`visual regression snapshots > matches the shell chrome structure in dar
         aria-hidden="true"
         class="fo-brand-mark"
       >
-        🐙
+        FO
       </span>
-      <div>
-        <h1>
-          FileOctopus
-        </h1>
-        <span
-          class="fo-ui-badge fo-ui-badge--default"
-        >
-          Rust-powered
-        </span>
-      </div>
-    </div>
-    <div
-      class="fo-readiness"
-    >
+      <h1>
+        FileOctopus
+      </h1>
       <span
-        aria-hidden="true"
-        class="fo-readiness-dot"
-      />
-      <span>
-        Ready
+        class="fo-ui-badge fo-ui-badge--default"
+      >
+        Rust-powered
       </span>
     </div>
     <div
@@ -57,7 +44,11 @@ exports[`visual regression snapshots > matches the shell chrome structure in dar
           class="fo-ui-btn fo-ui-btn--ghost fo-ui-btn--sm"
           type="button"
         >
-          Help
+          <span
+            class="fo-menu-trigger"
+          >
+            Help
+          </span>
         </button>
       </div>
     </div>
@@ -118,7 +109,7 @@ exports[`visual regression snapshots > matches the shell chrome structure in dar
             Jobs & Activity
           </h2>
           <p>
-            Current operations and recent history
+            Operations and history
           </p>
         </div>
         <button
@@ -127,9 +118,23 @@ exports[`visual regression snapshots > matches the shell chrome structure in dar
           title="Collapse activity panel"
           type="button"
         >
-          −
+          -
         </button>
       </header>
+      <div
+        aria-label="Activity views"
+        class="fo-activity-tabs"
+        role="tablist"
+      >
+        <span
+          class="fo-activity-tab-active"
+        >
+          Activity
+        </span>
+        <span>
+          History
+        </span>
+      </div>
       <div
         class="fo-activity-cards"
       >
@@ -184,13 +189,13 @@ exports[`visual regression snapshots > matches the shell chrome structure in dar
       title="/Users/ilya/Documents"
     >
       Left pane
-       · 
+       - 
       /Users/ilya/Documents
     </span>
     <span
       class="fo-status-segment"
     >
-      1 selected · 128 KB
+      1 selected - 128 KB
     </span>
     <span
       class="fo-status-segment"
@@ -203,7 +208,7 @@ exports[`visual regression snapshots > matches the shell chrome structure in dar
       0
        active job
       s
-       · No errors
+       - No errors
     </span>
   </footer>
 </div>
@@ -223,28 +228,15 @@ exports[`visual regression snapshots > matches the shell chrome structure in lig
         aria-hidden="true"
         class="fo-brand-mark"
       >
-        🐙
+        FO
       </span>
-      <div>
-        <h1>
-          FileOctopus
-        </h1>
-        <span
-          class="fo-ui-badge fo-ui-badge--default"
-        >
-          Rust-powered
-        </span>
-      </div>
-    </div>
-    <div
-      class="fo-readiness"
-    >
+      <h1>
+        FileOctopus
+      </h1>
       <span
-        aria-hidden="true"
-        class="fo-readiness-dot"
-      />
-      <span>
-        Ready
+        class="fo-ui-badge fo-ui-badge--default"
+      >
+        Rust-powered
       </span>
     </div>
     <div
@@ -266,7 +258,11 @@ exports[`visual regression snapshots > matches the shell chrome structure in lig
           class="fo-ui-btn fo-ui-btn--ghost fo-ui-btn--sm"
           type="button"
         >
-          Help
+          <span
+            class="fo-menu-trigger"
+          >
+            Help
+          </span>
         </button>
       </div>
     </div>
@@ -327,7 +323,7 @@ exports[`visual regression snapshots > matches the shell chrome structure in lig
             Jobs & Activity
           </h2>
           <p>
-            Current operations and recent history
+            Operations and history
           </p>
         </div>
         <button
@@ -336,9 +332,23 @@ exports[`visual regression snapshots > matches the shell chrome structure in lig
           title="Collapse activity panel"
           type="button"
         >
-          −
+          -
         </button>
       </header>
+      <div
+        aria-label="Activity views"
+        class="fo-activity-tabs"
+        role="tablist"
+      >
+        <span
+          class="fo-activity-tab-active"
+        >
+          Activity
+        </span>
+        <span>
+          History
+        </span>
+      </div>
       <div
         class="fo-activity-cards"
       >
@@ -393,13 +403,13 @@ exports[`visual regression snapshots > matches the shell chrome structure in lig
       title="/Users/ilya/Documents"
     >
       Left pane
-       · 
+       - 
       /Users/ilya/Documents
     </span>
     <span
       class="fo-status-segment"
     >
-      1 selected · 128 KB
+      1 selected - 128 KB
     </span>
     <span
       class="fo-status-segment"
@@ -412,7 +422,7 @@ exports[`visual regression snapshots > matches the shell chrome structure in lig
       0
        active job
       s
-       · No errors
+       - No errors
     </span>
   </footer>
 </div>

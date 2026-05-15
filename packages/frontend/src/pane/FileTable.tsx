@@ -238,7 +238,7 @@ function ColumnHeader({
       <span className="fo-column-label">{children}</span>
       {active ? (
         <span className="fo-column-sort" aria-hidden="true">
-          {direction === "asc" ? "▲" : "▼"}
+          {direction === "asc" ? "^" : "v"}
         </span>
       ) : null}
     </button>

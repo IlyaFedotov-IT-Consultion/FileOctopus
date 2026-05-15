@@ -69,9 +69,12 @@ import { ColumnsView } from "./pane/ColumnsView";
 import { OperationToolbar } from "./pane/OperationToolbar";
 import { FileTable } from "./pane/FileTable";
 import { fileIconGlyph, formatDate, formatSize } from "./pane/fileTableUtils";
-import { readDraggedUri, useFileOctopusDragTarget } from "./hooks/useFileOctopusDragTarget";
+import {
+  readDraggedUri,
+  useFileOctopusDragTarget,
+} from "./hooks/useFileOctopusDragTarget";
 import { SidebarResizer, SplitResizer } from "./shell/LayoutResizers";
-import { StatusBar, readinessFromLoadState } from "./shell/StatusBar";
+import { StatusBar } from "./shell/StatusBar";
 import { TitleBar } from "./shell/TitleBar";
 import { Sidebar } from "./sidebar/Sidebar";
 import { DiagnosticsDialog } from "./components/DiagnosticsDialog";
@@ -1272,10 +1275,7 @@ export function FileOctopusShell() {
   async function submitTrash(
     current: Extract<OperationDialog, { type: "trash" }>,
   ) {
-    if (
-      current.dontAskAgain &&
-      typeof sessionStorage !== "undefined"
-    ) {
+    if (current.dontAskAgain && typeof sessionStorage !== "undefined") {
       sessionStorage.setItem(SKIP_TRASH_CONFIRM_KEY, "true");
     }
 
@@ -1433,14 +1433,11 @@ export function FileOctopusShell() {
   const activeJobCount = Object.values(jobs).filter(
     (job) => job.status === "queued" || job.status === "running",
   ).length;
-  const readiness = readinessFromLoadState(statusTab.loadState);
-
   return (
     <ErrorBoundary>
       <main className="fo-shell" onKeyDown={handleShellKeyDown}>
         <div className="fo-shell-frame">
           <TitleBar
-            readiness={readiness}
             helpOpen={helpOpen}
             onToggleHelp={() => setHelpOpen((value) => !value)}
             onSettings={() => setSettingsOpen(true)}
@@ -1504,142 +1501,147 @@ export function FileOctopusShell() {
               }}
             />
             <div className="fo-dual-pane" aria-label="File panels">
-          <FilePanel
-            panelId="left"
-            title="Left"
-            tab={left}
-            active={state.activePanelId === "left"}
-            onActivate={() =>
-              dispatch({ type: "setActivePanel", panelId: "left" })
-            }
-            onNavigate={(uri) => navigatePanel("left", uri)}
-            onBack={() => void goHistory("left", "back")}
-            onForward={() => void goHistory("left", "forward")}
-            onSelect={(entryId) =>
-              dispatch({ type: "setSelection", panelId: "left", entryId })
-            }
-            onEntrySelect={(entryId, mode) =>
-              dispatch({ type: "selectEntry", panelId: "left", entryId, mode })
-            }
-            onCreateFolder={() => handleCreateFolder("left")}
-            onCreateFile={() => handleCreateFile("left")}
-            onRename={() => handleRename("left")}
-            onCopy={() => copySelectionToFileClipboard("left", "copy")}
-            onCut={() => copySelectionToFileClipboard("left", "move")}
-            onCopyOperation={() => handleCopyOrMove("left", "copy")}
-            onMoveOperation={() => handleCopyOrMove("left", "move")}
-            onPaste={() => void pasteClipboard("left")}
-            onTrash={() => handleTrash("left")}
-            onPermanentDelete={() => handlePermanentDelete("left")}
-            onCopyPath={() => void copyTextFromSelection("left", "path")}
-            onCopyName={() => void copyTextFromSelection("left", "name")}
-            onProperties={(entry) => void handleProperties("left", entry)}
-            onReveal={(entry) => void revealEntry("left", entry)}
-            onRefresh={() => refreshPanel("left")}
-            onToggleHidden={() => toggleHidden("left")}
-            onMove={(delta) =>
-              dispatch({ type: "moveSelection", panelId: "left", delta })
-            }
-            onSort={(field) =>
-              dispatch({ type: "setSort", panelId: "left", field })
-            }
-            onFilter={(filter) =>
-              dispatch({ type: "setFilter", panelId: "left", filter })
-            }
-            onRecursiveQuery={(query) =>
-              dispatch({
-                type: "setRecursiveQuery",
-                panelId: "left",
-                query,
-              })
-            }
-            onRecursiveSearch={() => void runRecursiveSearch("left")}
-            onViewMode={(viewMode) =>
-              dispatch({ type: "setViewMode", panelId: "left", viewMode })
-            }
-            canPaste={Boolean(clipboard)}
-            pathFocusToken={pathFocusToken}
-            filterFocusToken={filterFocusToken}
-            rowHeight={rowHeight}
-            search={search?.panelId === "left" ? search : null}
-            onContextMenu={setContextMenu}
-            onEntryActivate={(entry) => activateEntry("left", entry)}
-          />
-            <SplitResizer
-              onSplitResize={(ratio) => {
-                document.documentElement.style.setProperty(
-                  "--fo-left-pane-fr",
-                  String(ratio),
-                );
-                void updatePreference("splitRatio", String(ratio));
-              }}
-            />
-          <FilePanel
-            panelId="right"
-            title="Right"
-            tab={right}
-            active={state.activePanelId === "right"}
-            onActivate={() =>
-              dispatch({ type: "setActivePanel", panelId: "right" })
-            }
-            onNavigate={(uri) => navigatePanel("right", uri)}
-            onBack={() => void goHistory("right", "back")}
-            onForward={() => void goHistory("right", "forward")}
-            onSelect={(entryId) =>
-              dispatch({ type: "setSelection", panelId: "right", entryId })
-            }
-            onEntrySelect={(entryId, mode) =>
-              dispatch({
-                type: "selectEntry",
-                panelId: "right",
-                entryId,
-                mode,
-              })
-            }
-            onCreateFolder={() => handleCreateFolder("right")}
-            onCreateFile={() => handleCreateFile("right")}
-            onRename={() => handleRename("right")}
-            onCopy={() => copySelectionToFileClipboard("right", "copy")}
-            onCut={() => copySelectionToFileClipboard("right", "move")}
-            onCopyOperation={() => handleCopyOrMove("right", "copy")}
-            onMoveOperation={() => handleCopyOrMove("right", "move")}
-            onPaste={() => void pasteClipboard("right")}
-            onTrash={() => handleTrash("right")}
-            onPermanentDelete={() => handlePermanentDelete("right")}
-            onCopyPath={() => void copyTextFromSelection("right", "path")}
-            onCopyName={() => void copyTextFromSelection("right", "name")}
-            onProperties={(entry) => void handleProperties("right", entry)}
-            onReveal={(entry) => void revealEntry("right", entry)}
-            onRefresh={() => refreshPanel("right")}
-            onToggleHidden={() => toggleHidden("right")}
-            onMove={(delta) =>
-              dispatch({ type: "moveSelection", panelId: "right", delta })
-            }
-            onSort={(field) =>
-              dispatch({ type: "setSort", panelId: "right", field })
-            }
-            onFilter={(filter) =>
-              dispatch({ type: "setFilter", panelId: "right", filter })
-            }
-            onRecursiveQuery={(query) =>
-              dispatch({
-                type: "setRecursiveQuery",
-                panelId: "right",
-                query,
-              })
-            }
-            onRecursiveSearch={() => void runRecursiveSearch("right")}
-            onViewMode={(viewMode) =>
-              dispatch({ type: "setViewMode", panelId: "right", viewMode })
-            }
-            canPaste={Boolean(clipboard)}
-            pathFocusToken={pathFocusToken}
-            filterFocusToken={filterFocusToken}
-            rowHeight={rowHeight}
-            search={search?.panelId === "right" ? search : null}
-            onContextMenu={setContextMenu}
-            onEntryActivate={(entry) => activateEntry("right", entry)}
-          />
+              <FilePanel
+                panelId="left"
+                title="Left"
+                tab={left}
+                active={state.activePanelId === "left"}
+                onActivate={() =>
+                  dispatch({ type: "setActivePanel", panelId: "left" })
+                }
+                onNavigate={(uri) => navigatePanel("left", uri)}
+                onBack={() => void goHistory("left", "back")}
+                onForward={() => void goHistory("left", "forward")}
+                onSelect={(entryId) =>
+                  dispatch({ type: "setSelection", panelId: "left", entryId })
+                }
+                onEntrySelect={(entryId, mode) =>
+                  dispatch({
+                    type: "selectEntry",
+                    panelId: "left",
+                    entryId,
+                    mode,
+                  })
+                }
+                onCreateFolder={() => handleCreateFolder("left")}
+                onCreateFile={() => handleCreateFile("left")}
+                onRename={() => handleRename("left")}
+                onCopy={() => copySelectionToFileClipboard("left", "copy")}
+                onCut={() => copySelectionToFileClipboard("left", "move")}
+                onCopyOperation={() => handleCopyOrMove("left", "copy")}
+                onMoveOperation={() => handleCopyOrMove("left", "move")}
+                onPaste={() => void pasteClipboard("left")}
+                onTrash={() => handleTrash("left")}
+                onPermanentDelete={() => handlePermanentDelete("left")}
+                onCopyPath={() => void copyTextFromSelection("left", "path")}
+                onCopyName={() => void copyTextFromSelection("left", "name")}
+                onProperties={(entry) => void handleProperties("left", entry)}
+                onReveal={(entry) => void revealEntry("left", entry)}
+                onRefresh={() => refreshPanel("left")}
+                onToggleHidden={() => toggleHidden("left")}
+                onMove={(delta) =>
+                  dispatch({ type: "moveSelection", panelId: "left", delta })
+                }
+                onSort={(field) =>
+                  dispatch({ type: "setSort", panelId: "left", field })
+                }
+                onFilter={(filter) =>
+                  dispatch({ type: "setFilter", panelId: "left", filter })
+                }
+                onRecursiveQuery={(query) =>
+                  dispatch({
+                    type: "setRecursiveQuery",
+                    panelId: "left",
+                    query,
+                  })
+                }
+                onRecursiveSearch={() => void runRecursiveSearch("left")}
+                onViewMode={(viewMode) =>
+                  dispatch({ type: "setViewMode", panelId: "left", viewMode })
+                }
+                canPaste={Boolean(clipboard)}
+                pathFocusToken={pathFocusToken}
+                filterFocusToken={filterFocusToken}
+                rowHeight={rowHeight}
+                search={search?.panelId === "left" ? search : null}
+                onContextMenu={setContextMenu}
+                onEntryActivate={(entry) => activateEntry("left", entry)}
+              />
+              <SplitResizer
+                onSplitResize={(ratio) => {
+                  document.documentElement.style.setProperty(
+                    "--fo-left-pane-fr",
+                    String(ratio),
+                  );
+                  void updatePreference("splitRatio", String(ratio));
+                }}
+              />
+              <FilePanel
+                panelId="right"
+                title="Right"
+                tab={right}
+                active={state.activePanelId === "right"}
+                onActivate={() =>
+                  dispatch({ type: "setActivePanel", panelId: "right" })
+                }
+                onNavigate={(uri) => navigatePanel("right", uri)}
+                onBack={() => void goHistory("right", "back")}
+                onForward={() => void goHistory("right", "forward")}
+                onSelect={(entryId) =>
+                  dispatch({ type: "setSelection", panelId: "right", entryId })
+                }
+                onEntrySelect={(entryId, mode) =>
+                  dispatch({
+                    type: "selectEntry",
+                    panelId: "right",
+                    entryId,
+                    mode,
+                  })
+                }
+                onCreateFolder={() => handleCreateFolder("right")}
+                onCreateFile={() => handleCreateFile("right")}
+                onRename={() => handleRename("right")}
+                onCopy={() => copySelectionToFileClipboard("right", "copy")}
+                onCut={() => copySelectionToFileClipboard("right", "move")}
+                onCopyOperation={() => handleCopyOrMove("right", "copy")}
+                onMoveOperation={() => handleCopyOrMove("right", "move")}
+                onPaste={() => void pasteClipboard("right")}
+                onTrash={() => handleTrash("right")}
+                onPermanentDelete={() => handlePermanentDelete("right")}
+                onCopyPath={() => void copyTextFromSelection("right", "path")}
+                onCopyName={() => void copyTextFromSelection("right", "name")}
+                onProperties={(entry) => void handleProperties("right", entry)}
+                onReveal={(entry) => void revealEntry("right", entry)}
+                onRefresh={() => refreshPanel("right")}
+                onToggleHidden={() => toggleHidden("right")}
+                onMove={(delta) =>
+                  dispatch({ type: "moveSelection", panelId: "right", delta })
+                }
+                onSort={(field) =>
+                  dispatch({ type: "setSort", panelId: "right", field })
+                }
+                onFilter={(filter) =>
+                  dispatch({ type: "setFilter", panelId: "right", filter })
+                }
+                onRecursiveQuery={(query) =>
+                  dispatch({
+                    type: "setRecursiveQuery",
+                    panelId: "right",
+                    query,
+                  })
+                }
+                onRecursiveSearch={() => void runRecursiveSearch("right")}
+                onViewMode={(viewMode) =>
+                  dispatch({ type: "setViewMode", panelId: "right", viewMode })
+                }
+                canPaste={Boolean(clipboard)}
+                pathFocusToken={pathFocusToken}
+                filterFocusToken={filterFocusToken}
+                rowHeight={rowHeight}
+                search={search?.panelId === "right" ? search : null}
+                onContextMenu={setContextMenu}
+                onEntryActivate={(entry) => activateEntry("right", entry)}
+              />
             </div>
             <ActivityPanel
               jobs={Object.values(jobs)}
@@ -1657,87 +1659,95 @@ export function FileOctopusShell() {
               onClearHistory={() => void clearHistory()}
             />
           </section>
-        <ToastStack
-          toasts={toasts}
-          onDismiss={(id) =>
-            setToasts((current) => current.filter((toast) => toast.id !== id))
-          }
-        />
-        {preferences ? (
-          <SettingsDialog
-            open={settingsOpen}
-            preferences={preferences}
-            onClose={() => setSettingsOpen(false)}
-            onChange={(key, value) => void updatePreference(key, value)}
+          <ToastStack
+            toasts={toasts}
+            onDismiss={(id) =>
+              setToasts((current) => current.filter((toast) => toast.id !== id))
+            }
           />
-        ) : null}
-        <ShortcutsDialog
-          open={shortcutsOpen}
-          onClose={() => setShortcutsOpen(false)}
-        />
-        <DiagnosticsDialog
-          open={diagnosticsOpen}
-          appInfo={appInfo}
-          appHealth={appHealth}
-          destination={diagnosticsDestination}
-          message={diagnosticsMessage}
-          exporting={exportingDiagnostics}
-          showDeveloperFields={!isProductionBuild}
-          onClose={() => setDiagnosticsOpen(false)}
-          onDestinationChange={setDiagnosticsDestination}
-          onRefresh={() => void refreshDiagnostics()}
-          onExport={() => void exportDiagnostics()}
-        />
-        <OperationDialogView
-          dialog={dialog}
-          onClose={() => setDialog(null)}
-          onUpdate={(next) => setDialog(next)}
-          onReviewCopyMove={(current) => void reviewCopyMoveDialog(current)}
-          onSubmitCreateFolder={(current) => void submitCreateFolder(current)}
-          onSubmitCreateFile={(current) => void submitCreateFile(current)}
-          onSubmitRename={(current) => void submitRename(current)}
-          onSubmitCopyMove={(current) => void submitCopyMove(current)}
-          onSubmitTrash={(current) => void submitTrash(current)}
-          onSubmitPermanentDelete={(current) =>
-            void submitPermanentDelete(current)
-          }
-          onCopyPath={(panelId) => void copyTextFromSelection(panelId, "path")}
-          onReveal={(panelId, entry) => void revealEntry(panelId, entry)}
-        />
-        <ContextMenu
-          menu={contextMenu}
-          canPaste={Boolean(clipboard)}
-          isStarred={
-            contextMenu?.entry
-              ? starredUriSet.has(contextMenu.entry.uri)
-              : false
-          }
-          onClose={() => setContextMenu(null)}
-          onOpen={(panelId, entry) => activateEntry(panelId, entry)}
-          onRename={handleRename}
-          onCopy={(panelId) => copySelectionToFileClipboard(panelId, "copy")}
-          onCut={(panelId) => copySelectionToFileClipboard(panelId, "move")}
-          onPaste={(panelId) => void pasteClipboard(panelId)}
-          onTrash={handleTrash}
-          onToggleStarred={(_panelId, entry) => void toggleStarredForEntry(entry)}
-          onPermanentDelete={handlePermanentDelete}
-          onCopyPath={(panelId) => void copyTextFromSelection(panelId, "path")}
-          onCopyName={(panelId) => void copyTextFromSelection(panelId, "name")}
-          onProperties={(panelId, entry) =>
-            void handleProperties(panelId, entry)
-          }
-          onReveal={(panelId, entry) => void revealEntry(panelId, entry)}
-          onCreateFolder={handleCreateFolder}
-          onCreateFile={handleCreateFile}
-          onRefresh={refreshPanel}
-          onSelectAll={(panelId) => dispatch({ type: "selectAll", panelId })}
-          onViewMode={(panelId, viewMode) =>
-            dispatch({ type: "setViewMode", panelId, viewMode })
-          }
-          onSort={(panelId, field) =>
-            dispatch({ type: "setSort", panelId, field })
-          }
-        />
+          {preferences ? (
+            <SettingsDialog
+              open={settingsOpen}
+              preferences={preferences}
+              onClose={() => setSettingsOpen(false)}
+              onChange={(key, value) => void updatePreference(key, value)}
+            />
+          ) : null}
+          <ShortcutsDialog
+            open={shortcutsOpen}
+            onClose={() => setShortcutsOpen(false)}
+          />
+          <DiagnosticsDialog
+            open={diagnosticsOpen}
+            appInfo={appInfo}
+            appHealth={appHealth}
+            destination={diagnosticsDestination}
+            message={diagnosticsMessage}
+            exporting={exportingDiagnostics}
+            showDeveloperFields={!isProductionBuild}
+            onClose={() => setDiagnosticsOpen(false)}
+            onDestinationChange={setDiagnosticsDestination}
+            onRefresh={() => void refreshDiagnostics()}
+            onExport={() => void exportDiagnostics()}
+          />
+          <OperationDialogView
+            dialog={dialog}
+            onClose={() => setDialog(null)}
+            onUpdate={(next) => setDialog(next)}
+            onReviewCopyMove={(current) => void reviewCopyMoveDialog(current)}
+            onSubmitCreateFolder={(current) => void submitCreateFolder(current)}
+            onSubmitCreateFile={(current) => void submitCreateFile(current)}
+            onSubmitRename={(current) => void submitRename(current)}
+            onSubmitCopyMove={(current) => void submitCopyMove(current)}
+            onSubmitTrash={(current) => void submitTrash(current)}
+            onSubmitPermanentDelete={(current) =>
+              void submitPermanentDelete(current)
+            }
+            onCopyPath={(panelId) =>
+              void copyTextFromSelection(panelId, "path")
+            }
+            onReveal={(panelId, entry) => void revealEntry(panelId, entry)}
+          />
+          <ContextMenu
+            menu={contextMenu}
+            canPaste={Boolean(clipboard)}
+            isStarred={
+              contextMenu?.entry
+                ? starredUriSet.has(contextMenu.entry.uri)
+                : false
+            }
+            onClose={() => setContextMenu(null)}
+            onOpen={(panelId, entry) => activateEntry(panelId, entry)}
+            onRename={handleRename}
+            onCopy={(panelId) => copySelectionToFileClipboard(panelId, "copy")}
+            onCut={(panelId) => copySelectionToFileClipboard(panelId, "move")}
+            onPaste={(panelId) => void pasteClipboard(panelId)}
+            onTrash={handleTrash}
+            onToggleStarred={(_panelId, entry) =>
+              void toggleStarredForEntry(entry)
+            }
+            onPermanentDelete={handlePermanentDelete}
+            onCopyPath={(panelId) =>
+              void copyTextFromSelection(panelId, "path")
+            }
+            onCopyName={(panelId) =>
+              void copyTextFromSelection(panelId, "name")
+            }
+            onProperties={(panelId, entry) =>
+              void handleProperties(panelId, entry)
+            }
+            onReveal={(panelId, entry) => void revealEntry(panelId, entry)}
+            onCreateFolder={handleCreateFolder}
+            onCreateFile={handleCreateFile}
+            onRefresh={refreshPanel}
+            onSelectAll={(panelId) => dispatch({ type: "selectAll", panelId })}
+            onViewMode={(panelId, viewMode) =>
+              dispatch({ type: "setViewMode", panelId, viewMode })
+            }
+            onSort={(panelId, field) =>
+              dispatch({ type: "setSort", panelId, field })
+            }
+          />
           <StatusBar
             activePanelLabel={
               state.activePanelId === "left" ? "Left pane" : "Right pane"
@@ -1867,7 +1877,7 @@ function FilePanel({
               disabled={tab.backStack.length === 0}
               onClick={onBack}
             >
-              ←
+              Back
             </IconButton>
             <IconButton
               label={`${panelId} forward`}
@@ -1875,7 +1885,7 @@ function FilePanel({
               disabled={tab.forwardStack.length === 0}
               onClick={onForward}
             >
-              →
+              Fwd
             </IconButton>
             <IconButton
               label={`${panelId} up`}
@@ -1883,7 +1893,7 @@ function FilePanel({
               disabled={!upUri}
               onClick={() => upUri && onNavigate(upUri)}
             >
-              ↑
+              Up
             </IconButton>
           </div>
           <PathBar
@@ -1898,10 +1908,7 @@ function FilePanel({
         </div>
       </header>
       <div
-        className={cx(
-          "fo-panel-body",
-          dragOver && "fo-panel-body-drag-over",
-        )}
+        className={cx("fo-panel-body", dragOver && "fo-panel-body-drag-over")}
         {...dragTargetProps}
         onDrop={(event) => {
           const uri = readDraggedUri(event);
@@ -1918,6 +1925,7 @@ function FilePanel({
           canRename={tab.selectedIds.length === 1}
           canPaste={canPaste}
           showHidden={tab.showHidden}
+          viewMode={tab.viewMode}
           onCreateFolder={onCreateFolder}
           onCreateFile={onCreateFile}
           onRename={onRename}
@@ -1953,7 +1961,12 @@ function FilePanel({
             ]}
             onChange={onViewMode}
           />
-          <Button type="button" variant="ghost" size="sm" onClick={onToggleHidden}>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={onToggleHidden}
+          >
             {tab.showHidden ? "Hide Hidden" : "Show Hidden"}
           </Button>
         </div>
@@ -1964,7 +1977,12 @@ function FilePanel({
             placeholder="Recursive search"
             onChange={(event) => onRecursiveQuery(event.target.value)}
           />
-          <Button type="button" variant="ghost" size="sm" onClick={onRecursiveSearch}>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={onRecursiveSearch}
+          >
             Search
           </Button>
         </div>
@@ -1986,36 +2004,36 @@ function FilePanel({
             fileIcon={fileIconGlyph}
           />
         ) : (
-        <FileTable
-          entries={entries}
-          loadState={tab.loadState}
-          rowHeight={rowHeight}
-          selectedId={tab.selectedId}
-          selectedIds={tab.selectedIds}
-          focusedId={tab.focusedId}
-          sortField={tab.sort.field}
-          sortDirection={tab.sort.direction}
-          viewMode={tab.viewMode}
-          onSelect={onSelect}
-          onEntrySelect={onEntrySelect}
-          onMove={onMove}
-          onSort={onSort}
-          onActivate={() => onEntryActivate(selectedEntry)}
-          onEntryActivate={onEntryActivate}
-          onContextMenu={(event, entry) => {
-            event.preventDefault();
-            onActivate();
-            if (entry && !tab.selectedIds.includes(entry.uri)) {
-              onSelect(entry.uri);
-            }
-            onContextMenu({
-              panelId,
-              x: event.clientX,
-              y: event.clientY,
-              entry,
-            });
-          }}
-        />
+          <FileTable
+            entries={entries}
+            loadState={tab.loadState}
+            rowHeight={rowHeight}
+            selectedId={tab.selectedId}
+            selectedIds={tab.selectedIds}
+            focusedId={tab.focusedId}
+            sortField={tab.sort.field}
+            sortDirection={tab.sort.direction}
+            viewMode={tab.viewMode}
+            onSelect={onSelect}
+            onEntrySelect={onEntrySelect}
+            onMove={onMove}
+            onSort={onSort}
+            onActivate={() => onEntryActivate(selectedEntry)}
+            onEntryActivate={onEntryActivate}
+            onContextMenu={(event, entry) => {
+              event.preventDefault();
+              onActivate();
+              if (entry && !tab.selectedIds.includes(entry.uri)) {
+                onSelect(entry.uri);
+              }
+              onContextMenu({
+                panelId,
+                x: event.clientX,
+                y: event.clientY,
+                entry,
+              });
+            }}
+          />
         )}
         <RecursiveSearchPanel
           panelId={panelId}
@@ -2025,7 +2043,7 @@ function FilePanel({
           onProperties={onProperties}
         />
         <footer className="fo-pane-status">
-          {tab.selectedIds.length} selected · {entries.length} items
+          {tab.selectedIds.length} selected - {entries.length} items
         </footer>
       </div>
     </section>
@@ -2125,7 +2143,12 @@ interface FilterInputProps {
   onChange: (value: string) => void;
 }
 
-function FilterInput({ panelId, value, focusToken, onChange }: FilterInputProps) {
+function FilterInput({
+  panelId,
+  value,
+  focusToken,
+  onChange,
+}: FilterInputProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -2210,7 +2233,6 @@ function RecursiveSearchPanel({
     </section>
   );
 }
-
 
 function propertyType(properties: PathPropertiesDto): string {
   if (properties.kind === "directory") {
@@ -2338,7 +2360,12 @@ function OperationDialogView({
 
   return (
     <div className="fo-dialog-backdrop" role="presentation">
-      <section className="fo-dialog" role="dialog" aria-modal="true" aria-label={title}>
+      <section
+        className="fo-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+      >
         <header>
           <strong>{title}</strong>
           <Button type="button" variant="ghost" size="sm" onClick={onClose}>
@@ -2632,7 +2659,6 @@ function OperationDialogView({
     </div>
   );
 }
-
 
 function jobIdValue(jobId: JobSnapshot["jobId"]): string {
   return typeof jobId === "string" ? jobId : String(jobId.value ?? "");

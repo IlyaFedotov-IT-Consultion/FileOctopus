@@ -7,7 +7,6 @@ export function VisualShellFixture() {
     <div className="fo-shell">
       <div className="fo-shell-frame">
         <TitleBar
-          readiness="Ready"
           helpOpen={false}
           onToggleHelp={() => undefined}
           onSettings={() => undefined}

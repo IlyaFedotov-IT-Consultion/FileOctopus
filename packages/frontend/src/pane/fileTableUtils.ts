@@ -28,7 +28,7 @@ export function fileIconGlyph(
   entry: Pick<FileEntryDto, "kind" | "extension" | "name">,
 ): string {
   if (entry.kind === "directory") {
-    return "📁";
+    return "DIR";
   }
 
   const extension = (
@@ -38,20 +38,20 @@ export function fileIconGlyph(
   ).toLowerCase();
 
   if (["png", "jpg", "jpeg", "gif", "webp", "svg"].includes(extension)) {
-    return "🖼️";
+    return "IMG";
   }
   if (["mp4", "mov", "mkv", "avi"].includes(extension)) {
-    return "🎬";
+    return "VID";
   }
   if (["mp3", "wav", "flac", "aac"].includes(extension)) {
-    return "🎵";
+    return "AUD";
   }
   if (["zip", "tar", "gz", "rar", "7z"].includes(extension)) {
-    return "📦";
+    return "ZIP";
   }
   if (["pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx"].includes(extension)) {
-    return "📄";
+    return extension.slice(0, 3).toUpperCase();
   }
 
-  return "📄";
+  return "TXT";
 }

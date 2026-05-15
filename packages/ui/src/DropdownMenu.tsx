@@ -5,7 +5,12 @@ import { Button } from "./Button";
 export interface DropdownMenuItem {
   id: string;
   label: string;
+  icon?: string;
+  shortcut?: string;
   disabled?: boolean;
+  checked?: boolean;
+  danger?: boolean;
+  separatorBefore?: boolean;
   onSelect: () => void;
 }
 
@@ -58,7 +63,13 @@ export function DropdownMenu({
   }, [onOpenChange, open]);
 
   return (
-    <div ref={rootRef} className={cx("fo-ui-dropdown", align === "start" ? "fo-ui-dropdown--start" : "fo-ui-dropdown--end")}>
+    <div
+      ref={rootRef}
+      className={cx(
+        "fo-ui-dropdown",
+        align === "start" ? "fo-ui-dropdown--start" : "fo-ui-dropdown--end",
+      )}
+    >
       <Button
         type="button"
         variant="ghost"
@@ -83,14 +94,25 @@ export function DropdownMenu({
               key={item.id}
               type="button"
               role="menuitem"
-              className="fo-ui-dropdown-item"
+              className={cx(
+                "fo-ui-dropdown-item",
+                item.checked && "fo-ui-dropdown-item--checked",
+                item.danger && "fo-ui-dropdown-item--danger",
+                item.separatorBefore && "fo-ui-dropdown-item--separated",
+              )}
               disabled={item.disabled}
               onClick={() => {
                 item.onSelect();
                 onOpenChange(false);
               }}
             >
-              {item.label}
+              <span className="fo-ui-dropdown-icon" aria-hidden="true">
+                {item.checked ? "OK" : item.icon}
+              </span>
+              <span className="fo-ui-dropdown-label">{item.label}</span>
+              {item.shortcut ? (
+                <span className="fo-ui-dropdown-shortcut">{item.shortcut}</span>
+              ) : null}
             </button>
           ))}
         </div>

@@ -30,79 +30,95 @@ export function SettingsDialog({
         onClick={(event) => event.stopPropagation()}
       >
         <header className="fo-dialog-header">
-          <h2 id="settings-title">Settings</h2>
+          <div>
+            <h2 id="settings-title">Settings</h2>
+            <p>Preferences for appearance, file lists, and layout.</p>
+          </div>
           <Button type="button" variant="ghost" size="sm" onClick={onClose}>
             Close
           </Button>
         </header>
-        <section className="fo-settings-section">
-          <h3>Appearance</h3>
-          <label>
-            Theme
-            <select
-              value={preferences.theme}
-              onChange={(event) => onChange("theme", event.target.value)}
-            >
-              <option value="system">System</option>
-              <option value="light">Light</option>
-              <option value="dark">Dark</option>
-            </select>
-          </label>
-          <label>
-            Density
-            <select
-              value={preferences.density}
-              onChange={(event) => onChange("density", event.target.value)}
-            >
-              <option value="compact">Compact</option>
-              <option value="comfortable">Comfortable</option>
-              <option value="spacious">Spacious</option>
-            </select>
-          </label>
-        </section>
-        <section className="fo-settings-section">
-          <h3>File list</h3>
-          <label>
-            Default view
-            <select
-              value={preferences.defaultViewMode}
-              onChange={(event) =>
-                onChange("defaultViewMode", event.target.value)
-              }
-            >
-              <option value="details">Details</option>
-              <option value="list">List</option>
-              <option value="icons">Icons</option>
-              <option value="columns">Columns</option>
-            </select>
-          </label>
-          <label className="fo-checkbox-label">
-            <input
-              type="checkbox"
-              checked={preferences.showHiddenFiles}
-              onChange={(event) =>
-                onChange("showHiddenFiles", event.target.checked ? "true" : "false")
-              }
-            />
-            Show hidden files by default
-          </label>
-        </section>
-        <section className="fo-settings-section">
-          <h3>Layout</h3>
-          <label className="fo-checkbox-label">
-            <input
-              type="checkbox"
-              checked={preferences.activityPanelVisible}
-              onChange={(event) =>
-                onChange(
-                  "activityPanelVisible",
-                  event.target.checked ? "true" : "false",
-                )
-              }
-            />
-            Show activity panel
-          </label>
-        </section>
+        <div className="fo-settings-layout">
+          <nav className="fo-settings-nav" aria-label="Settings sections">
+            <span className="fo-settings-nav-active">General</span>
+            <span>Appearance</span>
+            <span>Files & Folders</span>
+            <span>Layout</span>
+          </nav>
+          <div className="fo-settings-content">
+            <section className="fo-settings-section">
+              <h3>Appearance</h3>
+              <label className="fo-settings-field">
+                <span>Theme</span>
+                <select
+                  value={preferences.theme}
+                  onChange={(event) => onChange("theme", event.target.value)}
+                >
+                  <option value="system">System</option>
+                  <option value="light">Light</option>
+                  <option value="dark">Dark</option>
+                </select>
+              </label>
+              <label className="fo-settings-field">
+                <span>Density</span>
+                <select
+                  value={preferences.density}
+                  onChange={(event) => onChange("density", event.target.value)}
+                >
+                  <option value="compact">Compact</option>
+                  <option value="comfortable">Comfortable</option>
+                  <option value="spacious">Spacious</option>
+                </select>
+              </label>
+            </section>
+            <section className="fo-settings-section">
+              <h3>Files & Folders</h3>
+              <label className="fo-settings-field">
+                <span>Default view</span>
+                <select
+                  value={preferences.defaultViewMode}
+                  onChange={(event) =>
+                    onChange("defaultViewMode", event.target.value)
+                  }
+                >
+                  <option value="details">Details</option>
+                  <option value="list">List</option>
+                  <option value="icons">Icons</option>
+                  <option value="columns">Columns</option>
+                </select>
+              </label>
+              <label className="fo-settings-switch">
+                <input
+                  type="checkbox"
+                  checked={preferences.showHiddenFiles}
+                  onChange={(event) =>
+                    onChange(
+                      "showHiddenFiles",
+                      event.target.checked ? "true" : "false",
+                    )
+                  }
+                />
+                <span>Show hidden files by default</span>
+              </label>
+            </section>
+            <section className="fo-settings-section">
+              <h3>Layout</h3>
+              <label className="fo-settings-switch">
+                <input
+                  type="checkbox"
+                  checked={preferences.activityPanelVisible}
+                  onChange={(event) =>
+                    onChange(
+                      "activityPanelVisible",
+                      event.target.checked ? "true" : "false",
+                    )
+                  }
+                />
+                <span>Show activity panel</span>
+              </label>
+            </section>
+          </div>
+        </div>
       </dialog>
     </div>
   );

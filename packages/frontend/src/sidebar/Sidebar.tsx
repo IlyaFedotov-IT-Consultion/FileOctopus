@@ -80,7 +80,7 @@ export function Sidebar({
           {favorites.map((item) => (
             <SidebarItem
               key={item.id}
-              icon="★"
+              icon="PIN"
               label={item.label}
               active={item.uri === activeUri}
               onClick={() => onNavigate(item.uri)}
@@ -101,7 +101,7 @@ export function Sidebar({
           recentToday.map((item) => (
             <SidebarItem
               key={item.uri}
-              icon="·"
+              icon="-"
               label={item.label}
               active={item.uri === activeUri}
               onClick={() => onNavigate(item.uri)}
@@ -117,7 +117,7 @@ export function Sidebar({
           recentWeek.map((item) => (
             <SidebarItem
               key={item.uri}
-              icon="·"
+              icon="-"
               label={item.label}
               active={item.uri === activeUri}
               onClick={() => onNavigate(item.uri)}
@@ -133,7 +133,7 @@ export function Sidebar({
           {starred.map((item) => (
             <SidebarItem
               key={item.uri}
-              icon="☆"
+              icon="STR"
               label={item.label}
               active={item.uri === activeUri}
               onClick={() => onNavigate(item.uri)}
@@ -255,18 +255,18 @@ function SidebarItem({
 function locationIcon(id: string): string {
   switch (id) {
     case "home":
-      return "⌂";
+      return "H";
     case "desktop":
-      return "▣";
+      return "DSK";
     case "documents":
-      return "□";
+      return "DOC";
     case "downloads":
-      return "↓";
+      return "DL";
     case "pictures":
-      return "▧";
+      return "PIC";
     case "music":
-      return "♫";
+      return "MUS";
     default:
-      return "◉";
+      return "VOL";
   }
 }
