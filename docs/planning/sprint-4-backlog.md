@@ -583,21 +583,21 @@ Add standard file-manager keyboard shortcuts.
 
 ### Required shortcuts
 
-| Shortcut | Action |
-|---|---|
-| Enter | Open selected item |
-| F2 | Rename selected item |
-| Delete | Move selected item(s) to trash |
-| Shift+Delete | Permanently delete with explicit confirmation |
-| Ctrl/Cmd+C | Copy selected item(s) |
-| Ctrl/Cmd+X | Cut selected item(s) |
-| Ctrl/Cmd+V | Paste into current folder |
-| Ctrl/Cmd+A | Select all |
-| Backspace / Alt+Up | Go to parent folder |
-| Alt+Left | Back |
-| Alt+Right | Forward |
-| F5 / Ctrl/Cmd+R | Refresh |
-| Ctrl/Cmd+L | Focus path bar |
+| Shortcut           | Action                                        |
+| ------------------ | --------------------------------------------- |
+| Enter              | Open selected item                            |
+| F2                 | Rename selected item                          |
+| Delete             | Move selected item(s) to trash                |
+| Shift+Delete       | Permanently delete with explicit confirmation |
+| Ctrl/Cmd+C         | Copy selected item(s)                         |
+| Ctrl/Cmd+X         | Cut selected item(s)                          |
+| Ctrl/Cmd+V         | Paste into current folder                     |
+| Ctrl/Cmd+A         | Select all                                    |
+| Backspace / Alt+Up | Go to parent folder                           |
+| Alt+Left           | Back                                          |
+| Alt+Right          | Forward                                       |
+| F5 / Ctrl/Cmd+R    | Refresh                                       |
+| Ctrl/Cmd+L         | Focus path bar                                |
 
 ### Acceptance criteria
 
@@ -1318,15 +1318,15 @@ Sprint 4 is done when:
 
 ## Sprint 4 risk register
 
-| Risk | Impact | Mitigation |
-|---|---:|---|
-| Filesystem watcher behavior differs across platforms | High | Use abstraction, debounce events, and fall back to manual refresh |
-| Opening external files can become unsafe if implemented through shell strings | High | Use safe OS APIs/Tauri shell plugin patterns; never concatenate shell commands |
-| Recursive search can freeze UI on large folders | High | Make search job-based, incremental, and cancellable |
-| Folder size calculation can be expensive | Medium | Use cancellable job and partial results |
-| Selection model becomes inconsistent across view modes | Medium | Centralize selection state; test across details/list/icon views |
-| Theme work regresses when new surfaces are added | Medium | Enforce design tokens and add visual/theme tests |
-| Platform-specific paths produce edge cases | Medium | Add platform-gated tests and manual QA notes |
+| Risk                                                                          | Impact | Mitigation                                                                     |
+| ----------------------------------------------------------------------------- | -----: | ------------------------------------------------------------------------------ |
+| Filesystem watcher behavior differs across platforms                          |   High | Use abstraction, debounce events, and fall back to manual refresh              |
+| Opening external files can become unsafe if implemented through shell strings |   High | Use safe OS APIs/Tauri shell plugin patterns; never concatenate shell commands |
+| Recursive search can freeze UI on large folders                               |   High | Make search job-based, incremental, and cancellable                            |
+| Folder size calculation can be expensive                                      | Medium | Use cancellable job and partial results                                        |
+| Selection model becomes inconsistent across view modes                        | Medium | Centralize selection state; test across details/list/icon views                |
+| Theme work regresses when new surfaces are added                              | Medium | Enforce design tokens and add visual/theme tests                               |
+| Platform-specific paths produce edge cases                                    | Medium | Add platform-gated tests and manual QA notes                                   |
 
 ## Product note
 

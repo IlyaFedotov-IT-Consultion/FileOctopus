@@ -1290,4 +1290,3 @@ Candidate Sprint 3 themes:
 - More advanced conflict resolution.
 - Drag-and-drop operations.
 - Keyboard-first command palette.
-

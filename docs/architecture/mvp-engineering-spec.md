@@ -153,48 +153,48 @@ FileOctopus MVP should prove three things:
 
 ## 4.1 Functional Acceptance Criteria
 
-| ID | Requirement | Acceptance Criteria |
-|---|---|---|
-| MVP-FS-001 | Directory navigation | User can navigate local filesystem in both panels. |
-| MVP-FS-002 | Large directory listing | Folder with 100,000 files opens without UI freeze. |
-| MVP-FS-003 | Copy operation | User can copy files/folders between panels with progress. |
-| MVP-FS-004 | Move operation | User can move files/folders between panels with progress. |
-| MVP-FS-005 | Rename | User can rename selected item. |
-| MVP-FS-006 | New folder | User can create a folder in active panel. |
-| MVP-FS-007 | Trash/delete | User can send items to OS trash where supported. |
-| MVP-FS-008 | Conflict handling | User is prompted when destination conflict occurs. |
-| MVP-JOB-001 | Job queue | Long operations appear in job queue. |
-| MVP-JOB-002 | Cancellation | Running copy/move/extract jobs can be cancelled. |
-| MVP-JOB-003 | Failure visibility | Failed jobs expose error detail. |
-| MVP-JOB-004 | Restart persistence | Previous jobs remain inspectable after restart. |
-| MVP-GIT-001 | Git branch | Active panel shows repository branch when inside Git repo. |
-| MVP-GIT-002 | Git badges | File list shows basic Git status badges asynchronously. |
-| MVP-ARC-001 | Archive extraction | User can extract zip/tar archive to selected destination. |
-| MVP-ARC-002 | Archive safety | Malicious archive path traversal is blocked. |
-| MVP-TERM-001 | Terminal open | User can open terminal in active panel path. |
-| MVP-UI-001 | Keyboard flow | Core actions can be executed through keyboard shortcuts or command palette. |
-| MVP-SEC-001 | No direct FS frontend | Frontend has no unrestricted generic filesystem access. |
+| ID           | Requirement             | Acceptance Criteria                                                         |
+| ------------ | ----------------------- | --------------------------------------------------------------------------- |
+| MVP-FS-001   | Directory navigation    | User can navigate local filesystem in both panels.                          |
+| MVP-FS-002   | Large directory listing | Folder with 100,000 files opens without UI freeze.                          |
+| MVP-FS-003   | Copy operation          | User can copy files/folders between panels with progress.                   |
+| MVP-FS-004   | Move operation          | User can move files/folders between panels with progress.                   |
+| MVP-FS-005   | Rename                  | User can rename selected item.                                              |
+| MVP-FS-006   | New folder              | User can create a folder in active panel.                                   |
+| MVP-FS-007   | Trash/delete            | User can send items to OS trash where supported.                            |
+| MVP-FS-008   | Conflict handling       | User is prompted when destination conflict occurs.                          |
+| MVP-JOB-001  | Job queue               | Long operations appear in job queue.                                        |
+| MVP-JOB-002  | Cancellation            | Running copy/move/extract jobs can be cancelled.                            |
+| MVP-JOB-003  | Failure visibility      | Failed jobs expose error detail.                                            |
+| MVP-JOB-004  | Restart persistence     | Previous jobs remain inspectable after restart.                             |
+| MVP-GIT-001  | Git branch              | Active panel shows repository branch when inside Git repo.                  |
+| MVP-GIT-002  | Git badges              | File list shows basic Git status badges asynchronously.                     |
+| MVP-ARC-001  | Archive extraction      | User can extract zip/tar archive to selected destination.                   |
+| MVP-ARC-002  | Archive safety          | Malicious archive path traversal is blocked.                                |
+| MVP-TERM-001 | Terminal open           | User can open terminal in active panel path.                                |
+| MVP-UI-001   | Keyboard flow           | Core actions can be executed through keyboard shortcuts or command palette. |
+| MVP-SEC-001  | No direct FS frontend   | Frontend has no unrestricted generic filesystem access.                     |
 
 ## 4.2 Performance Acceptance Criteria
 
-| ID | Scenario | Target |
-|---|---|---:|
-| MVP-PERF-001 | Cold start to visible window | Under 1.5 seconds on modern laptop target hardware. |
-| MVP-PERF-002 | Warm start | Under 700 ms where practical. |
-| MVP-PERF-003 | 10k file directory | No visible freeze. |
-| MVP-PERF-004 | 100k file directory | Incremental listing with responsive scrolling. |
-| MVP-PERF-005 | Copy 10k small files | Progress updates at least every 250 ms or meaningful batch interval. |
-| MVP-PERF-006 | UI event loop | No file operation blocks UI thread. |
+| ID           | Scenario                     |                                                               Target |
+| ------------ | ---------------------------- | -------------------------------------------------------------------: |
+| MVP-PERF-001 | Cold start to visible window |                  Under 1.5 seconds on modern laptop target hardware. |
+| MVP-PERF-002 | Warm start                   |                                        Under 700 ms where practical. |
+| MVP-PERF-003 | 10k file directory           |                                                   No visible freeze. |
+| MVP-PERF-004 | 100k file directory          |                       Incremental listing with responsive scrolling. |
+| MVP-PERF-005 | Copy 10k small files         | Progress updates at least every 250 ms or meaningful batch interval. |
+| MVP-PERF-006 | UI event loop                |                                  No file operation blocks UI thread. |
 
 ## 4.3 Reliability Acceptance Criteria
 
-| ID | Requirement | Acceptance Criteria |
-|---|---|---|
-| MVP-REL-001 | Cancellation consistency | Cancelled copy leaves known partial state and reports it. |
-| MVP-REL-002 | Job persistence | App restart does not lose job history. |
-| MVP-REL-003 | Error handling | Permission denied, path missing, disk full, and destination conflict are handled gracefully. |
-| MVP-REL-004 | Path safety | Paths are normalized before dangerous operations. |
-| MVP-REL-005 | Archive safety | Archive extraction blocks zip-slip style payloads. |
+| ID          | Requirement              | Acceptance Criteria                                                                          |
+| ----------- | ------------------------ | -------------------------------------------------------------------------------------------- |
+| MVP-REL-001 | Cancellation consistency | Cancelled copy leaves known partial state and reports it.                                    |
+| MVP-REL-002 | Job persistence          | App restart does not lose job history.                                                       |
+| MVP-REL-003 | Error handling           | Permission denied, path missing, disk full, and destination conflict are handled gracefully. |
+| MVP-REL-004 | Path safety              | Paths are normalized before dangerous operations.                                            |
+| MVP-REL-005 | Archive safety           | Archive extraction blocks zip-slip style payloads.                                           |
 
 ---
 
@@ -1265,7 +1265,13 @@ Request:
 
 ```ts
 export interface PlanOperationRequest {
-  kind: "copy" | "move" | "rename" | "createDirectory" | "trash" | "deletePermanent";
+  kind:
+    | "copy"
+    | "move"
+    | "rename"
+    | "createDirectory"
+    | "trash"
+    | "deletePermanent";
   sources: string[];
   destination?: string;
   options: OperationOptionsDto;
@@ -1627,18 +1633,18 @@ export interface SelectionState {
 
 ## 11.3 UI Components
 
-| Component | Responsibility |
-|---|---|
+| Component        | Responsibility                           |
+| ---------------- | ---------------------------------------- |
 | `DualPaneLayout` | Layout container and active panel focus. |
-| `FilePanel` | Panel state binding. |
-| `FileTable` | Virtualized file list. |
-| `PathBar` | Breadcrumb and path input. |
-| `PanelTabs` | Tabs per panel. |
-| `JobQueuePanel` | Running/completed/failed jobs. |
-| `ConflictDialog` | Conflict resolution decisions. |
-| `CommandPalette` | Keyboard-accessible command execution. |
-| `TerminalPanel` | xterm.js wrapper. |
-| `PreviewPanel` | Basic text preview. |
+| `FilePanel`      | Panel state binding.                     |
+| `FileTable`      | Virtualized file list.                   |
+| `PathBar`        | Breadcrumb and path input.               |
+| `PanelTabs`      | Tabs per panel.                          |
+| `JobQueuePanel`  | Running/completed/failed jobs.           |
+| `ConflictDialog` | Conflict resolution decisions.           |
+| `CommandPalette` | Keyboard-accessible command execution.   |
+| `TerminalPanel`  | xterm.js wrapper.                        |
+| `PreviewPanel`   | Basic text preview.                      |
 
 ---
 
@@ -1876,4 +1882,3 @@ IPC DTOs should include implicit app version compatibility during MVP. Before 1.
 The MVP is done when a technical user can use FileOctopus as a daily local file manager for normal navigation and file operations, while the product demonstrates clear superiority in responsiveness, job visibility, and workflow integration over basic OS file managers.
 
 The MVP should not be judged by the number of advanced features. It should be judged by whether its core architecture is safe, fast, extensible, and reliable enough to support the larger FileOctopus product vision.
-

@@ -52,29 +52,29 @@ At the end of Sprint 1, a user should be able to launch FileOctopus, view two pa
 
 Create these labels before issue creation.
 
-| Label | Purpose |
-|---|---|
-| `area:repo` | Repository, monorepo, tooling. |
-| `area:tauri` | Tauri shell and desktop integration. |
-| `area:rust-core` | Rust application core. |
-| `area:vfs` | Virtual filesystem and URI model. |
-| `area:fs-core` | Local filesystem provider. |
-| `area:ipc` | Rust/frontend IPC contracts. |
-| `area:frontend` | Frontend application. |
-| `area:ui` | UI components and layout. |
-| `area:testing` | Unit, integration, E2E, performance tests. |
-| `area:ci` | CI/CD and build automation. |
-| `area:docs` | Documentation and ADRs. |
-| `type:feature` | New product or platform capability. |
-| `type:task` | Engineering task. |
-| `type:bug` | Defect. |
-| `type:chore` | Maintenance. |
-| `type:spike` | Investigation or proof of concept. |
-| `priority:p0` | Blocks all development or MVP feasibility. |
-| `priority:p1` | Required for current sprint goal. |
-| `priority:p2` | Important but not immediately blocking. |
-| `risk:high` | Requires extra review/testing. |
-| `good-first-issue` | Safe for new contributors. |
+| Label              | Purpose                                    |
+| ------------------ | ------------------------------------------ |
+| `area:repo`        | Repository, monorepo, tooling.             |
+| `area:tauri`       | Tauri shell and desktop integration.       |
+| `area:rust-core`   | Rust application core.                     |
+| `area:vfs`         | Virtual filesystem and URI model.          |
+| `area:fs-core`     | Local filesystem provider.                 |
+| `area:ipc`         | Rust/frontend IPC contracts.               |
+| `area:frontend`    | Frontend application.                      |
+| `area:ui`          | UI components and layout.                  |
+| `area:testing`     | Unit, integration, E2E, performance tests. |
+| `area:ci`          | CI/CD and build automation.                |
+| `area:docs`        | Documentation and ADRs.                    |
+| `type:feature`     | New product or platform capability.        |
+| `type:task`        | Engineering task.                          |
+| `type:bug`         | Defect.                                    |
+| `type:chore`       | Maintenance.                               |
+| `type:spike`       | Investigation or proof of concept.         |
+| `priority:p0`      | Blocks all development or MVP feasibility. |
+| `priority:p1`      | Required for current sprint goal.          |
+| `priority:p2`      | Important but not immediately blocking.    |
+| `risk:high`        | Requires extra review/testing.             |
+| `good-first-issue` | Safe for new contributors.                 |
 
 ---
 
@@ -1532,15 +1532,15 @@ Sprint 1 is complete when:
 
 # 10. Sprint 1 Technical Risks
 
-| Risk | Impact | Mitigation |
-|---|---:|---|
-| Directory listing blocks runtime thread | High | Use blocking task pool or async-safe directory enumeration strategy. |
-| Frontend accidentally stores raw paths inconsistently | Medium | Enforce `ResourceUri` at API boundary and panel state. |
-| 100k files causes frontend memory/DOM issue | High | Use strict virtualization and avoid derived object duplication. |
-| Directory batch events arrive after navigation | Medium | Track session IDs and ignore stale sessions. |
-| Windows path URI handling is wrong | High | Add explicit Windows URI tests even when running on non-Windows where possible. |
-| Tauri event bridge becomes too chatty | Medium | Batch events and throttle progress-like updates. |
-| CI matrix too slow too early | Low | Start with validation CI, add packaging matrix later. |
+| Risk                                                  | Impact | Mitigation                                                                      |
+| ----------------------------------------------------- | -----: | ------------------------------------------------------------------------------- |
+| Directory listing blocks runtime thread               |   High | Use blocking task pool or async-safe directory enumeration strategy.            |
+| Frontend accidentally stores raw paths inconsistently | Medium | Enforce `ResourceUri` at API boundary and panel state.                          |
+| 100k files causes frontend memory/DOM issue           |   High | Use strict virtualization and avoid derived object duplication.                 |
+| Directory batch events arrive after navigation        | Medium | Track session IDs and ignore stale sessions.                                    |
+| Windows path URI handling is wrong                    |   High | Add explicit Windows URI tests even when running on non-Windows where possible. |
+| Tauri event bridge becomes too chatty                 | Medium | Batch events and throttle progress-like updates.                                |
+| CI matrix too slow too early                          |    Low | Start with validation CI, add packaging matrix later.                           |
 
 ---
 
@@ -1591,4 +1591,3 @@ Candidate Sprint 2 issues:
 Sprint 0 establishes the engineering foundation. Sprint 1 proves the most important technical claim of the product: FileOctopus can browse very large local directories through a secure Rust-owned backend and a responsive virtualized frontend without granting the web layer unrestricted filesystem access.
 
 That vertical slice is the foundation for every later MVP capability: jobs, copy/move/delete, Git, archives, terminal, cloud providers, indexing, AI, and local-first sync.
-
