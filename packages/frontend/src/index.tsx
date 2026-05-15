@@ -1437,6 +1437,18 @@ export function FileOctopusShell() {
       return;
     }
 
+    if ((event.metaKey || event.ctrlKey) && event.key === ",") {
+      event.preventDefault();
+      setSettingsOpen(true);
+      return;
+    }
+
+    if ((event.metaKey || event.ctrlKey) && event.key === "/") {
+      event.preventDefault();
+      setShortcutsOpen(true);
+      return;
+    }
+
     if (dialog) {
       return;
     }

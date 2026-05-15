@@ -64,6 +64,20 @@ export const shortcutEntries: ShortcutEntry[] = [
     category: "Navigation",
   },
   {
+    id: "preferences",
+    label: "Open Preferences",
+    mac: "⌘,",
+    windowsLinux: "Ctrl+,",
+    category: "Navigation",
+  },
+  {
+    id: "shortcuts-help",
+    label: "Keyboard shortcuts",
+    mac: "⌘/",
+    windowsLinux: "Ctrl+/",
+    category: "Navigation",
+  },
+  {
     id: "toggle-hidden",
     label: "Toggle hidden files",
     mac: "⌘.",
