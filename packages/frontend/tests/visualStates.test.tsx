@@ -1,53 +1,160 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { screen } from "@testing-library/react";
+import { afterEach, describe, expect, it } from "vitest";
 import { PaneStateView } from "../src/components/PaneStateView";
+import { DiagnosticsDialog } from "../src/components/DiagnosticsDialog";
 import { SettingsDialog } from "../src/components/SettingsDialog";
 import { ShortcutsDialog } from "../src/components/ShortcutsDialog";
+import { FileTable } from "../src/pane/FileTable";
+import {
+  renderVisualState,
+  sampleAppHealth,
+  sampleAppInfo,
+} from "./visualFixtures";
+
+const noop = () => undefined;
+
+const defaultPreferences = {
+  theme: "dark" as const,
+  density: "comfortable" as const,
+  defaultViewMode: "details" as const,
+  showHiddenFiles: false,
+  sidebarWidth: 240,
+  splitRatio: 0.5,
+  activityPanelVisible: true,
+  activityPanelWidth: 288,
+};
 
 describe("visual state fixtures", () => {
+  afterEach(() => {
+    document.documentElement.removeAttribute("data-theme");
+    document.documentElement.removeAttribute("data-density");
+  });
+
   it("renders empty pane state", () => {
-    render(
+    const view = renderVisualState(
       <PaneStateView
         loadState="empty"
         uri="local:///Users/ilya/Documents"
         message={null}
-        onRetry={() => undefined}
-        onRefresh={() => undefined}
-        onCreateFolder={() => undefined}
+        onRetry={noop}
+        onRefresh={noop}
+        onCreateFolder={noop}
       />,
     );
 
     expect(screen.getByText("This folder is empty")).toBeTruthy();
+    view.restore();
   });
 
-  it("renders settings dialog", () => {
-    render(
-      <SettingsDialog
-        open
-        preferences={{
-          theme: "dark",
-          density: "comfortable",
-          defaultViewMode: "details",
-          showHiddenFiles: false,
-          sidebarWidth: 240,
-          splitRatio: 0.5,
-          activityPanelVisible: true,
-          activityPanelWidth: 288,
-        }}
-        onClose={() => undefined}
-        onChange={() => undefined}
+  it("renders permission denied pane state", () => {
+    const view = renderVisualState(
+      <PaneStateView
+        loadState="permissionDenied"
+        uri="local:///Users/ilya/Documents/Secret"
+        message="Operation not permitted"
+        onRetry={noop}
+        onRefresh={noop}
+        onCreateFolder={noop}
       />,
     );
 
+    expect(screen.getByText("Permission denied")).toBeTruthy();
+    expect(
+      screen.getByText("Check macOS privacy settings or choose another location."),
+    ).toBeTruthy();
+    view.restore();
+  });
+
+  it("renders generic error pane state", () => {
+    const view = renderVisualState(
+      <PaneStateView
+        loadState="error"
+        uri="local:///Users/ilya/Documents"
+        message="I/O error"
+        onRetry={noop}
+        onRefresh={noop}
+        onCreateFolder={noop}
+      />,
+    );
+
+    expect(screen.getByText("Unable to load this folder")).toBeTruthy();
+    view.restore();
+  });
+
+  it("renders settings dialog", () => {
+    const view = renderVisualState(
+      <SettingsDialog
+        open
+        preferences={defaultPreferences}
+        onClose={noop}
+        onChange={noop}
+      />,
+      { theme: "dark" },
+    );
+
     expect(screen.getByText("Settings")).toBeTruthy();
+    expect(document.documentElement.dataset.theme).toBe("dark");
+    view.restore();
   });
 
   it("renders shortcuts dialog", () => {
-    render(
-      <ShortcutsDialog open onClose={() => undefined} />,
-    );
+    const view = renderVisualState(<ShortcutsDialog open onClose={noop} />);
 
     expect(screen.getByText("Keyboard shortcuts")).toBeTruthy();
     expect(screen.getByText("Copy selection")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Navigation" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "File operations" })).toBeTruthy();
+    view.restore();
+  });
+
+  it("renders diagnostics dialog", () => {
+    const view = renderVisualState(
+      <DiagnosticsDialog
+        open
+        appInfo={sampleAppInfo}
+        appHealth={sampleAppHealth}
+        destination="/tmp/export"
+        message={null}
+        exporting={false}
+        showDeveloperFields
+        onClose={noop}
+        onDestinationChange={noop}
+        onRefresh={noop}
+        onExport={noop}
+      />,
+    );
+
+    expect(screen.getByText("Diagnostics")).toBeTruthy();
+    expect(screen.getByText("0.1.0")).toBeTruthy();
+    expect(screen.getByText("/tmp/logs")).toBeTruthy();
+    view.restore();
+  });
+
+  it("renders file table loading skeleton in compact density", () => {
+    const view = renderVisualState(
+      <FileTable
+        entries={[]}
+        loadState="loading"
+        rowHeight={24}
+        selectedId={null}
+        selectedIds={[]}
+        focusedId={null}
+        sortField="name"
+        sortDirection="asc"
+        viewMode="details"
+        onSelect={noop}
+        onEntrySelect={noop}
+        onMove={noop}
+        onSort={noop}
+        onActivate={noop}
+        onEntryActivate={noop}
+        onContextMenu={noop}
+      />,
+      { density: "compact" },
+    );
+
+    expect(document.documentElement.dataset.density).toBe("compact");
+    expect(document.querySelector(".fo-file-skeleton")).toBeTruthy();
+    view.restore();
   });
 });

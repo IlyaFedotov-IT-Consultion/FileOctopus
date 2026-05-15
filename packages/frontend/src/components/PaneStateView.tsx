@@ -1,3 +1,4 @@
+import { Button } from "@fileoctopus/ui";
 import type { PaneLoadState } from "../paneTypes";
 
 interface PaneStateViewProps {
@@ -33,12 +34,12 @@ export function PaneStateView({
         <strong>This folder is empty</strong>
         <span className="fo-pane-state-path">{pathLabel}</span>
         <div className="fo-pane-state-actions">
-          <button type="button" onClick={onRefresh}>
+          <Button type="button" variant="ghost" size="sm" onClick={onRefresh}>
             Refresh
-          </button>
-          <button type="button" onClick={onCreateFolder}>
+          </Button>
+          <Button type="button" variant="primary" size="sm" onClick={onCreateFolder}>
             New Folder
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -69,12 +70,12 @@ export function PaneStateView({
         </details>
       ) : null}
       <div className="fo-pane-state-actions">
-        <button type="button" onClick={onRetry}>
+        <Button type="button" variant="ghost" size="sm" onClick={onRetry}>
           Retry
-        </button>
-        <button type="button" onClick={onRefresh}>
+        </Button>
+        <Button type="button" variant="ghost" size="sm" onClick={onRefresh}>
           Refresh
-        </button>
+        </Button>
       </div>
     </div>
   );

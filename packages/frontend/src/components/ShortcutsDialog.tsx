@@ -1,4 +1,6 @@
-import { formatShortcut, shortcutEntries } from "../shortcuts";
+import { useEffect } from "react";
+import { Button } from "@fileoctopus/ui";
+import { formatShortcut, shortcutGroups } from "../shortcuts";
 
 interface ShortcutsDialogProps {
   open: boolean;
@@ -6,6 +8,22 @@ interface ShortcutsDialogProps {
 }
 
 export function ShortcutsDialog({ open, onClose }: ShortcutsDialogProps) {
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onClose();
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [onClose, open]);
+
   if (!open) {
     return null;
   }
@@ -20,28 +38,29 @@ export function ShortcutsDialog({ open, onClose }: ShortcutsDialogProps) {
       >
         <header className="fo-dialog-header">
           <h2 id="shortcuts-title">Keyboard shortcuts</h2>
-          <button type="button" className="fo-dialog-close" onClick={onClose}>
+          <Button type="button" variant="ghost" size="sm" onClick={onClose}>
             Close
-          </button>
+          </Button>
         </header>
-        <table className="fo-shortcuts-table">
-          <thead>
-            <tr>
-              <th>Action</th>
-              <th>Shortcut</th>
-            </tr>
-          </thead>
-          <tbody>
-            {shortcutEntries.map((entry) => (
-              <tr key={entry.id}>
-                <td>{entry.label}</td>
-                <td>
-                  <kbd>{formatShortcut(entry)}</kbd>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="fo-shortcuts-groups">
+          {shortcutGroups.map((group) => (
+            <section key={group.title} className="fo-shortcuts-group">
+              <h3>{group.title}</h3>
+              <table className="fo-shortcuts-table">
+                <tbody>
+                  {group.entries.map((entry) => (
+                    <tr key={entry.id}>
+                      <td>{entry.label}</td>
+                      <td>
+                        <kbd>{formatShortcut(entry)}</kbd>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </section>
+          ))}
+        </div>
       </dialog>
     </div>
   );

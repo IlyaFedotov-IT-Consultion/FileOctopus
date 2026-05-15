@@ -12,6 +12,7 @@
   "dependencies": {
     "@tauri-apps/api": "^2",
     "@fileoctopus/frontend": "workspace:*",
+    "@fileoctopus/ui": "workspace:*",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
   },

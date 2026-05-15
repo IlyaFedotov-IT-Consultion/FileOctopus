@@ -1,4 +1,6 @@
 import type { AppDataHealthResponse, AppInfoResponse } from "@fileoctopus/ts-api";
+import { useEffect } from "react";
+import { Button } from "@fileoctopus/ui";
 
 interface DiagnosticsDialogProps {
   open: boolean;
@@ -27,6 +29,22 @@ export function DiagnosticsDialog({
   onRefresh,
   onExport,
 }: DiagnosticsDialogProps) {
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onClose();
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [onClose, open]);
+
   if (!open) {
     return null;
   }
@@ -41,9 +59,9 @@ export function DiagnosticsDialog({
       >
         <header className="fo-dialog-header">
           <h2 id="diagnostics-title">Diagnostics</h2>
-          <button type="button" className="fo-dialog-close" onClick={onClose}>
+          <Button type="button" variant="ghost" size="sm" onClick={onClose}>
             Close
-          </button>
+          </Button>
         </header>
         <div className="fo-diagnostics-grid">
           <span>Version</span>
@@ -77,12 +95,18 @@ export function DiagnosticsDialog({
           />
         </label>
         <div className="fo-pane-state-actions">
-          <button type="button" onClick={onRefresh}>
+          <Button type="button" variant="ghost" size="sm" onClick={onRefresh}>
             Refresh
-          </button>
-          <button type="button" disabled={exporting} onClick={onExport}>
+          </Button>
+          <Button
+            type="button"
+            variant="primary"
+            size="sm"
+            disabled={exporting}
+            onClick={onExport}
+          >
             {exporting ? "Exporting…" : "Export bundle"}
-          </button>
+          </Button>
         </div>
         {message ? <div className="fo-empty-inline">{message}</div> : null}
       </dialog>

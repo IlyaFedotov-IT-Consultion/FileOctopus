@@ -1,3 +1,5 @@
+import { Button } from "@fileoctopus/ui";
+
 export interface ToastMessage {
   id: string;
   tone: "success" | "error" | "info";
@@ -18,7 +20,7 @@ export function ToastStack({ toasts, onDismiss }: ToastStackProps) {
   }
 
   return (
-    <div className="fo-toast-stack" aria-live="polite">
+    <div className="fo-toast-stack" aria-live="polite" aria-label="Notifications">
       {toasts.map((toast) => (
         <div
           key={toast.id}
@@ -31,13 +33,18 @@ export function ToastStack({ toasts, onDismiss }: ToastStackProps) {
           </div>
           <div className="fo-toast-actions">
             {toast.actionLabel && toast.onAction ? (
-              <button type="button" onClick={toast.onAction}>
+              <Button type="button" variant="ghost" size="sm" onClick={toast.onAction}>
                 {toast.actionLabel}
-              </button>
+              </Button>
             ) : null}
-            <button type="button" onClick={() => onDismiss(toast.id)}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => onDismiss(toast.id)}
+            >
               Dismiss
-            </button>
+            </Button>
           </div>
         </div>
       ))}

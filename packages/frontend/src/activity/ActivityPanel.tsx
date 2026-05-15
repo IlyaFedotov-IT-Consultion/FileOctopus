@@ -1,4 +1,5 @@
 import type { JobSnapshot, OperationHistoryRecordDto } from "@fileoctopus/ts-api";
+import { Badge, Button, IconButton } from "@fileoctopus/ui";
 import { useMemo } from "react";
 
 interface JobMetrics {
@@ -43,24 +44,34 @@ export function ActivityPanel({
 
   if (collapsed) {
     return (
-      <aside className="fo-activity fo-activity-collapsed" aria-label="Job activity">
-        <button type="button" onClick={onToggleCollapsed}>
+      <aside
+        className="fo-activity fo-activity-rail fo-activity-collapsed"
+        aria-label="Job activity"
+      >
+        <Button type="button" variant="ghost" size="sm" onClick={onToggleCollapsed}>
           Activity
-        </button>
+          {activeJobs.length > 0 ? (
+            <Badge tone="accent">{activeJobs.length}</Badge>
+          ) : null}
+        </Button>
       </aside>
     );
   }
 
   return (
-    <aside className="fo-activity" aria-label="Job activity">
+    <aside className="fo-activity fo-activity-rail" aria-label="Job activity">
       <header className="fo-activity-header">
         <div>
           <h2>Jobs & Activity</h2>
           <p>Current operations and recent history</p>
         </div>
-        <button type="button" onClick={onToggleCollapsed} aria-label="Collapse activity panel">
+        <IconButton
+          label="Collapse activity panel"
+          size="sm"
+          onClick={onToggleCollapsed}
+        >
           −
-        </button>
+        </IconButton>
       </header>
       {error ? <div className="fo-operation-error">{error}</div> : null}
       <div className="fo-activity-cards">
@@ -97,9 +108,9 @@ export function ActivityPanel({
                   {metrics?.etaLabel ? ` · ${metrics.etaLabel}` : ""}
                 </p>
                 {job.status === "running" || job.status === "queued" ? (
-                  <button type="button" onClick={() => onCancel(jobId)}>
+                  <Button type="button" variant="ghost" size="sm" onClick={() => onCancel(jobId)}>
                     Cancel
-                  </button>
+                  </Button>
                 ) : null}
               </article>
             );
@@ -110,12 +121,12 @@ export function ActivityPanel({
         <header>
           <strong>History</strong>
           <div>
-            <button type="button" onClick={onRefreshHistory}>
+            <Button type="button" variant="ghost" size="sm" onClick={onRefreshHistory}>
               Refresh
-            </button>
-            <button type="button" onClick={onClearHistory}>
+            </Button>
+            <Button type="button" variant="ghost" size="sm" onClick={onClearHistory}>
               Clear
-            </button>
+            </Button>
           </div>
         </header>
         {history.length === 0 ? (

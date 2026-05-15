@@ -1,3 +1,5 @@
+import { Badge, Button, DropdownMenu } from "@fileoctopus/ui";
+
 interface TitleBarProps {
   readiness: string;
   helpOpen: boolean;
@@ -23,7 +25,7 @@ export function TitleBar({
         </span>
         <div>
           <h1>FileOctopus</h1>
-          <span className="fo-brand-badge">Rust-powered</span>
+          <Badge tone="default">Rust-powered</Badge>
         </div>
       </div>
       <div className="fo-readiness">
@@ -31,28 +33,22 @@ export function TitleBar({
         <span>{readiness}</span>
       </div>
       <div className="fo-topbar-actions">
-        <button type="button" className="fo-topbar-settings" onClick={onSettings}>
+        <Button type="button" variant="ghost" size="sm" onClick={onSettings}>
           Settings
-        </button>
-        <div className="fo-help-menu">
-          <button
-            type="button"
-            aria-expanded={helpOpen}
-            onClick={onToggleHelp}
-          >
-            Help
-          </button>
-          {helpOpen ? (
-            <div className="fo-help-dropdown" role="menu">
-              <button type="button" role="menuitem" onClick={onShortcuts}>
-                Shortcuts
-              </button>
-              <button type="button" role="menuitem" onClick={onDiagnostics}>
-                Diagnostics
-              </button>
-            </div>
-          ) : null}
-        </div>
+        </Button>
+        <DropdownMenu
+          label="Help"
+          open={helpOpen}
+          onOpenChange={(open) => {
+            if (open !== helpOpen) {
+              onToggleHelp();
+            }
+          }}
+          items={[
+            { id: "shortcuts", label: "Shortcuts", onSelect: onShortcuts },
+            { id: "diagnostics", label: "Diagnostics", onSelect: onDiagnostics },
+          ]}
+        />
       </div>
     </header>
   );

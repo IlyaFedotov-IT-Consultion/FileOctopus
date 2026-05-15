@@ -585,7 +585,7 @@ describe("FileOctopusShell", () => {
     clickToolbar("Trash", 0);
 
     expect(screen.getByText("Move 1 item(s) to Trash")).toBeTruthy();
-    expect(screen.getByText("alpha.txt")).toBeTruthy();
+    expect(screen.getByRole("dialog").textContent).toContain("alpha.txt");
 
     fireEvent.click(screen.getAllByText("Move to Trash").slice(-1)[0]);
 
@@ -758,15 +758,12 @@ describe("FileOctopusShell", () => {
     render(<FileOctopusShell />);
     await applyLeftEntries([entry("alpha.txt")]);
 
-    openToolbarOverflow(0);
-    const viewMode = document.querySelector(
-      ".fo-toolbar-menu select[aria-label='View mode']",
-    ) as HTMLSelectElement | null;
-
-    expect(viewMode).toBeTruthy();
-    fireEvent.change(viewMode!, {
-      target: { value: "icons" },
-    });
+    const viewModeGroup = screen.getByRole("group", { name: "left view mode" });
+    fireEvent.click(
+      viewModeGroup.querySelector(
+        "button.fo-ui-segmented-item:nth-child(3)",
+      ) as HTMLButtonElement,
+    );
     expect(document.querySelector(".fo-view-icons")).toBeTruthy();
 
     clickToolbar("Show Hidden", 0);

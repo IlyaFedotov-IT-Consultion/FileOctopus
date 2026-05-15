@@ -1,4 +1,6 @@
 import type { UserPreferencesDto } from "@fileoctopus/ts-api";
+import { useEffect } from "react";
+import { Button } from "@fileoctopus/ui";
 
 interface SettingsDialogProps {
   open: boolean;
@@ -13,6 +15,22 @@ export function SettingsDialog({
   onClose,
   onChange,
 }: SettingsDialogProps) {
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onClose();
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [onClose, open]);
+
   if (!open) {
     return null;
   }
@@ -27,9 +45,9 @@ export function SettingsDialog({
       >
         <header className="fo-dialog-header">
           <h2 id="settings-title">Settings</h2>
-          <button type="button" className="fo-dialog-close" onClick={onClose}>
+          <Button type="button" variant="ghost" size="sm" onClick={onClose}>
             Close
-          </button>
+          </Button>
         </header>
         <section className="fo-settings-section">
           <h3>Appearance</h3>

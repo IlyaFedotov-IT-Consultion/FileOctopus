@@ -4,6 +4,7 @@ import type {
   StandardLocationDto,
   StarredEntryDto,
 } from "@fileoctopus/ts-api";
+import { Button, cx } from "@fileoctopus/ui";
 import { useState, type MouseEvent, type ReactNode } from "react";
 
 interface SidebarProps {
@@ -93,40 +94,38 @@ export function Sidebar({
       ) : null}
 
       <SidebarSection title="Recent">
-        <SidebarItem
-          icon="◷"
-          label="Today"
-          active={false}
-          onClick={() => undefined}
-          subdued
-        />
-        {recentToday.map((item) => (
-          <SidebarItem
-            key={item.uri}
-            icon="·"
-            label={item.label}
-            active={item.uri === activeUri}
-            onClick={() => onNavigate(item.uri)}
-            indented
-          />
-        ))}
-        <SidebarItem
-          icon="◷"
-          label="This Week"
-          active={false}
-          onClick={() => undefined}
-          subdued
-        />
-        {recentWeek.map((item) => (
-          <SidebarItem
-            key={item.uri}
-            icon="·"
-            label={item.label}
-            active={item.uri === activeUri}
-            onClick={() => onNavigate(item.uri)}
-            indented
-          />
-        ))}
+        <SidebarGroupLabel>Today</SidebarGroupLabel>
+        {recentToday.length === 0 ? (
+          <SidebarEmptyHint>No folders visited today</SidebarEmptyHint>
+        ) : (
+          recentToday.map((item) => (
+            <SidebarItem
+              key={item.uri}
+              icon="·"
+              label={item.label}
+              active={item.uri === activeUri}
+              onClick={() => onNavigate(item.uri)}
+              indented
+              subdued
+            />
+          ))
+        )}
+        <SidebarGroupLabel>This week</SidebarGroupLabel>
+        {recentWeek.length === 0 ? (
+          <SidebarEmptyHint>No other recent folders</SidebarEmptyHint>
+        ) : (
+          recentWeek.map((item) => (
+            <SidebarItem
+              key={item.uri}
+              icon="·"
+              label={item.label}
+              active={item.uri === activeUri}
+              onClick={() => onNavigate(item.uri)}
+              indented
+              subdued
+            />
+          ))
+        )}
       </SidebarSection>
 
       {starred.length > 0 ? (
@@ -145,8 +144,10 @@ export function Sidebar({
 
       {favoriteMenu ? (
         <div className="fo-sidebar-menu" role="menu">
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="sm"
             onClick={() => {
               const next = globalThis.prompt("Rename favorite", favoriteMenu.label);
               if (next) {
@@ -156,28 +157,32 @@ export function Sidebar({
             }}
           >
             Rename
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
+            variant="ghost"
+            size="sm"
             onClick={() => {
               onRevealFavorite(favoriteMenu.uri);
               setFavoriteMenu(null);
             }}
           >
             Reveal
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
+            variant="ghost"
+            size="sm"
             onClick={() => {
               onRemoveFavorite(favoriteMenu.id);
               setFavoriteMenu(null);
             }}
           >
             Remove
-          </button>
-          <button type="button" onClick={() => setFavoriteMenu(null)}>
+          </Button>
+          <Button type="button" variant="ghost" size="sm" onClick={() => setFavoriteMenu(null)}>
             Cancel
-          </button>
+          </Button>
         </div>
       ) : null}
     </aside>
@@ -192,11 +197,19 @@ function SidebarSection({
   children: ReactNode;
 }) {
   return (
-    <section>
-      <strong>{title}</strong>
+    <section className="fo-sidebar-section">
+      <h2 className="fo-sidebar-section-title">{title}</h2>
       {children}
     </section>
   );
+}
+
+function SidebarGroupLabel({ children }: { children: ReactNode }) {
+  return <div className="fo-sidebar-group-label">{children}</div>;
+}
+
+function SidebarEmptyHint({ children }: { children: ReactNode }) {
+  return <p className="fo-sidebar-empty-hint">{children}</p>;
 }
 
 function SidebarItem({
@@ -217,23 +230,25 @@ function SidebarItem({
   subdued?: boolean;
 }) {
   return (
-    <button
+    <Button
       type="button"
-      className={[
-        active ? "fo-sidebar-active" : "",
-        indented ? "fo-sidebar-indented" : "",
-        subdued ? "fo-sidebar-subdued" : "",
-      ]
-        .filter(Boolean)
-        .join(" ")}
+      variant="ghost"
+      size="sm"
+      className={cx(
+        "fo-sidebar-item",
+        active && "fo-sidebar-active",
+        indented && "fo-sidebar-indented",
+        subdued && "fo-sidebar-subdued",
+      )}
+      title={label}
       onClick={onClick}
       onContextMenu={onContextMenu}
     >
       <span className="fo-sidebar-icon" aria-hidden="true">
         {icon}
       </span>
-      <span>{label}</span>
-    </button>
+      <span className="fo-sidebar-label">{label}</span>
+    </Button>
   );
 }
 

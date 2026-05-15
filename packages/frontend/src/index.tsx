@@ -1,8 +1,6 @@
 import {
   Component,
-  type DragEvent,
   type KeyboardEvent,
-  type MouseEvent,
   type ReactNode,
   useEffect,
   useMemo,
@@ -59,8 +57,19 @@ import {
   viewModeFromPreference,
   type DensityPreference,
 } from "./applyPreferences";
+import {
+  Button,
+  IconButton,
+  SearchInput,
+  SegmentedControl,
+  cx,
+} from "@fileoctopus/ui";
 import { ActivityPanel } from "./activity/ActivityPanel";
 import { ColumnsView } from "./pane/ColumnsView";
+import { OperationToolbar } from "./pane/OperationToolbar";
+import { FileTable } from "./pane/FileTable";
+import { fileIconGlyph, formatDate, formatSize } from "./pane/fileTableUtils";
+import { readDraggedUri, useFileOctopusDragTarget } from "./hooks/useFileOctopusDragTarget";
 import { SidebarResizer, SplitResizer } from "./shell/LayoutResizers";
 import { StatusBar, readinessFromLoadState } from "./shell/StatusBar";
 import { TitleBar } from "./shell/TitleBar";
@@ -70,15 +79,10 @@ import { PaneStateView } from "./components/PaneStateView";
 import { SettingsDialog } from "./components/SettingsDialog";
 import { ShortcutsDialog } from "./components/ShortcutsDialog";
 import { ToastStack, type ToastMessage } from "./components/ToastStack";
-import {
-  createRequestId,
-  isPaneLoading,
-  type PaneLoadState,
-} from "./paneTypes";
+import { createRequestId } from "./paneTypes";
 import { isEditableTarget } from "./shortcuts";
 import type { UserPreferencesDto } from "@fileoctopus/ts-api";
 
-const overscan = 8;
 const SKIP_TRASH_CONFIRM_KEY = "fileoctopus.skipTrashConfirm";
 const isProductionBuild = Boolean(
   (import.meta as ImportMeta & { env?: { PROD?: boolean } }).env?.PROD,
@@ -458,11 +462,22 @@ export function FileOctopusShell() {
   }, []);
 
   function pushToast(toast: Omit<ToastMessage, "id">) {
-    const id = createRequestId();
-    setToasts((current) => [...current, { ...toast, id }]);
+    let toastId = createRequestId();
+    setToasts((current) => {
+      const duplicate = current.find(
+        (item) => item.title === toast.title && item.tone === toast.tone,
+      );
+      if (duplicate) {
+        toastId = duplicate.id;
+        return current.map((item) =>
+          item.id === duplicate.id ? { ...item, ...toast } : item,
+        );
+      }
+      return [...current.slice(-2), { ...toast, id: toastId }];
+    });
     globalThis.setTimeout(() => {
-      setToasts((current) => current.filter((item) => item.id !== id));
-    }, 5000);
+      setToasts((current) => current.filter((item) => item.id !== toastId));
+    }, 6000);
   }
 
   async function updatePreference(key: string, value: string) {
@@ -1561,6 +1576,15 @@ export function FileOctopusShell() {
             onContextMenu={setContextMenu}
             onEntryActivate={(entry) => activateEntry("left", entry)}
           />
+            <SplitResizer
+              onSplitResize={(ratio) => {
+                document.documentElement.style.setProperty(
+                  "--fo-left-pane-fr",
+                  String(ratio),
+                );
+                void updatePreference("splitRatio", String(ratio));
+              }}
+            />
           <FilePanel
             panelId="right"
             title="Right"
@@ -1628,15 +1652,6 @@ export function FileOctopusShell() {
             onEntryActivate={(entry) => activateEntry("right", entry)}
           />
             </div>
-            <SplitResizer
-              onSplitResize={(ratio) => {
-                document.documentElement.style.setProperty(
-                  "--fo-left-pane-fr",
-                  String(ratio),
-                );
-                void updatePreference("splitRatio", String(ratio));
-              }}
-            />
             <ActivityPanel
               jobs={Object.values(jobs)}
               history={history}
@@ -1735,9 +1750,14 @@ export function FileOctopusShell() {
           }
         />
           <StatusBar
+            activePanelLabel={
+              state.activePanelId === "left" ? "Left pane" : "Right pane"
+            }
+            pathLabel={localPathFromUri(statusTab.uri)}
             loadState={statusTab.loadState}
             selectedCount={statusSelection.length}
             entryCount={statusTab.orderedEntryIds.length}
+            filterActive={statusTab.filter.trim().length > 0}
             selectedSizeLabel={
               statusSelection.length > 0
                 ? `${formatSize(statusKnownBytes)}${statusUnknownSizes ? " plus unknown sizes" : ""}`
@@ -1745,9 +1765,8 @@ export function FileOctopusShell() {
             }
             activeJobCount={activeJobCount}
             operationError={operationError}
-            logPath={
-              !isProductionBuild ? appHealth?.logDir ?? null : null
-            }
+            logPath={appHealth?.logDir ?? null}
+            showLogPath={diagnosticsOpen}
           />
         </div>
       </main>
@@ -1842,6 +1861,7 @@ function FilePanel({
   const selectedEntry =
     entries.find((entry) => entry.uri === tab.selectedId) ?? null;
   const upUri = parentUri(tab.uri);
+  const { dragOver, reset, dragTargetProps } = useFileOctopusDragTarget();
 
   return (
     <section
@@ -1852,29 +1872,30 @@ function FilePanel({
         <div className="fo-panel-title-row">
           <span className="fo-pane-badge">{title}</span>
           <div className="fo-panel-nav">
-            <button
-              type="button"
+            <IconButton
+              label={`${panelId} back`}
+              size="sm"
               disabled={tab.backStack.length === 0}
               onClick={onBack}
-              aria-label={`${panelId} back`}
             >
-              Back
-            </button>
-            <button
-              type="button"
+              ←
+            </IconButton>
+            <IconButton
+              label={`${panelId} forward`}
+              size="sm"
               disabled={tab.forwardStack.length === 0}
               onClick={onForward}
-              aria-label={`${panelId} forward`}
             >
-              Forward
-            </button>
-            <button
-              type="button"
+              →
+            </IconButton>
+            <IconButton
+              label={`${panelId} up`}
+              size="sm"
               disabled={!upUri}
               onClick={() => upUri && onNavigate(upUri)}
             >
-              Up
-            </button>
+              ↑
+            </IconButton>
           </div>
           <PathBar
             value={tab.uri}
@@ -1887,13 +1908,27 @@ function FilePanel({
           </span>
         </div>
       </header>
-      <div className="fo-panel-body">
+      <div
+        className={cx(
+          "fo-panel-body",
+          dragOver && "fo-panel-body-drag-over",
+        )}
+        {...dragTargetProps}
+        onDrop={(event) => {
+          const uri = readDraggedUri(event);
+          if (!uri) {
+            return;
+          }
+          event.preventDefault();
+          reset();
+          onNavigate(uri);
+        }}
+      >
         <OperationToolbar
           selectedCount={tab.selectedIds.length}
           canRename={tab.selectedIds.length === 1}
           canPaste={canPaste}
           showHidden={tab.showHidden}
-          viewMode={tab.viewMode}
           onCreateFolder={onCreateFolder}
           onCreateFile={onCreateFile}
           onRename={onRename}
@@ -1918,16 +1953,20 @@ function FilePanel({
             focusToken={filterFocusToken}
             onChange={onFilter}
           />
-          <button
-            type="button"
-            className={tab.viewMode === "details" ? "fo-filter-active" : ""}
-            onClick={() => onViewMode("details")}
-          >
-            Details
-          </button>
-          <button type="button" onClick={onToggleHidden}>
+          <SegmentedControl
+            aria-label={`${panelId} view mode`}
+            value={tab.viewMode}
+            options={[
+              { value: "details", label: "Details" },
+              { value: "list", label: "List" },
+              { value: "icons", label: "Icons" },
+              { value: "columns", label: "Columns" },
+            ]}
+            onChange={onViewMode}
+          />
+          <Button type="button" variant="ghost" size="sm" onClick={onToggleHidden}>
             {tab.showHidden ? "Hide Hidden" : "Show Hidden"}
-          </button>
+          </Button>
         </div>
         <div className="fo-search-strip">
           <input
@@ -1955,7 +1994,7 @@ function FilePanel({
             showHidden={tab.showHidden}
             onNavigate={onNavigate}
             onOpen={onEntryActivate}
-            fileIcon={fileIcon}
+            fileIcon={fileIconGlyph}
           />
         ) : (
         <FileTable
@@ -2039,22 +2078,26 @@ function PathBar({ value, error, focusToken, onSubmit }: PathBarProps) {
         onDoubleClick={() => setEditing(true)}
       >
         {breadcrumbSegments(value).map((segment) => (
-          <button
+          <Button
             key={segment.uri}
             type="button"
+            variant="ghost"
+            size="sm"
             title={segment.uri}
             onClick={() => onSubmit(segment.uri)}
           >
             {segment.label}
-          </button>
+          </Button>
         ))}
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="sm"
           aria-label="Edit current path"
           onClick={() => setEditing(true)}
         >
-          Path
-        </button>
+          Edit path
+        </Button>
       </div>
     );
   }
@@ -2086,154 +2129,6 @@ function PathBar({ value, error, focusToken, onSubmit }: PathBarProps) {
   );
 }
 
-interface OperationToolbarProps {
-  selectedCount: number;
-  canRename: boolean;
-  canPaste: boolean;
-  showHidden: boolean;
-  viewMode: ViewMode;
-  onCreateFolder: () => void;
-  onCreateFile: () => void;
-  onRename: () => void;
-  onCopy: () => void;
-  onCut: () => void;
-  onCopyOperation: () => void;
-  onMove: () => void;
-  onPaste: () => void;
-  onTrash: () => void;
-  onPermanentDelete: () => void;
-  onCopyPath: () => void;
-  onCopyName: () => void;
-  onProperties: () => void;
-  onRefresh: () => void;
-  onToggleHidden: () => void;
-  onViewMode: (viewMode: ViewMode) => void;
-}
-
-function OperationToolbar({
-  selectedCount,
-  canRename,
-  canPaste,
-  showHidden,
-  viewMode,
-  onCreateFolder,
-  onCreateFile,
-  onRename,
-  onCopy,
-  onCut,
-  onCopyOperation,
-  onMove,
-  onPaste,
-  onTrash,
-  onPermanentDelete,
-  onCopyPath,
-  onCopyName,
-  onProperties,
-  onRefresh,
-  onToggleHidden,
-  onViewMode,
-}: OperationToolbarProps) {
-  const [overflowOpen, setOverflowOpen] = useState(false);
-
-  return (
-    <div className="fo-operation-toolbar" aria-label="File operations">
-      <div className="fo-toolbar-group fo-toolbar-primary">
-        <button type="button" onClick={onCreateFolder}>
-          New Folder
-        </button>
-        <button type="button" onClick={onCreateFile}>
-          New File
-        </button>
-        <button type="button" disabled={!canRename} onClick={onRename}>
-          Rename
-        </button>
-        <button type="button" disabled={selectedCount === 0} onClick={onCopy}>
-          Copy
-        </button>
-        <button type="button" disabled={selectedCount === 0} onClick={onMove}>
-          Move
-        </button>
-        <button type="button" disabled={selectedCount === 0} onClick={onTrash}>
-          Trash
-        </button>
-        <button type="button" onClick={onRefresh}>
-          Refresh
-        </button>
-      </div>
-      <div className="fo-toolbar-group fo-toolbar-overflow">
-        <button
-          type="button"
-          aria-expanded={overflowOpen}
-          onClick={() => setOverflowOpen((value) => !value)}
-        >
-          More
-        </button>
-        {overflowOpen ? (
-          <div className="fo-toolbar-menu">
-            <button type="button" onClick={onCreateFile}>
-              New File
-            </button>
-            <button type="button" disabled={!canRename} onClick={onRename}>
-              Rename
-            </button>
-            <button type="button" disabled={selectedCount === 0} onClick={onCut}>
-              Cut
-            </button>
-            <button type="button" disabled={!canPaste} onClick={onPaste}>
-              Paste
-            </button>
-            <button
-              type="button"
-              disabled={selectedCount === 0}
-              onClick={onCopyOperation}
-            >
-              Copy To
-            </button>
-            <button
-              type="button"
-              disabled={selectedCount === 0}
-              onClick={onCopyPath}
-            >
-              Copy Path
-            </button>
-            <button
-              type="button"
-              disabled={selectedCount === 0}
-              onClick={onCopyName}
-            >
-              Copy Name
-            </button>
-            <button
-              type="button"
-              disabled={selectedCount === 0}
-              onClick={onPermanentDelete}
-            >
-              Delete Permanently
-            </button>
-            <button type="button" onClick={onProperties}>
-              Properties
-            </button>
-            <button type="button" onClick={onToggleHidden}>
-              {showHidden ? "Hide Hidden" : "Show Hidden"}
-            </button>
-            <select
-              aria-label="View mode"
-              value={viewMode}
-              onChange={(event) => onViewMode(event.target.value as ViewMode)}
-            >
-              <option value="details">Details</option>
-              <option value="list">List</option>
-              <option value="icons">Icons</option>
-              <option value="columns">Columns</option>
-            </select>
-          </div>
-        ) : null}
-      </div>
-      <span className="fo-toolbar-meta">{selectedCount} selected</span>
-    </div>
-  );
-}
-
 interface FilterInputProps {
   panelId: PanelId;
   value: string;
@@ -2252,299 +2147,16 @@ function FilterInput({ panelId, value, focusToken, onChange }: FilterInputProps)
   }, [focusToken]);
 
   return (
-    <input
+    <SearchInput
       ref={inputRef}
       className="fo-filter"
       aria-label={`${panelId} filter`}
       value={value}
-      placeholder="Filter"
+      placeholder="Filter current folder…"
       onChange={(event) => onChange(event.target.value)}
     />
   );
 }
-
-interface FileTableProps {
-  entries: FileEntryDto[];
-  loadState: PaneLoadState;
-  rowHeight: number;
-  selectedId: string | null;
-  selectedIds: string[];
-  focusedId: string | null;
-  sortField: SortField;
-  sortDirection: string;
-  viewMode: ViewMode;
-  onSelect: (entryId: string | null) => void;
-  onEntrySelect: (entryId: string, mode: "single" | "toggle" | "range") => void;
-  onMove: (delta: number) => void;
-  onSort: (field: SortField) => void;
-  onActivate: () => void;
-  onEntryActivate: (entry: FileEntryDto | null) => void;
-  onContextMenu: (
-    event: MouseEvent<HTMLElement>,
-    entry: FileEntryDto | null,
-  ) => void;
-}
-
-function FileTable({
-  entries,
-  loadState,
-  rowHeight,
-  selectedId,
-  selectedIds,
-  focusedId,
-  sortField,
-  sortDirection,
-  viewMode,
-  onSelect,
-  onEntrySelect,
-  onMove,
-  onSort,
-  onActivate,
-  onEntryActivate,
-  onContextMenu,
-}: FileTableProps) {
-  const [scrollTop, setScrollTop] = useState(0);
-  const viewportRef = useRef<HTMLDivElement | null>(null);
-  const viewportHeight = viewportRef.current?.clientHeight ?? 420;
-  const startIndex = Math.max(0, Math.floor(scrollTop / rowHeight) - overscan);
-  const visibleCount = Math.ceil(viewportHeight / rowHeight) + overscan * 2;
-  const visibleEntries = entries.slice(startIndex, startIndex + visibleCount);
-  const totalHeight = entries.length * rowHeight;
-
-  useEffect(() => {
-    if (!focusedId || !viewportRef.current) {
-      return;
-    }
-
-    const index = entries.findIndex((entry) => entry.uri === focusedId);
-
-    if (index < 0) {
-      return;
-    }
-
-    const top = index * rowHeight;
-    const bottom = top + rowHeight;
-    const viewTop = viewportRef.current.scrollTop;
-    const viewBottom = viewTop + viewportRef.current.clientHeight;
-
-    if (top < viewTop) {
-      viewportRef.current.scrollTop = top;
-    } else if (bottom > viewBottom) {
-      viewportRef.current.scrollTop = bottom - viewportRef.current.clientHeight;
-    }
-  }, [entries, focusedId]);
-
-  function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
-    switch (event.key) {
-      case "ArrowUp":
-        event.preventDefault();
-        onMove(-1);
-        break;
-      case "ArrowDown":
-        event.preventDefault();
-        onMove(1);
-        break;
-      case "PageUp":
-        event.preventDefault();
-        onMove(-Math.max(1, Math.floor(viewportHeight / rowHeight)));
-        break;
-      case "PageDown":
-        event.preventDefault();
-        onMove(Math.max(1, Math.floor(viewportHeight / rowHeight)));
-        break;
-      case "Home":
-        event.preventDefault();
-        onMove(-entries.length);
-        break;
-      case "End":
-        event.preventDefault();
-        onMove(entries.length);
-        break;
-      case "Enter":
-        event.preventDefault();
-        onActivate();
-        break;
-      default:
-        break;
-    }
-  }
-
-  return (
-    <div
-      className={`fo-table-shell fo-view-${viewMode}`}
-      onContextMenu={(event) => onContextMenu(event, null)}
-    >
-      {viewMode === "details" ? (
-        <div className="fo-table-header">
-          <ColumnButton
-            field="name"
-            active={sortField === "name"}
-            direction={sortDirection}
-            onSort={onSort}
-          >
-            Name
-          </ColumnButton>
-          <ColumnButton
-            field="size"
-            active={sortField === "size"}
-            direction={sortDirection}
-            onSort={onSort}
-          >
-            Size
-          </ColumnButton>
-          <ColumnButton
-            field="modified"
-            active={sortField === "modified"}
-            direction={sortDirection}
-            onSort={onSort}
-          >
-            Modified
-          </ColumnButton>
-          <ColumnButton
-            field="type"
-            active={sortField === "type"}
-            direction={sortDirection}
-            onSort={onSort}
-          >
-            Type
-          </ColumnButton>
-        </div>
-      ) : null}
-      <div
-        ref={viewportRef}
-        className="fo-table-viewport"
-        tabIndex={0}
-        onKeyDown={handleKeyDown}
-        onScroll={(event) => setScrollTop(event.currentTarget.scrollTop)}
-      >
-        {entries.length === 0 ? (
-          <div className="fo-empty">
-            {isPaneLoading(loadState) ? "Loading…" : null}
-          </div>
-        ) : (
-          <div className="fo-table-spacer" style={{ height: totalHeight }}>
-            {visibleEntries.map((entry, offset) => (
-              <FileRow
-                key={entry.uri}
-                entry={entry}
-                top={(startIndex + offset) * rowHeight}
-                selected={entry.uri === selectedId}
-                multiSelected={selectedIds.includes(entry.uri)}
-                focused={entry.uri === focusedId}
-                onSelect={onSelect}
-                onEntrySelect={onEntrySelect}
-                onEntryActivate={onEntryActivate}
-                onContextMenu={onContextMenu}
-              />
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-interface ColumnButtonProps {
-  field: SortField;
-  active: boolean;
-  direction: string;
-  children: ReactNode;
-  onSort: (field: SortField) => void;
-}
-
-function ColumnButton({
-  field,
-  active,
-  direction,
-  children,
-  onSort,
-}: ColumnButtonProps) {
-  return (
-    <button
-      type="button"
-      className="fo-column-button"
-      onClick={() => onSort(field)}
-    >
-      {children}
-      {active ? ` ${direction.toUpperCase()}` : ""}
-    </button>
-  );
-}
-
-interface FileRowProps {
-  entry: FileEntryDto;
-  top: number;
-  selected: boolean;
-  multiSelected: boolean;
-  focused: boolean;
-  onSelect: (entryId: string | null) => void;
-  onEntrySelect: (entryId: string, mode: "single" | "toggle" | "range") => void;
-  onEntryActivate: (entry: FileEntryDto | null) => void;
-  onContextMenu: (
-    event: MouseEvent<HTMLElement>,
-    entry: FileEntryDto | null,
-  ) => void;
-}
-
-function FileRow({
-  entry,
-  top,
-  selected,
-  multiSelected,
-  focused,
-  onSelect,
-  onEntrySelect,
-  onEntryActivate,
-  onContextMenu,
-}: FileRowProps) {
-  return (
-    <button
-      type="button"
-      className={[
-        "fo-row",
-        selected || multiSelected ? "fo-row-selected" : "",
-        focused ? "fo-row-focused" : "",
-      ].join(" ")}
-      style={{ transform: `translateY(${top}px)` }}
-      onClick={(event) => {
-        const mode = event.shiftKey
-          ? "range"
-          : event.metaKey || event.ctrlKey
-            ? "toggle"
-            : "single";
-
-        if (mode === "single") {
-          onSelect(entry.uri);
-        } else {
-          onEntrySelect(entry.uri, mode);
-        }
-      }}
-      onDoubleClick={() => onEntryActivate(entry)}
-      draggable={entry.kind === "directory"}
-      onDragStart={(event: DragEvent<HTMLButtonElement>) => {
-        if (entry.kind !== "directory") {
-          return;
-        }
-
-        event.dataTransfer.setData("application/x-fileoctopus-uri", entry.uri);
-        event.dataTransfer.setData("application/x-fileoctopus-name", entry.name);
-        event.dataTransfer.effectAllowed = "copy";
-      }}
-      onContextMenu={(event) => {
-        event.stopPropagation();
-        onContextMenu(event, entry);
-      }}
-    >
-      <span>
-        {fileIcon(entry)} {entry.name}
-      </span>
-      <span>{formatSize(entry.size)}</span>
-      <span>{formatDate(entry.modifiedAt)}</span>
-      <span>{entry.kind}</span>
-    </button>
-  );
-}
-
 
 interface RecursiveSearchPanelProps {
   panelId: PanelId;
@@ -2586,7 +2198,7 @@ function RecursiveSearchPanel({
         return (
           <div className="fo-search-row" key={match.uri}>
             <span>
-              {fileIcon(entry)} {match.name}
+              {fileIconGlyph(entry)} {match.name}
             </span>
             <span>{localPathFromUri(match.parentUri)}</span>
             <button type="button" onClick={() => onOpen(entry)}>
@@ -2826,75 +2438,6 @@ function ContextMenu({
   );
 }
 
-function formatSize(size?: number | null): string {
-  if (size == null) {
-    return "";
-  }
-
-  if (size < 1024) {
-    return `${size} B`;
-  }
-
-  if (size < 1024 * 1024) {
-    return `${(size / 1024).toFixed(1)} KB`;
-  }
-
-  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function fileIcon(
-  entry: Pick<FileEntryDto, "kind" | "extension" | "name">,
-): string {
-  if (entry.kind === "directory") {
-    return "Folder";
-  }
-
-  const extension = (
-    entry.extension ??
-    entry.name.split(".").pop() ??
-    ""
-  ).toLowerCase();
-
-  if (["png", "jpg", "jpeg", "gif", "webp", "svg"].includes(extension)) {
-    return "Image";
-  }
-  if (["mp4", "mov", "mkv", "avi"].includes(extension)) {
-    return "Video";
-  }
-  if (["mp3", "wav", "flac", "aac"].includes(extension)) {
-    return "Audio";
-  }
-  if (["zip", "tar", "gz", "rar", "7z"].includes(extension)) {
-    return "Archive";
-  }
-  if (
-    ["pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx"].includes(extension)
-  ) {
-    return "Document";
-  }
-  if (
-    [
-      "rs",
-      "ts",
-      "tsx",
-      "js",
-      "jsx",
-      "py",
-      "go",
-      "json",
-      "html",
-      "css",
-    ].includes(extension)
-  ) {
-    return "Code";
-  }
-  if (entry.kind === "symlink") {
-    return "Link";
-  }
-
-  return "File";
-}
-
 function propertyType(properties: PathPropertiesDto): string {
   if (properties.kind === "directory") {
     return "Folder";
@@ -2953,14 +2496,6 @@ function searchMatchToEntry(
     canDelete: true,
     canRename: true,
   };
-}
-
-function formatDate(value?: string | null): string {
-  if (!value) {
-    return "";
-  }
-
-  return new Date(value).toLocaleString();
 }
 
 interface OperationDialogViewProps {
