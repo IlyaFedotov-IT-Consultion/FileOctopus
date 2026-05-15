@@ -11,20 +11,208 @@ import type {
   DirectoryBatchEventDto,
   FileEntryDto,
   FileOperationRequestDto,
+  FolderSizeCompletedEventDto,
   JobCompletedEvent,
   JobProgressEvent,
   JobStartedEvent,
+  RecursiveSearchCompletedEventDto,
+  RecursiveSearchMatchEventDto,
 } from "@fileoctopus/ts-api";
 
 let batchHandler: ((event: DirectoryBatchEventDto) => void) | null = null;
 let jobStartedHandler: ((event: JobStartedEvent) => void) | null = null;
 let jobProgressHandler: ((event: JobProgressEvent) => void) | null = null;
 let jobCompletedHandler: ((event: JobCompletedEvent) => void) | null = null;
+let folderSizeCompletedHandler:
+  | ((event: FolderSizeCompletedEventDto) => void)
+  | null = null;
+let recursiveSearchMatchHandler:
+  | ((event: RecursiveSearchMatchEventDto) => void)
+  | null = null;
+let recursiveSearchCompletedHandler:
+  | ((event: RecursiveSearchCompletedEventDto) => void)
+  | null = null;
 let sessionIndex = 0;
 const listStart = vi.fn(async () => {
   sessionIndex += 1;
   return { sessionId: `session-${sessionIndex}` };
 });
+const standardLocations = vi.fn(async () => ({
+  locations: [
+    {
+      id: "home",
+      name: "Home",
+      uri: "local:///Users/ilya",
+      section: "Favorites",
+    },
+    {
+      id: "documents",
+      name: "Documents",
+      uri: "local:///Users/ilya/Documents",
+      section: "User folders",
+    },
+  ],
+}));
+const startWatching = vi.fn(async () => ({ ok: true }));
+const stopWatching = vi.fn(async () => ({ ok: true }));
+const onWatchChanged = vi.fn(async () => () => undefined);
+const openPathWithDefaultApp = vi.fn(async () => ({ ok: true }));
+const revealPathInFileManager = vi.fn(async () => ({ ok: true }));
+const deletePermanently = vi.fn(async () => ({ ok: true }));
+const createFile = vi.fn(async ({ uri }: { uri: string }) => ({
+  entry: {
+    uri,
+    name: uri.split("/").slice(-1)[0],
+    kind: "file",
+    size: 0,
+    isHidden: false,
+    isSymlink: false,
+    providerId: "local",
+    canRead: true,
+    canList: false,
+    canWrite: true,
+    canDelete: true,
+    canRename: true,
+  },
+}));
+const properties = vi.fn(async ({ uri }: { uri: string }) => ({
+  properties: {
+    uri,
+    name: uri.split("/").slice(-1)[0],
+    kind: "file",
+    size: 12,
+    totalSize: null,
+    itemCount: null,
+    fileCount: null,
+    directoryCount: null,
+    modifiedAt: null,
+    createdAt: null,
+    accessedAt: null,
+    isHidden: false,
+    isSymlink: false,
+    symlinkTarget: null,
+    readonly: false,
+    warnings: [],
+  },
+}));
+const recursiveSearch = vi.fn(async () => ({
+  result: {
+    matches: [
+      {
+        uri: "local:///tmp/needle.txt",
+        parentUri: "local:///tmp",
+        name: "needle.txt",
+        kind: "file",
+        size: 4,
+        modifiedAt: null,
+      },
+    ],
+    warnings: [],
+    incomplete: false,
+  },
+}));
+const startFolderSizeJob = vi.fn(async () => {
+  globalThis.setTimeout(() => {
+    folderSizeCompletedHandler?.({
+      jobId: "folder-size-job",
+      uri: "local:///tmp",
+      summary: {
+        totalSize: 12,
+        itemCount: 1,
+        fileCount: 1,
+        directoryCount: 0,
+        warnings: [],
+        incomplete: false,
+      },
+    });
+  }, 0);
+
+  return {
+    job: {
+      jobId: "folder-size-job",
+      operationKind: "folderSize",
+      status: "running",
+      completedItems: 0,
+      totalItems: 0,
+      completedBytes: 0,
+      startedAt: new Date(0).toISOString(),
+      updatedAt: new Date(0).toISOString(),
+    },
+  };
+});
+const startRecursiveSearchJob = vi.fn(async () => {
+  globalThis.setTimeout(() => {
+    recursiveSearchMatchHandler?.({
+      jobId: "search-job",
+      uri: "local:///tmp",
+      query: "needle",
+      item: {
+        uri: "local:///tmp/needle.txt",
+        parentUri: "local:///tmp",
+        name: "needle.txt",
+        kind: "file",
+        size: 4,
+        modifiedAt: null,
+      },
+    });
+    recursiveSearchCompletedHandler?.({
+      jobId: "search-job",
+      uri: "local:///tmp",
+      query: "needle",
+      result: {
+        matches: [
+          {
+            uri: "local:///tmp/needle.txt",
+            parentUri: "local:///tmp",
+            name: "needle.txt",
+            kind: "file",
+            size: 4,
+            modifiedAt: null,
+          },
+        ],
+        warnings: [],
+        incomplete: false,
+      },
+    });
+  }, 0);
+
+  return {
+    job: {
+      jobId: "search-job",
+      operationKind: "recursiveSearch",
+      status: "running",
+      completedItems: 0,
+      totalItems: 0,
+      completedBytes: 0,
+      startedAt: new Date(0).toISOString(),
+      updatedAt: new Date(0).toISOString(),
+    },
+  };
+});
+const onFolderSizeCompleted = vi.fn(
+  async (handler: (event: FolderSizeCompletedEventDto) => void) => {
+    folderSizeCompletedHandler = handler;
+    return () => {
+      folderSizeCompletedHandler = null;
+    };
+  },
+);
+const onRecursiveSearchMatch = vi.fn(
+  async (handler: (event: RecursiveSearchMatchEventDto) => void) => {
+    recursiveSearchMatchHandler = handler;
+    return () => {
+      recursiveSearchMatchHandler = null;
+    };
+  },
+);
+const onRecursiveSearchCompleted = vi.fn(
+  async (handler: (event: RecursiveSearchCompletedEventDto) => void) => {
+    recursiveSearchCompletedHandler = handler;
+    return () => {
+      recursiveSearchCompletedHandler = null;
+    };
+  },
+);
 const onDirectoryBatch = vi.fn(
   async (handler: (event: DirectoryBatchEventDto) => void) => {
     batchHandler = handler;
@@ -154,6 +342,21 @@ vi.mock("@fileoctopus/ts-api", () => ({
     fs: {
       listStart,
       onDirectoryBatch,
+      standardLocations,
+      startWatching,
+      stopWatching,
+      onWatchChanged,
+      openPathWithDefaultApp,
+      revealPathInFileManager,
+      deletePermanently,
+      createFile,
+      properties,
+      recursiveSearch,
+      startFolderSizeJob,
+      startRecursiveSearchJob,
+      onFolderSizeCompleted,
+      onRecursiveSearchMatch,
+      onRecursiveSearchCompleted,
     },
     fileOperations: {
       planFileOperation,
@@ -197,8 +400,26 @@ describe("FileOctopusShell", () => {
     jobStartedHandler = null;
     jobProgressHandler = null;
     jobCompletedHandler = null;
+    folderSizeCompletedHandler = null;
+    recursiveSearchMatchHandler = null;
+    recursiveSearchCompletedHandler = null;
     sessionIndex = 0;
     listStart.mockClear();
+    standardLocations.mockClear();
+    startWatching.mockClear();
+    stopWatching.mockClear();
+    onWatchChanged.mockClear();
+    openPathWithDefaultApp.mockClear();
+    revealPathInFileManager.mockClear();
+    deletePermanently.mockClear();
+    createFile.mockClear();
+    properties.mockClear();
+    recursiveSearch.mockClear();
+    startFolderSizeJob.mockClear();
+    startRecursiveSearchJob.mockClear();
+    onFolderSizeCompleted.mockClear();
+    onRecursiveSearchMatch.mockClear();
+    onRecursiveSearchCompleted.mockClear();
     onDirectoryBatch.mockClear();
     listRecentOperations.mockClear();
     clearOperationHistory.mockClear();
@@ -330,7 +551,7 @@ describe("FileOctopusShell", () => {
     render(<FileOctopusShell />);
     await applyLeftEntries([entry("alpha.txt")]);
 
-    fireEvent.click(screen.getAllByText("Copy")[0]);
+    fireEvent.click(screen.getAllByText("Copy To")[0]);
     expect(
       (screen.getByLabelText("Conflict policy") as HTMLSelectElement).value,
     ).toBe("fail");
@@ -421,6 +642,85 @@ describe("FileOctopusShell", () => {
 
     fireEvent.keyDown(screen.getByLabelText("File panels"), { key: "F5" });
     await waitFor(() => expect(listStart).toHaveBeenCalledTimes(3));
+  });
+
+  it("creates empty files and refreshes the current panel", async () => {
+    render(<FileOctopusShell />);
+    await waitFor(() => expect(listStart).toHaveBeenCalledTimes(2));
+
+    fireEvent.click(screen.getAllByText("New File")[0]);
+    fireEvent.change(screen.getByLabelText("File name"), {
+      target: { value: "notes.txt" },
+    });
+    fireEvent.click(screen.getByText("Create"));
+
+    await waitFor(() => expect(createFile).toHaveBeenCalledTimes(1));
+    expect(createFile).toHaveBeenCalledWith({
+      uri: "local:///Users/ilya/notes.txt",
+    });
+  });
+
+  it("opens files externally while folders navigate internally", async () => {
+    render(<FileOctopusShell />);
+    await applyLeftEntries([folderEntry("Projects"), entry("alpha.txt")]);
+
+    fireEvent.doubleClick(screen.getByText(/alpha.txt/));
+    await waitFor(() =>
+      expect(openPathWithDefaultApp).toHaveBeenCalledWith({
+        uri: "local:///tmp/alpha.txt",
+      }),
+    );
+
+    fireEvent.doubleClick(screen.getByText(/Projects/));
+    await waitFor(() =>
+      expect(
+        listStart.mock.calls[listStart.mock.calls.length - 1]?.[0],
+      ).toMatchObject({
+        uri: "local:///tmp/Projects",
+      }),
+    );
+  });
+
+  it("shows properties and recursive search result actions", async () => {
+    render(<FileOctopusShell />);
+    await applyLeftEntries([entry("alpha.txt")]);
+
+    fireEvent.click(screen.getAllByText("Properties")[0]);
+    expect(await screen.findByText("/tmp/alpha.txt")).toBeTruthy();
+
+    fireEvent.click(screen.getByText("Close"));
+    fireEvent.change(screen.getByLabelText("left recursive search"), {
+      target: { value: "needle" },
+    });
+    fireEvent.click(screen.getAllByText("Search")[0]);
+
+    expect(await screen.findByText(/needle\.txt/)).toBeTruthy();
+    fireEvent.click(screen.getAllByText("Reveal")[0]);
+    await waitFor(() =>
+      expect(revealPathInFileManager).toHaveBeenCalledWith({
+        uri: "local:///tmp/needle.txt",
+      }),
+    );
+  });
+
+  it("toggles hidden files and switches view modes without navigating away", async () => {
+    render(<FileOctopusShell />);
+    await applyLeftEntries([entry("alpha.txt")]);
+
+    fireEvent.click(screen.getAllByText("Show Hidden")[0]);
+    await waitFor(() =>
+      expect(
+        listStart.mock.calls[listStart.mock.calls.length - 1]?.[0],
+      ).toMatchObject({
+        uri: "local:///Users/ilya",
+        includeHidden: true,
+      }),
+    );
+
+    fireEvent.change(screen.getAllByLabelText("View mode")[0], {
+      target: { value: "icons" },
+    });
+    expect(document.querySelector(".fo-view-icons")).toBeTruthy();
   });
 });
 

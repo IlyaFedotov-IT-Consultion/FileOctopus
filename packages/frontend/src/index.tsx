@@ -1,6 +1,7 @@
 import {
   Component,
   type KeyboardEvent,
+  type MouseEvent,
   type ReactNode,
   useEffect,
   useMemo,
@@ -19,6 +20,12 @@ import type {
   FileEntryDto,
   FileOperationPlanDto,
   FileOperationKind,
+  FolderSizeCompletedEventDto,
+  PathPropertiesDto,
+  RecursiveSearchCompletedEventDto,
+  RecursiveSearchMatchEventDto,
+  RecursiveSearchResultDto,
+  StandardLocationDto,
   JobCancelledEvent,
   JobCompletedEvent,
   JobFailedEvent,
@@ -37,6 +44,7 @@ import {
   type PanelId,
   type PanelTabState,
   type SortField,
+  type ViewMode,
 } from "./panelStore";
 
 const rowHeight = 30;
@@ -47,9 +55,38 @@ const isProductionBuild = Boolean(
 
 type CopyMoveKind = Extract<FileOperationKind, "copy" | "move">;
 
+interface FileClipboardState {
+  kind: CopyMoveKind;
+  uris: string[];
+  providerId: string;
+  timestamp: number;
+}
+
+interface ContextMenuState {
+  panelId: PanelId;
+  x: number;
+  y: number;
+  entry: FileEntryDto | null;
+}
+
+interface SearchState {
+  panelId: PanelId;
+  query: string;
+  running: boolean;
+  jobId: string | null;
+  result: RecursiveSearchResultDto | null;
+  error: string | null;
+}
+
 type OperationDialog =
   | {
       type: "createFolder";
+      panelId: PanelId;
+      name: string;
+      error: string | null;
+    }
+  | {
+      type: "createFile";
       panelId: PanelId;
       name: string;
       error: string | null;
@@ -77,6 +114,21 @@ type OperationDialog =
       panelId: PanelId;
       entries: FileEntryDto[];
       error: string | null;
+    }
+  | {
+      type: "permanentDelete";
+      panelId: PanelId;
+      entries: FileEntryDto[];
+      error: string | null;
+    }
+  | {
+      type: "properties";
+      panelId: PanelId;
+      entry: FileEntryDto | null;
+      properties: PathPropertiesDto | null;
+      loading: boolean;
+      folderSizeJobId: string | null;
+      error: string | null;
     };
 
 export function FileOctopusShell() {
@@ -99,8 +151,24 @@ export function FileOctopusShell() {
   const [exportingDiagnostics, setExportingDiagnostics] = useState(false);
   const [operationError, setOperationError] = useState<string | null>(null);
   const [dialog, setDialog] = useState<OperationDialog | null>(null);
+  const [locations, setLocations] = useState<StandardLocationDto[]>([]);
+  const [clipboard, setClipboard] = useState<FileClipboardState | null>(null);
+  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+  const [search, setSearch] = useState<SearchState | null>(null);
+  const [pathFocusToken, setPathFocusToken] = useState(0);
   const left = activeTab(state.panels.left);
   const right = activeTab(state.panels.right);
+  const statusTab = activeTab(state.panels[state.activePanelId]);
+  const statusSelection = statusTab.selectedIds
+    .map((id) => statusTab.entriesById[id])
+    .filter((entry): entry is FileEntryDto => Boolean(entry));
+  const statusKnownBytes = statusSelection.reduce(
+    (total, entry) => total + (entry.size ?? 0),
+    0,
+  );
+  const statusUnknownSizes = statusSelection.some(
+    (entry) => entry.size == null,
+  );
 
   useEffect(() => {
     client.fs
@@ -116,6 +184,27 @@ export function FileOctopusShell() {
         });
       });
   }, [client]);
+
+  useEffect(() => {
+    let unlisten: (() => void) | null = null;
+    const activePanelId = state.activePanelId;
+    const activeUri = activeTab(state.panels[activePanelId]).uri;
+
+    client.fs
+      .onWatchChanged((event) => {
+        if (event.uri === activeUri) {
+          refreshPanel(activePanelId, { replace: true });
+        }
+      })
+      .then((value) => {
+        unlisten = value;
+      })
+      .catch(() => undefined);
+
+    return () => {
+      unlisten?.();
+    };
+  }, [client, state.activePanelId, left.uri, right.uri]);
 
   useEffect(() => {
     const unlisteners: Array<() => void> = [];
@@ -148,6 +237,17 @@ export function FileOctopusShell() {
           ...current,
           [jobIdValue(event.jobId)]: mergeFailed(current, event),
         }));
+        setSearch((current) =>
+          current?.jobId === jobIdValue(event.jobId)
+            ? { ...current, running: false, error: event.message }
+            : current,
+        );
+        setDialog((current) =>
+          current?.type === "properties" &&
+          current.folderSizeJobId === jobIdValue(event.jobId)
+            ? { ...current, loading: false, error: event.message }
+            : current,
+        );
         refreshVisiblePanels();
         void refreshHistory();
       }),
@@ -156,6 +256,17 @@ export function FileOctopusShell() {
           ...current,
           [jobIdValue(event.jobId)]: mergeCancelled(current, event),
         }));
+        setSearch((current) =>
+          current?.jobId === jobIdValue(event.jobId)
+            ? { ...current, running: false, error: "Operation cancelled." }
+            : current,
+        );
+        setDialog((current) =>
+          current?.type === "properties" &&
+          current.folderSizeJobId === jobIdValue(event.jobId)
+            ? { ...current, loading: false }
+            : current,
+        );
         refreshVisiblePanels();
         void refreshHistory();
       }),
@@ -173,14 +284,54 @@ export function FileOctopusShell() {
   }, [client, left.uri, right.uri]);
 
   useEffect(() => {
+    const unlisteners: Array<() => void> = [];
+
+    Promise.all([
+      client.fs.onFolderSizeCompleted((event) =>
+        applyFolderSizeCompleted(event),
+      ),
+      client.fs.onRecursiveSearchMatch((event) =>
+        applyRecursiveSearchMatch(event),
+      ),
+      client.fs.onRecursiveSearchCompleted((event) =>
+        applyRecursiveSearchCompleted(event),
+      ),
+    ])
+      .then((items) => unlisteners.push(...items))
+      .catch(() => undefined);
+
+    return () => {
+      for (const unlisten of unlisteners) {
+        unlisten();
+      }
+    };
+  }, [client]);
+
+  useEffect(() => {
     void navigatePanel("left", activeTab(state.panels.left).uri);
     void navigatePanel("right", activeTab(state.panels.right).uri);
+    void refreshLocations();
     void refreshHistory();
     void refreshDiagnostics();
   }, []);
 
-  async function navigatePanel(panelId: PanelId, input: string) {
+  useEffect(() => {
+    const tab = activeTab(state.panels[state.activePanelId]);
+
+    void client.fs.startWatching({ uri: tab.uri }).catch(() => undefined);
+
+    return () => {
+      void client.fs.stopWatching().catch(() => undefined);
+    };
+  }, [client, state.activePanelId, left.uri, right.uri]);
+
+  async function navigatePanel(
+    panelId: PanelId,
+    input: string,
+    options: { replace?: boolean; includeHidden?: boolean } = {},
+  ) {
     const uri = normalizeLocalInput(input);
+    const tab = activeTab(state.panels[panelId]);
 
     if (!uri.startsWith("local://")) {
       dispatch({
@@ -191,13 +342,24 @@ export function FileOctopusShell() {
       return;
     }
 
-    dispatch({ type: "navigate", panelId, uri });
+    dispatch({ type: "navigate", panelId, uri, replace: options.replace });
+    setSearch((current) =>
+      current?.panelId === panelId ? { ...current, result: null } : current,
+    );
 
+    await startListing(panelId, uri, options.includeHidden ?? tab.showHidden);
+  }
+
+  async function startListing(
+    panelId: PanelId,
+    uri: string,
+    includeHidden: boolean,
+  ) {
     try {
       const response = await client.fs.listStart({
         uri,
         batchSize: 256,
-        includeHidden: false,
+        includeHidden,
       });
       dispatch({
         type: "startSession",
@@ -207,6 +369,42 @@ export function FileOctopusShell() {
     } catch (error) {
       const normalized = normalizeIpcError(error);
       dispatch({ type: "setError", panelId, error: normalized.message });
+    }
+  }
+
+  async function goHistory(panelId: PanelId, direction: "back" | "forward") {
+    const tab = activeTab(state.panels[panelId]);
+    const uri =
+      direction === "back"
+        ? tab.backStack[tab.backStack.length - 1]
+        : tab.forwardStack[0];
+
+    if (!uri) {
+      return;
+    }
+
+    dispatch({ type: direction === "back" ? "goBack" : "goForward", panelId });
+    await startListing(panelId, uri, tab.showHidden);
+  }
+
+  function refreshPanel(
+    panelId: PanelId,
+    options: { replace?: boolean; includeHidden?: boolean } = {},
+  ) {
+    const tab = activeTab(state.panels[panelId]);
+
+    void navigatePanel(panelId, tab.uri, {
+      replace: options.replace ?? true,
+      includeHidden: options.includeHidden ?? tab.showHidden,
+    });
+  }
+
+  async function refreshLocations() {
+    try {
+      const response = await client.fs.standardLocations();
+      setLocations(response.locations);
+    } catch (error) {
+      setOperationError(normalizeIpcError(error).message);
     }
   }
 
@@ -220,16 +418,12 @@ export function FileOctopusShell() {
       return;
     }
 
-    dispatch({
-      type: "setError",
-      panelId,
-      error: "File activation is not implemented in Sprint 1",
-    });
+    void openExternal(entry);
   }
 
   function refreshVisiblePanels() {
-    void navigatePanel("left", activeTab(state.panels.left).uri);
-    void navigatePanel("right", activeTab(state.panels.right).uri);
+    refreshPanel("left");
+    refreshPanel("right");
   }
 
   async function refreshHistory() {
@@ -255,6 +449,71 @@ export function FileOctopusShell() {
     } catch (error) {
       setOperationError(normalizeIpcError(error).message);
     }
+  }
+
+  function applyFolderSizeCompleted(event: FolderSizeCompletedEventDto) {
+    setDialog((current) => {
+      if (
+        current?.type !== "properties" ||
+        current.folderSizeJobId !== event.jobId ||
+        !current.properties
+      ) {
+        return current;
+      }
+
+      return {
+        ...current,
+        loading: false,
+        properties: {
+          ...current.properties,
+          totalSize: event.summary.totalSize,
+          itemCount: event.summary.itemCount,
+          fileCount: event.summary.fileCount,
+          directoryCount: event.summary.directoryCount,
+          warnings: event.summary.warnings,
+        },
+      };
+    });
+  }
+
+  function applyRecursiveSearchMatch(event: RecursiveSearchMatchEventDto) {
+    setSearch((current) => {
+      if (!current || current.jobId !== event.jobId) {
+        return current;
+      }
+
+      const matches = current.result?.matches ?? [];
+
+      if (matches.some((item) => item.uri === event.item.uri)) {
+        return current;
+      }
+
+      return {
+        ...current,
+        result: {
+          matches: [...matches, event.item],
+          warnings: current.result?.warnings ?? [],
+          incomplete: current.result?.incomplete ?? false,
+        },
+      };
+    });
+  }
+
+  function applyRecursiveSearchCompleted(
+    event: RecursiveSearchCompletedEventDto,
+  ) {
+    setSearch((current) => {
+      if (!current || current.jobId !== event.jobId) {
+        return current;
+      }
+
+      return {
+        ...current,
+        running: false,
+        result: event.result,
+        error: null,
+      };
+    });
   }
 
   async function clearHistory() {
@@ -388,11 +647,103 @@ export function FileOctopusShell() {
       .filter((entry): entry is FileEntryDto => Boolean(entry));
   }
 
+  async function openExternal(entry: FileEntryDto) {
+    setOperationError(null);
+
+    try {
+      await client.fs.openPathWithDefaultApp({ uri: entry.uri });
+    } catch (error) {
+      const normalized = normalizeIpcError(error);
+      setOperationError(
+        operationErrorMessage(normalized.code, normalized.message),
+      );
+    }
+  }
+
+  async function revealEntry(panelId: PanelId, entry: FileEntryDto | null) {
+    if (!entry) {
+      return;
+    }
+
+    try {
+      await client.fs.revealPathInFileManager({ uri: entry.uri });
+    } catch {
+      const parent = parentUri(entry.uri);
+
+      if (parent) {
+        await navigatePanel(panelId, parent);
+        dispatch({ type: "setSelection", panelId, entryId: entry.uri });
+      }
+    }
+  }
+
+  function copySelectionToFileClipboard(panelId: PanelId, kind: CopyMoveKind) {
+    const entries = selectedEntries(panelId);
+
+    if (entries.length === 0) {
+      return;
+    }
+
+    setClipboard({
+      kind,
+      uris: entries.map((entry) => entry.uri),
+      providerId: entries[0].providerId,
+      timestamp: Date.now(),
+    });
+  }
+
+  async function pasteClipboard(panelId: PanelId) {
+    if (!clipboard) {
+      return;
+    }
+
+    const tab = activeTab(state.panels[panelId]);
+    const ok = await startOperation(
+      clipboard.kind,
+      clipboard.uris,
+      tab.uri,
+      undefined,
+      "renameNew",
+    );
+
+    if (ok && clipboard.kind === "move") {
+      setClipboard(null);
+    }
+  }
+
+  async function copyTextFromSelection(
+    panelId: PanelId,
+    mode: "path" | "name",
+  ) {
+    const entries = selectedEntries(panelId);
+
+    if (entries.length === 0) {
+      return;
+    }
+
+    const text = entries
+      .map((entry) =>
+        mode === "path" ? localPathFromUri(entry.uri) : entry.name,
+      )
+      .join("\n");
+
+    await globalThis.navigator.clipboard?.writeText(text);
+  }
+
   function handleCreateFolder(panelId: PanelId) {
     setDialog({
       type: "createFolder",
       panelId,
       name: "New Folder",
+      error: null,
+    });
+  }
+
+  function handleCreateFile(panelId: PanelId) {
+    setDialog({
+      type: "createFile",
+      panelId,
+      name: "New File.txt",
       error: null,
     });
   }
@@ -446,6 +797,124 @@ export function FileOctopusShell() {
     setDialog({ type: "trash", panelId, entries, error: null });
   }
 
+  function handlePermanentDelete(panelId: PanelId) {
+    const entries = selectedEntries(panelId);
+
+    if (entries.length === 0) {
+      return;
+    }
+
+    setDialog({ type: "permanentDelete", panelId, entries, error: null });
+  }
+
+  async function handleProperties(
+    panelId: PanelId,
+    entry: FileEntryDto | null,
+  ) {
+    const tab = activeTab(state.panels[panelId]);
+    const target = entry ?? selectedEntries(panelId)[0] ?? null;
+    const uri = target?.uri ?? tab.uri;
+
+    setDialog({
+      type: "properties",
+      panelId,
+      entry: target,
+      properties: null,
+      loading: true,
+      folderSizeJobId: null,
+      error: null,
+    });
+
+    try {
+      const response = await client.fs.properties({
+        uri,
+        includeFolderSummary: false,
+      });
+      const properties = response.properties;
+      let folderSizeJobId: string | null = null;
+
+      if (properties.kind === "directory") {
+        const sizeJob = await client.fs.startFolderSizeJob({ uri });
+        folderSizeJobId = jobIdValue(sizeJob.job.jobId);
+      }
+
+      setDialog({
+        type: "properties",
+        panelId,
+        entry: target,
+        properties,
+        loading: Boolean(folderSizeJobId),
+        folderSizeJobId,
+        error: null,
+      });
+    } catch (error) {
+      setDialog({
+        type: "properties",
+        panelId,
+        entry: target,
+        properties: null,
+        loading: false,
+        folderSizeJobId: null,
+        error: normalizeIpcError(error).message,
+      });
+    }
+  }
+
+  async function runRecursiveSearch(panelId: PanelId) {
+    const tab = activeTab(state.panels[panelId]);
+    const query = tab.recursiveQuery.trim();
+
+    if (!query) {
+      setSearch(null);
+      return;
+    }
+
+    setSearch({
+      panelId,
+      query,
+      running: true,
+      jobId: null,
+      result: { matches: [], warnings: [], incomplete: false },
+      error: null,
+    });
+
+    try {
+      const response = await client.fs.startRecursiveSearchJob({
+        uri: tab.uri,
+        query,
+        limit: 500,
+      });
+
+      setSearch({
+        panelId,
+        query,
+        running: true,
+        jobId: jobIdValue(response.job.jobId),
+        result: { matches: [], warnings: [], incomplete: false },
+        error: null,
+      });
+    } catch (error) {
+      setSearch({
+        panelId,
+        query,
+        running: false,
+        jobId: null,
+        result: null,
+        error: normalizeIpcError(error).message,
+      });
+    }
+  }
+
+  function toggleHidden(panelId: PanelId) {
+    const tab = activeTab(state.panels[panelId]);
+
+    dispatch({ type: "toggleHidden", panelId });
+    refreshPanel(panelId, {
+      replace: true,
+      includeHidden: !tab.showHidden,
+    });
+  }
+
   async function submitCreateFolder(
     current: Extract<OperationDialog, { type: "createFolder" }>,
   ) {
@@ -469,6 +938,42 @@ export function FileOctopusShell() {
     if (ok) {
       setDialog(null);
       refreshVisiblePanels();
+    }
+  }
+
+  async function submitCreateFile(
+    current: Extract<OperationDialog, { type: "createFile" }>,
+  ) {
+    const name = current.name.trim();
+
+    if (!isValidName(name)) {
+      setDialog({
+        ...current,
+        error: "Enter a file name without path separators.",
+      });
+      return;
+    }
+
+    const tab = activeTab(state.panels[current.panelId]);
+
+    try {
+      const response = await client.fs.createFile({
+        uri: joinLocalUri(tab.uri, name),
+      });
+
+      setDialog(null);
+      refreshPanel(current.panelId);
+      dispatch({
+        type: "setSelection",
+        panelId: current.panelId,
+        entryId: response.entry.uri,
+      });
+    } catch (error) {
+      const normalized = normalizeIpcError(error);
+      setDialog({
+        ...current,
+        error: operationErrorMessage(normalized.code, normalized.message),
+      });
     }
   }
 
@@ -528,6 +1033,25 @@ export function FileOctopusShell() {
     }
   }
 
+  async function submitPermanentDelete(
+    current: Extract<OperationDialog, { type: "permanentDelete" }>,
+  ) {
+    try {
+      await client.fs.deletePermanently({
+        uris: current.entries.map((entry) => entry.uri),
+      });
+
+      setDialog(null);
+      refreshPanel(current.panelId);
+    } catch (error) {
+      const normalized = normalizeIpcError(error);
+      setDialog({
+        ...current,
+        error: operationErrorMessage(normalized.code, normalized.message),
+      });
+    }
+  }
+
   function handleShellKeyDown(event: KeyboardEvent<HTMLElement>) {
     if (event.key === "Escape" && dialog) {
       event.preventDefault();
@@ -564,6 +1088,54 @@ export function FileOctopusShell() {
       return;
     }
 
+    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "l") {
+      event.preventDefault();
+      setPathFocusToken((value) => value + 1);
+      return;
+    }
+
+    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "a") {
+      event.preventDefault();
+      dispatch({ type: "selectAll", panelId });
+      return;
+    }
+
+    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "c") {
+      event.preventDefault();
+      copySelectionToFileClipboard(panelId, "copy");
+      return;
+    }
+
+    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "x") {
+      event.preventDefault();
+      copySelectionToFileClipboard(panelId, "move");
+      return;
+    }
+
+    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "v") {
+      event.preventDefault();
+      void pasteClipboard(panelId);
+      return;
+    }
+
+    if (event.key === "F2") {
+      event.preventDefault();
+      handleRename(panelId);
+      return;
+    }
+
+    if (event.altKey && event.key === "ArrowLeft") {
+      event.preventDefault();
+      void goHistory(panelId, "back");
+      return;
+    }
+
+    if (event.altKey && event.key === "ArrowRight") {
+      event.preventDefault();
+      void goHistory(panelId, "forward");
+      return;
+    }
+
     if (
       event.key === "Backspace" ||
       (event.altKey && event.key === "ArrowUp")
@@ -580,16 +1152,20 @@ export function FileOctopusShell() {
 
     if (
       event.key === "F5" ||
-      (event.ctrlKey && event.key.toLowerCase() === "r")
+      ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "r")
     ) {
       event.preventDefault();
-      void navigatePanel(panelId, tab.uri);
+      refreshPanel(panelId);
       return;
     }
 
     if (event.key === "Delete") {
       event.preventDefault();
-      handleTrash(panelId);
+      if (event.shiftKey) {
+        handlePermanentDelete(panelId);
+      } else {
+        handleTrash(panelId);
+      }
     }
   }
 
@@ -606,6 +1182,11 @@ export function FileOctopusShell() {
           </div>
         </header>
         <section className="fo-panels" aria-label="File panels">
+          <Sidebar
+            locations={locations}
+            activeUri={activeTab(state.panels[state.activePanelId]).uri}
+            onNavigate={(uri) => navigatePanel(state.activePanelId, uri)}
+          />
           <FilePanel
             panelId="left"
             title="Left"
@@ -615,6 +1196,8 @@ export function FileOctopusShell() {
               dispatch({ type: "setActivePanel", panelId: "left" })
             }
             onNavigate={(uri) => navigatePanel("left", uri)}
+            onBack={() => void goHistory("left", "back")}
+            onForward={() => void goHistory("left", "forward")}
             onSelect={(entryId) =>
               dispatch({ type: "setSelection", panelId: "left", entryId })
             }
@@ -622,10 +1205,21 @@ export function FileOctopusShell() {
               dispatch({ type: "selectEntry", panelId: "left", entryId, mode })
             }
             onCreateFolder={() => handleCreateFolder("left")}
+            onCreateFile={() => handleCreateFile("left")}
             onRename={() => handleRename("left")}
-            onCopy={() => handleCopyOrMove("left", "copy")}
+            onCopy={() => copySelectionToFileClipboard("left", "copy")}
+            onCut={() => copySelectionToFileClipboard("left", "move")}
+            onCopyOperation={() => handleCopyOrMove("left", "copy")}
             onMoveOperation={() => handleCopyOrMove("left", "move")}
+            onPaste={() => void pasteClipboard("left")}
             onTrash={() => handleTrash("left")}
+            onPermanentDelete={() => handlePermanentDelete("left")}
+            onCopyPath={() => void copyTextFromSelection("left", "path")}
+            onCopyName={() => void copyTextFromSelection("left", "name")}
+            onProperties={(entry) => void handleProperties("left", entry)}
+            onReveal={(entry) => void revealEntry("left", entry)}
+            onRefresh={() => refreshPanel("left")}
+            onToggleHidden={() => toggleHidden("left")}
             onMove={(delta) =>
               dispatch({ type: "moveSelection", panelId: "left", delta })
             }
@@ -635,6 +1229,21 @@ export function FileOctopusShell() {
             onFilter={(filter) =>
               dispatch({ type: "setFilter", panelId: "left", filter })
             }
+            onRecursiveQuery={(query) =>
+              dispatch({
+                type: "setRecursiveQuery",
+                panelId: "left",
+                query,
+              })
+            }
+            onRecursiveSearch={() => void runRecursiveSearch("left")}
+            onViewMode={(viewMode) =>
+              dispatch({ type: "setViewMode", panelId: "left", viewMode })
+            }
+            canPaste={Boolean(clipboard)}
+            pathFocusToken={pathFocusToken}
+            search={search?.panelId === "left" ? search : null}
+            onContextMenu={setContextMenu}
             onEntryActivate={(entry) => activateEntry("left", entry)}
           />
           <FilePanel
@@ -646,6 +1255,8 @@ export function FileOctopusShell() {
               dispatch({ type: "setActivePanel", panelId: "right" })
             }
             onNavigate={(uri) => navigatePanel("right", uri)}
+            onBack={() => void goHistory("right", "back")}
+            onForward={() => void goHistory("right", "forward")}
             onSelect={(entryId) =>
               dispatch({ type: "setSelection", panelId: "right", entryId })
             }
@@ -658,10 +1269,21 @@ export function FileOctopusShell() {
               })
             }
             onCreateFolder={() => handleCreateFolder("right")}
+            onCreateFile={() => handleCreateFile("right")}
             onRename={() => handleRename("right")}
-            onCopy={() => handleCopyOrMove("right", "copy")}
+            onCopy={() => copySelectionToFileClipboard("right", "copy")}
+            onCut={() => copySelectionToFileClipboard("right", "move")}
+            onCopyOperation={() => handleCopyOrMove("right", "copy")}
             onMoveOperation={() => handleCopyOrMove("right", "move")}
+            onPaste={() => void pasteClipboard("right")}
             onTrash={() => handleTrash("right")}
+            onPermanentDelete={() => handlePermanentDelete("right")}
+            onCopyPath={() => void copyTextFromSelection("right", "path")}
+            onCopyName={() => void copyTextFromSelection("right", "name")}
+            onProperties={(entry) => void handleProperties("right", entry)}
+            onReveal={(entry) => void revealEntry("right", entry)}
+            onRefresh={() => refreshPanel("right")}
+            onToggleHidden={() => toggleHidden("right")}
             onMove={(delta) =>
               dispatch({ type: "moveSelection", panelId: "right", delta })
             }
@@ -671,6 +1293,21 @@ export function FileOctopusShell() {
             onFilter={(filter) =>
               dispatch({ type: "setFilter", panelId: "right", filter })
             }
+            onRecursiveQuery={(query) =>
+              dispatch({
+                type: "setRecursiveQuery",
+                panelId: "right",
+                query,
+              })
+            }
+            onRecursiveSearch={() => void runRecursiveSearch("right")}
+            onViewMode={(viewMode) =>
+              dispatch({ type: "setViewMode", panelId: "right", viewMode })
+            }
+            canPaste={Boolean(clipboard)}
+            pathFocusToken={pathFocusToken}
+            search={search?.panelId === "right" ? search : null}
+            onContextMenu={setContextMenu}
             onEntryActivate={(entry) => activateEntry("right", entry)}
           />
         </section>
@@ -696,14 +1333,50 @@ export function FileOctopusShell() {
           onUpdate={(next) => setDialog(next)}
           onReviewCopyMove={(current) => void reviewCopyMoveDialog(current)}
           onSubmitCreateFolder={(current) => void submitCreateFolder(current)}
+          onSubmitCreateFile={(current) => void submitCreateFile(current)}
           onSubmitRename={(current) => void submitRename(current)}
           onSubmitCopyMove={(current) => void submitCopyMove(current)}
           onSubmitTrash={(current) => void submitTrash(current)}
+          onSubmitPermanentDelete={(current) =>
+            void submitPermanentDelete(current)
+          }
+          onCopyPath={(panelId) => void copyTextFromSelection(panelId, "path")}
+          onReveal={(panelId, entry) => void revealEntry(panelId, entry)}
+        />
+        <ContextMenu
+          menu={contextMenu}
+          canPaste={Boolean(clipboard)}
+          onClose={() => setContextMenu(null)}
+          onOpen={(panelId, entry) => activateEntry(panelId, entry)}
+          onRename={handleRename}
+          onCopy={(panelId) => copySelectionToFileClipboard(panelId, "copy")}
+          onCut={(panelId) => copySelectionToFileClipboard(panelId, "move")}
+          onPaste={(panelId) => void pasteClipboard(panelId)}
+          onTrash={handleTrash}
+          onPermanentDelete={handlePermanentDelete}
+          onCopyPath={(panelId) => void copyTextFromSelection(panelId, "path")}
+          onCopyName={(panelId) => void copyTextFromSelection(panelId, "name")}
+          onProperties={(panelId, entry) =>
+            void handleProperties(panelId, entry)
+          }
+          onReveal={(panelId, entry) => void revealEntry(panelId, entry)}
+          onCreateFolder={handleCreateFolder}
+          onCreateFile={handleCreateFile}
+          onRefresh={refreshPanel}
+          onSelectAll={(panelId) => dispatch({ type: "selectAll", panelId })}
+          onViewMode={(panelId, viewMode) =>
+            dispatch({ type: "setViewMode", panelId, viewMode })
+          }
+          onSort={(panelId, field) =>
+            dispatch({ type: "setSort", panelId, field })
+          }
         />
         <footer className="fo-status">
-          {left.selectedIds.length + right.selectedIds.length} selected,{" "}
-          {left.orderedEntryIds.length + right.orderedEntryIds.length} entries
-          loaded
+          {statusSelection.length} selected
+          {statusSelection.length > 0
+            ? `, ${formatSize(statusKnownBytes)}${statusUnknownSizes ? " plus folders or unknown sizes" : ""}`
+            : ""}
+          , {statusTab.orderedEntryIds.length} entries loaded
         </footer>
       </main>
     </ErrorBoundary>
@@ -717,17 +1390,37 @@ interface FilePanelProps {
   active: boolean;
   onActivate: () => void;
   onNavigate: (uri: string) => void;
+  onBack: () => void;
+  onForward: () => void;
   onSelect: (entryId: string | null) => void;
   onEntrySelect: (entryId: string, mode: "single" | "toggle" | "range") => void;
   onMove: (delta: number) => void;
   onSort: (field: SortField) => void;
   onFilter: (filter: string) => void;
+  onRecursiveQuery: (query: string) => void;
+  onRecursiveSearch: () => void;
+  onViewMode: (viewMode: ViewMode) => void;
   onEntryActivate: (entry: FileEntryDto | null) => void;
   onCreateFolder: () => void;
+  onCreateFile: () => void;
   onRename: () => void;
   onCopy: () => void;
+  onCut: () => void;
+  onCopyOperation: () => void;
   onMoveOperation: () => void;
+  onPaste: () => void;
   onTrash: () => void;
+  onPermanentDelete: () => void;
+  onCopyPath: () => void;
+  onCopyName: () => void;
+  onProperties: (entry: FileEntryDto | null) => void;
+  onReveal: (entry: FileEntryDto | null) => void;
+  onRefresh: () => void;
+  onToggleHidden: () => void;
+  canPaste: boolean;
+  pathFocusToken: number;
+  search: SearchState | null;
+  onContextMenu: (menu: ContextMenuState | null) => void;
 }
 
 function FilePanel({
@@ -737,17 +1430,37 @@ function FilePanel({
   active,
   onActivate,
   onNavigate,
+  onBack,
+  onForward,
   onSelect,
   onEntrySelect,
   onMove,
   onSort,
   onFilter,
+  onRecursiveQuery,
+  onRecursiveSearch,
+  onViewMode,
   onEntryActivate,
   onCreateFolder,
+  onCreateFile,
   onRename,
   onCopy,
+  onCut,
+  onCopyOperation,
   onMoveOperation,
+  onPaste,
   onTrash,
+  onPermanentDelete,
+  onCopyPath,
+  onCopyName,
+  onProperties,
+  onReveal,
+  onRefresh,
+  onToggleHidden,
+  canPaste,
+  pathFocusToken,
+  search,
+  onContextMenu,
 }: FilePanelProps) {
   const entries = selectVisibleEntries(tab);
   const selectedEntry =
@@ -767,12 +1480,33 @@ function FilePanel({
         <div className="fo-panel-tools">
           <button
             type="button"
+            disabled={tab.backStack.length === 0}
+            onClick={onBack}
+            aria-label={`${panelId} back`}
+          >
+            Back
+          </button>
+          <button
+            type="button"
+            disabled={tab.forwardStack.length === 0}
+            onClick={onForward}
+            aria-label={`${panelId} forward`}
+          >
+            Forward
+          </button>
+          <button
+            type="button"
             disabled={!upUri}
             onClick={() => upUri && onNavigate(upUri)}
           >
             Up
           </button>
-          <PathBar value={tab.uri} error={tab.error} onSubmit={onNavigate} />
+          <PathBar
+            value={tab.uri}
+            error={tab.error}
+            focusToken={pathFocusToken}
+            onSubmit={onNavigate}
+          />
           <input
             className="fo-filter"
             aria-label={`${panelId} filter`}
@@ -784,12 +1518,37 @@ function FilePanel({
         <OperationToolbar
           selectedCount={tab.selectedIds.length}
           canRename={tab.selectedIds.length === 1}
+          canPaste={canPaste}
+          showHidden={tab.showHidden}
+          viewMode={tab.viewMode}
           onCreateFolder={onCreateFolder}
+          onCreateFile={onCreateFile}
           onRename={onRename}
           onCopy={onCopy}
+          onCut={onCut}
+          onCopyOperation={onCopyOperation}
           onMove={onMoveOperation}
+          onPaste={onPaste}
           onTrash={onTrash}
+          onPermanentDelete={onPermanentDelete}
+          onCopyPath={onCopyPath}
+          onCopyName={onCopyName}
+          onProperties={() => onProperties(selectedEntry)}
+          onRefresh={onRefresh}
+          onToggleHidden={onToggleHidden}
+          onViewMode={onViewMode}
         />
+        <div className="fo-search-strip">
+          <input
+            aria-label={`${panelId} recursive search`}
+            value={tab.recursiveQuery}
+            placeholder="Recursive search"
+            onChange={(event) => onRecursiveQuery(event.target.value)}
+          />
+          <button type="button" onClick={onRecursiveSearch}>
+            Search
+          </button>
+        </div>
         {tab.error ? (
           <div className="fo-panel-error">
             <span>{tab.error}</span>
@@ -806,12 +1565,33 @@ function FilePanel({
           focusedId={tab.focusedId}
           sortField={tab.sort.field}
           sortDirection={tab.sort.direction}
+          viewMode={tab.viewMode}
           onSelect={onSelect}
           onEntrySelect={onEntrySelect}
           onMove={onMove}
           onSort={onSort}
           onActivate={() => onEntryActivate(selectedEntry)}
           onEntryActivate={onEntryActivate}
+          onContextMenu={(event, entry) => {
+            event.preventDefault();
+            onActivate();
+            if (entry && !tab.selectedIds.includes(entry.uri)) {
+              onSelect(entry.uri);
+            }
+            onContextMenu({
+              panelId,
+              x: event.clientX,
+              y: event.clientY,
+              entry,
+            });
+          }}
+        />
+        <RecursiveSearchPanel
+          panelId={panelId}
+          search={search}
+          onOpen={(entry) => onEntryActivate(entry)}
+          onReveal={onReveal}
+          onProperties={onProperties}
         />
       </div>
     </section>
@@ -821,12 +1601,14 @@ function FilePanel({
 interface PathBarProps {
   value: string;
   error: string | null;
+  focusToken: number;
   onSubmit: (value: string) => void;
 }
 
-function PathBar({ value, error, onSubmit }: PathBarProps) {
+function PathBar({ value, error, focusToken, onSubmit }: PathBarProps) {
   const [draft, setDraft] = useState(value);
   const [editing, setEditing] = useState(false);
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (!editing) {
@@ -834,8 +1616,46 @@ function PathBar({ value, error, onSubmit }: PathBarProps) {
     }
   }, [editing, value]);
 
+  useEffect(() => {
+    if (focusToken > 0) {
+      setEditing(true);
+      requestAnimationFrame(() => {
+        inputRef.current?.focus();
+        inputRef.current?.select();
+      });
+    }
+  }, [focusToken]);
+
+  if (!editing) {
+    return (
+      <div
+        className={error ? "fo-breadcrumb fo-path-error" : "fo-breadcrumb"}
+        onDoubleClick={() => setEditing(true)}
+      >
+        {breadcrumbSegments(value).map((segment) => (
+          <button
+            key={segment.uri}
+            type="button"
+            title={segment.uri}
+            onClick={() => onSubmit(segment.uri)}
+          >
+            {segment.label}
+          </button>
+        ))}
+        <button
+          type="button"
+          aria-label="Edit current path"
+          onClick={() => setEditing(true)}
+        >
+          Path
+        </button>
+      </div>
+    );
+  }
+
   return (
     <input
+      ref={inputRef}
       className={error ? "fo-path fo-path-error" : "fo-path"}
       value={editing ? draft : value}
       aria-label="Current path"
@@ -863,26 +1683,57 @@ function PathBar({ value, error, onSubmit }: PathBarProps) {
 interface OperationToolbarProps {
   selectedCount: number;
   canRename: boolean;
+  canPaste: boolean;
+  showHidden: boolean;
+  viewMode: ViewMode;
   onCreateFolder: () => void;
+  onCreateFile: () => void;
   onRename: () => void;
   onCopy: () => void;
+  onCut: () => void;
+  onCopyOperation: () => void;
   onMove: () => void;
+  onPaste: () => void;
   onTrash: () => void;
+  onPermanentDelete: () => void;
+  onCopyPath: () => void;
+  onCopyName: () => void;
+  onProperties: () => void;
+  onRefresh: () => void;
+  onToggleHidden: () => void;
+  onViewMode: (viewMode: ViewMode) => void;
 }
 
 function OperationToolbar({
   selectedCount,
   canRename,
+  canPaste,
+  showHidden,
+  viewMode,
   onCreateFolder,
+  onCreateFile,
   onRename,
   onCopy,
+  onCut,
+  onCopyOperation,
   onMove,
+  onPaste,
   onTrash,
+  onPermanentDelete,
+  onCopyPath,
+  onCopyName,
+  onProperties,
+  onRefresh,
+  onToggleHidden,
+  onViewMode,
 }: OperationToolbarProps) {
   return (
     <div className="fo-operation-toolbar" aria-label="File operations">
       <button type="button" onClick={onCreateFolder}>
         New Folder
+      </button>
+      <button type="button" onClick={onCreateFile}>
+        New File
       </button>
       <button type="button" disabled={!canRename} onClick={onRename}>
         Rename
@@ -890,12 +1741,56 @@ function OperationToolbar({
       <button type="button" disabled={selectedCount === 0} onClick={onCopy}>
         Copy
       </button>
+      <button type="button" disabled={selectedCount === 0} onClick={onCut}>
+        Cut
+      </button>
+      <button type="button" disabled={!canPaste} onClick={onPaste}>
+        Paste
+      </button>
+      <button
+        type="button"
+        disabled={selectedCount === 0}
+        onClick={onCopyOperation}
+      >
+        Copy To
+      </button>
       <button type="button" disabled={selectedCount === 0} onClick={onMove}>
-        Move
+        Move To
       </button>
       <button type="button" disabled={selectedCount === 0} onClick={onTrash}>
         Move to Trash
       </button>
+      <button
+        type="button"
+        disabled={selectedCount === 0}
+        onClick={onPermanentDelete}
+      >
+        Delete
+      </button>
+      <button type="button" disabled={selectedCount === 0} onClick={onCopyPath}>
+        Copy Path
+      </button>
+      <button type="button" disabled={selectedCount === 0} onClick={onCopyName}>
+        Copy Name
+      </button>
+      <button type="button" onClick={onProperties}>
+        Properties
+      </button>
+      <button type="button" onClick={onRefresh}>
+        Refresh
+      </button>
+      <button type="button" onClick={onToggleHidden}>
+        {showHidden ? "Hide Hidden" : "Show Hidden"}
+      </button>
+      <select
+        aria-label="View mode"
+        value={viewMode}
+        onChange={(event) => onViewMode(event.target.value as ViewMode)}
+      >
+        <option value="details">Details</option>
+        <option value="list">List</option>
+        <option value="icons">Icons</option>
+      </select>
       <span>{selectedCount} selected</span>
     </div>
   );
@@ -909,12 +1804,17 @@ interface FileTableProps {
   focusedId: string | null;
   sortField: SortField;
   sortDirection: string;
+  viewMode: ViewMode;
   onSelect: (entryId: string | null) => void;
   onEntrySelect: (entryId: string, mode: "single" | "toggle" | "range") => void;
   onMove: (delta: number) => void;
   onSort: (field: SortField) => void;
   onActivate: () => void;
   onEntryActivate: (entry: FileEntryDto | null) => void;
+  onContextMenu: (
+    event: MouseEvent<HTMLElement>,
+    entry: FileEntryDto | null,
+  ) => void;
 }
 
 function FileTable({
@@ -925,12 +1825,14 @@ function FileTable({
   focusedId,
   sortField,
   sortDirection,
+  viewMode,
   onSelect,
   onEntrySelect,
   onMove,
   onSort,
   onActivate,
   onEntryActivate,
+  onContextMenu,
 }: FileTableProps) {
   const [scrollTop, setScrollTop] = useState(0);
   const viewportRef = useRef<HTMLDivElement | null>(null);
@@ -999,41 +1901,46 @@ function FileTable({
   }
 
   return (
-    <div className="fo-table-shell">
-      <div className="fo-table-header">
-        <ColumnButton
-          field="name"
-          active={sortField === "name"}
-          direction={sortDirection}
-          onSort={onSort}
-        >
-          Name
-        </ColumnButton>
-        <ColumnButton
-          field="size"
-          active={sortField === "size"}
-          direction={sortDirection}
-          onSort={onSort}
-        >
-          Size
-        </ColumnButton>
-        <ColumnButton
-          field="modified"
-          active={sortField === "modified"}
-          direction={sortDirection}
-          onSort={onSort}
-        >
-          Modified
-        </ColumnButton>
-        <ColumnButton
-          field="type"
-          active={sortField === "type"}
-          direction={sortDirection}
-          onSort={onSort}
-        >
-          Type
-        </ColumnButton>
-      </div>
+    <div
+      className={`fo-table-shell fo-view-${viewMode}`}
+      onContextMenu={(event) => onContextMenu(event, null)}
+    >
+      {viewMode === "details" ? (
+        <div className="fo-table-header">
+          <ColumnButton
+            field="name"
+            active={sortField === "name"}
+            direction={sortDirection}
+            onSort={onSort}
+          >
+            Name
+          </ColumnButton>
+          <ColumnButton
+            field="size"
+            active={sortField === "size"}
+            direction={sortDirection}
+            onSort={onSort}
+          >
+            Size
+          </ColumnButton>
+          <ColumnButton
+            field="modified"
+            active={sortField === "modified"}
+            direction={sortDirection}
+            onSort={onSort}
+          >
+            Modified
+          </ColumnButton>
+          <ColumnButton
+            field="type"
+            active={sortField === "type"}
+            direction={sortDirection}
+            onSort={onSort}
+          >
+            Type
+          </ColumnButton>
+        </div>
+      ) : null}
       <div
         ref={viewportRef}
         className="fo-table-viewport"
@@ -1056,6 +1963,7 @@ function FileTable({
                 onSelect={onSelect}
                 onEntrySelect={onEntrySelect}
                 onEntryActivate={onEntryActivate}
+                onContextMenu={onContextMenu}
               />
             ))}
           </div>
@@ -1101,6 +2009,10 @@ interface FileRowProps {
   onSelect: (entryId: string | null) => void;
   onEntrySelect: (entryId: string, mode: "single" | "toggle" | "range") => void;
   onEntryActivate: (entry: FileEntryDto | null) => void;
+  onContextMenu: (
+    event: MouseEvent<HTMLElement>,
+    entry: FileEntryDto | null,
+  ) => void;
 }
 
 function FileRow({
@@ -1112,6 +2024,7 @@ function FileRow({
   onSelect,
   onEntrySelect,
   onEntryActivate,
+  onContextMenu,
 }: FileRowProps) {
   return (
     <button
@@ -1136,14 +2049,317 @@ function FileRow({
         }
       }}
       onDoubleClick={() => onEntryActivate(entry)}
+      onContextMenu={(event) => {
+        event.stopPropagation();
+        onContextMenu(event, entry);
+      }}
     >
       <span>
-        {entry.kind === "directory" ? "Dir" : "File"} {entry.name}
+        {fileIcon(entry)} {entry.name}
       </span>
       <span>{formatSize(entry.size)}</span>
       <span>{formatDate(entry.modifiedAt)}</span>
       <span>{entry.kind}</span>
     </button>
+  );
+}
+
+interface SidebarProps {
+  locations: StandardLocationDto[];
+  activeUri: string;
+  onNavigate: (uri: string) => void;
+}
+
+function Sidebar({ locations, activeUri, onNavigate }: SidebarProps) {
+  const grouped = locations.reduce<Record<string, StandardLocationDto[]>>(
+    (groups, location) => ({
+      ...groups,
+      [location.section]: [...(groups[location.section] ?? []), location],
+    }),
+    {},
+  );
+
+  return (
+    <aside className="fo-sidebar" aria-label="Standard locations">
+      {Object.entries(grouped).map(([section, items]) => (
+        <section key={section}>
+          <strong>{section}</strong>
+          {items.map((item) => (
+            <button
+              key={item.uri}
+              type="button"
+              className={item.uri === activeUri ? "fo-sidebar-active" : ""}
+              onClick={() => onNavigate(item.uri)}
+            >
+              {item.name}
+            </button>
+          ))}
+        </section>
+      ))}
+    </aside>
+  );
+}
+
+interface RecursiveSearchPanelProps {
+  panelId: PanelId;
+  search: SearchState | null;
+  onOpen: (entry: FileEntryDto) => void;
+  onReveal: (entry: FileEntryDto) => void;
+  onProperties: (entry: FileEntryDto) => void;
+}
+
+function RecursiveSearchPanel({
+  search,
+  onOpen,
+  onReveal,
+  onProperties,
+}: RecursiveSearchPanelProps) {
+  if (!search) {
+    return null;
+  }
+
+  const matches = search.result?.matches ?? [];
+
+  return (
+    <section
+      className="fo-search-results"
+      aria-label="Recursive search results"
+    >
+      <header>
+        <strong>
+          {search.running ? "Searching" : `${matches.length} result(s)`}
+        </strong>
+        {search.error ? <span>{search.error}</span> : null}
+      </header>
+      {matches.length === 0 && !search.running ? (
+        <div className="fo-empty-inline">No recursive matches</div>
+      ) : null}
+      {matches.slice(0, 50).map((match) => {
+        const entry = searchMatchToEntry(match);
+
+        return (
+          <div className="fo-search-row" key={match.uri}>
+            <span>
+              {fileIcon(entry)} {match.name}
+            </span>
+            <span>{localPathFromUri(match.parentUri)}</span>
+            <button type="button" onClick={() => onOpen(entry)}>
+              Open
+            </button>
+            <button type="button" onClick={() => onReveal(entry)}>
+              Reveal
+            </button>
+            <button type="button" onClick={() => onProperties(entry)}>
+              Properties
+            </button>
+          </div>
+        );
+      })}
+      {search.result?.incomplete ? (
+        <div className="fo-empty-inline">
+          Some folders could not be searched.
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+interface ContextMenuProps {
+  menu: ContextMenuState | null;
+  canPaste: boolean;
+  onClose: () => void;
+  onOpen: (panelId: PanelId, entry: FileEntryDto | null) => void;
+  onRename: (panelId: PanelId) => void;
+  onCopy: (panelId: PanelId) => void;
+  onCut: (panelId: PanelId) => void;
+  onPaste: (panelId: PanelId) => void;
+  onTrash: (panelId: PanelId) => void;
+  onPermanentDelete: (panelId: PanelId) => void;
+  onCopyPath: (panelId: PanelId) => void;
+  onCopyName: (panelId: PanelId) => void;
+  onProperties: (panelId: PanelId, entry: FileEntryDto | null) => void;
+  onReveal: (panelId: PanelId, entry: FileEntryDto | null) => void;
+  onCreateFolder: (panelId: PanelId) => void;
+  onCreateFile: (panelId: PanelId) => void;
+  onRefresh: (panelId: PanelId) => void;
+  onSelectAll: (panelId: PanelId) => void;
+  onViewMode: (panelId: PanelId, viewMode: ViewMode) => void;
+  onSort: (panelId: PanelId, field: SortField) => void;
+}
+
+function ContextMenu({
+  menu,
+  canPaste,
+  onClose,
+  onOpen,
+  onRename,
+  onCopy,
+  onCut,
+  onPaste,
+  onTrash,
+  onPermanentDelete,
+  onCopyPath,
+  onCopyName,
+  onProperties,
+  onReveal,
+  onCreateFolder,
+  onCreateFile,
+  onRefresh,
+  onSelectAll,
+  onViewMode,
+  onSort,
+}: ContextMenuProps) {
+  if (!menu) {
+    return null;
+  }
+
+  const itemMenu = Boolean(menu.entry);
+  const run = (action: () => void) => {
+    action();
+    onClose();
+  };
+
+  return (
+    <div className="fo-menu-backdrop" onClick={onClose} role="presentation">
+      <div
+        className="fo-context-menu"
+        role="menu"
+        style={{ left: menu.x, top: menu.y }}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <button
+          type="button"
+          disabled={!itemMenu}
+          onClick={() => run(() => onOpen(menu.panelId, menu.entry))}
+        >
+          Open
+        </button>
+        <button
+          type="button"
+          disabled={!itemMenu}
+          onClick={() => run(() => onRename(menu.panelId))}
+        >
+          Rename
+        </button>
+        <button
+          type="button"
+          disabled={!itemMenu}
+          onClick={() => run(() => onCopy(menu.panelId))}
+        >
+          Copy
+        </button>
+        <button
+          type="button"
+          disabled={!itemMenu}
+          onClick={() => run(() => onCut(menu.panelId))}
+        >
+          Cut
+        </button>
+        <button
+          type="button"
+          disabled={!canPaste}
+          onClick={() => run(() => onPaste(menu.panelId))}
+        >
+          Paste
+        </button>
+        <button
+          type="button"
+          onClick={() => run(() => onCreateFolder(menu.panelId))}
+        >
+          New Folder
+        </button>
+        <button
+          type="button"
+          onClick={() => run(() => onCreateFile(menu.panelId))}
+        >
+          New File
+        </button>
+        <button
+          type="button"
+          disabled={!itemMenu}
+          onClick={() => run(() => onTrash(menu.panelId))}
+        >
+          Move to Trash
+        </button>
+        <button
+          type="button"
+          disabled={!itemMenu}
+          onClick={() => run(() => onPermanentDelete(menu.panelId))}
+        >
+          Delete Permanently
+        </button>
+        <button
+          type="button"
+          disabled={!itemMenu}
+          onClick={() => run(() => onCopyPath(menu.panelId))}
+        >
+          Copy Path
+        </button>
+        <button
+          type="button"
+          disabled={!itemMenu}
+          onClick={() => run(() => onCopyName(menu.panelId))}
+        >
+          Copy Name
+        </button>
+        <button
+          type="button"
+          disabled={!itemMenu}
+          onClick={() => run(() => onProperties(menu.panelId, menu.entry))}
+        >
+          Properties
+        </button>
+        <button
+          type="button"
+          disabled={!itemMenu}
+          onClick={() => run(() => onReveal(menu.panelId, menu.entry))}
+        >
+          Reveal
+        </button>
+        <button
+          type="button"
+          onClick={() => run(() => onRefresh(menu.panelId))}
+        >
+          Refresh
+        </button>
+        <button
+          type="button"
+          onClick={() => run(() => onSelectAll(menu.panelId))}
+        >
+          Select All
+        </button>
+        <button
+          type="button"
+          onClick={() => run(() => onViewMode(menu.panelId, "details"))}
+        >
+          Details View
+        </button>
+        <button
+          type="button"
+          onClick={() => run(() => onViewMode(menu.panelId, "list"))}
+        >
+          List View
+        </button>
+        <button
+          type="button"
+          onClick={() => run(() => onViewMode(menu.panelId, "icons"))}
+        >
+          Icon View
+        </button>
+        <button
+          type="button"
+          onClick={() => run(() => onSort(menu.panelId, "name"))}
+        >
+          Sort Name
+        </button>
+        <button
+          type="button"
+          onClick={() => run(() => onSort(menu.panelId, "modified"))}
+        >
+          Sort Modified
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -1161,6 +2377,119 @@ function formatSize(size?: number | null): string {
   }
 
   return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function fileIcon(
+  entry: Pick<FileEntryDto, "kind" | "extension" | "name">,
+): string {
+  if (entry.kind === "directory") {
+    return "Folder";
+  }
+
+  const extension = (
+    entry.extension ??
+    entry.name.split(".").pop() ??
+    ""
+  ).toLowerCase();
+
+  if (["png", "jpg", "jpeg", "gif", "webp", "svg"].includes(extension)) {
+    return "Image";
+  }
+  if (["mp4", "mov", "mkv", "avi"].includes(extension)) {
+    return "Video";
+  }
+  if (["mp3", "wav", "flac", "aac"].includes(extension)) {
+    return "Audio";
+  }
+  if (["zip", "tar", "gz", "rar", "7z"].includes(extension)) {
+    return "Archive";
+  }
+  if (
+    ["pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx"].includes(extension)
+  ) {
+    return "Document";
+  }
+  if (
+    [
+      "rs",
+      "ts",
+      "tsx",
+      "js",
+      "jsx",
+      "py",
+      "go",
+      "json",
+      "html",
+      "css",
+    ].includes(extension)
+  ) {
+    return "Code";
+  }
+  if (entry.kind === "symlink") {
+    return "Link";
+  }
+
+  return "File";
+}
+
+function propertyType(properties: PathPropertiesDto): string {
+  if (properties.kind === "directory") {
+    return "Folder";
+  }
+
+  if (properties.isSymlink) {
+    return "Symlink";
+  }
+
+  return properties.kind;
+}
+
+function localPathFromUri(uri: string): string {
+  return uri.replace(/^local:\/\//, "");
+}
+
+function breadcrumbSegments(
+  uri: string,
+): Array<{ label: string; uri: string }> {
+  const path = localPathFromUri(uri).replace(/\/+$/, "");
+  const segments = path.split("/").filter(Boolean);
+  const result: Array<{ label: string; uri: string }> = [];
+  let current = "";
+
+  if (path.startsWith("/")) {
+    result.push({ label: "/", uri: "local:///" });
+  }
+
+  for (const segment of segments) {
+    current =
+      path.startsWith("/") || current ? `${current}/${segment}` : segment;
+    result.push({
+      label: segment,
+      uri: `local://${path.startsWith("/") ? current : `${current}/`}`,
+    });
+  }
+
+  return result.length > 0 ? result : [{ label: uri, uri }];
+}
+
+function searchMatchToEntry(
+  match: RecursiveSearchResultDto["matches"][number],
+): FileEntryDto {
+  return {
+    uri: match.uri,
+    name: match.name,
+    kind: match.kind,
+    size: match.size,
+    modifiedAt: match.modifiedAt,
+    isHidden: false,
+    isSymlink: match.kind === "symlink",
+    providerId: "local",
+    canRead: true,
+    canList: match.kind === "directory",
+    canWrite: true,
+    canDelete: true,
+    canRename: true,
+  };
 }
 
 function formatDate(value?: string | null): string {
@@ -1181,6 +2510,9 @@ interface OperationDialogViewProps {
   onSubmitCreateFolder: (
     dialog: Extract<OperationDialog, { type: "createFolder" }>,
   ) => void;
+  onSubmitCreateFile: (
+    dialog: Extract<OperationDialog, { type: "createFile" }>,
+  ) => void;
   onSubmitRename: (
     dialog: Extract<OperationDialog, { type: "rename" }>,
   ) => void;
@@ -1188,6 +2520,11 @@ interface OperationDialogViewProps {
     dialog: Extract<OperationDialog, { type: "copyMove" }>,
   ) => void;
   onSubmitTrash: (dialog: Extract<OperationDialog, { type: "trash" }>) => void;
+  onSubmitPermanentDelete: (
+    dialog: Extract<OperationDialog, { type: "permanentDelete" }>,
+  ) => void;
+  onCopyPath: (panelId: PanelId) => void;
+  onReveal: (panelId: PanelId, entry: FileEntryDto | null) => void;
 }
 
 function OperationDialogView({
@@ -1196,9 +2533,13 @@ function OperationDialogView({
   onUpdate,
   onReviewCopyMove,
   onSubmitCreateFolder,
+  onSubmitCreateFile,
   onSubmitRename,
   onSubmitCopyMove,
   onSubmitTrash,
+  onSubmitPermanentDelete,
+  onCopyPath,
+  onReveal,
 }: OperationDialogViewProps) {
   if (!dialog) {
     return null;
@@ -1207,13 +2548,19 @@ function OperationDialogView({
   const title =
     dialog.type === "createFolder"
       ? "Create Folder"
-      : dialog.type === "rename"
-        ? "Rename"
-        : dialog.type === "trash"
-          ? "Move to Trash"
-          : dialog.kind === "copy"
-            ? "Copy"
-            : "Move";
+      : dialog.type === "createFile"
+        ? "Create File"
+        : dialog.type === "rename"
+          ? "Rename"
+          : dialog.type === "properties"
+            ? "Properties"
+            : dialog.type === "permanentDelete"
+              ? "Delete Permanently"
+              : dialog.type === "trash"
+                ? "Move to Trash"
+                : dialog.kind === "copy"
+                  ? "Copy"
+                  : "Move";
 
   return (
     <div className="fo-dialog-backdrop" role="presentation">
@@ -1235,6 +2582,29 @@ function OperationDialogView({
               Folder name
               <input
                 aria-label="Folder name"
+                value={dialog.name}
+                onChange={(event) =>
+                  onUpdate({ ...dialog, name: event.target.value, error: null })
+                }
+              />
+            </label>
+            {dialog.error ? (
+              <div className="fo-operation-error">{dialog.error}</div>
+            ) : null}
+            <button type="submit">Create</button>
+          </form>
+        ) : null}
+        {dialog.type === "createFile" ? (
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              onSubmitCreateFile(dialog);
+            }}
+          >
+            <label>
+              File name
+              <input
+                aria-label="File name"
                 value={dialog.name}
                 onChange={(event) =>
                   onUpdate({ ...dialog, name: event.target.value, error: null })
@@ -1371,6 +2741,84 @@ function OperationDialogView({
             ) : null}
             <button type="submit">Move to Trash</button>
           </form>
+        ) : null}
+        {dialog.type === "permanentDelete" ? (
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              onSubmitPermanentDelete(dialog);
+            }}
+          >
+            <div className="fo-dialog-summary">
+              <span>Permanently delete {dialog.entries.length} item(s)</span>
+              {dialog.entries.slice(0, 5).map((entry) => (
+                <span key={entry.uri}>{entry.name}</span>
+              ))}
+            </div>
+            {dialog.error ? (
+              <div className="fo-operation-error">{dialog.error}</div>
+            ) : null}
+            <button type="submit">Delete Permanently</button>
+          </form>
+        ) : null}
+        {dialog.type === "properties" ? (
+          <div className="fo-properties">
+            {dialog.loading ? <div>Loading</div> : null}
+            {dialog.error ? (
+              <div className="fo-operation-error">{dialog.error}</div>
+            ) : null}
+            {dialog.properties ? (
+              <>
+                <dl>
+                  <dt>Name</dt>
+                  <dd>{dialog.properties.name}</dd>
+                  <dt>Path</dt>
+                  <dd>{localPathFromUri(dialog.properties.uri)}</dd>
+                  <dt>Type</dt>
+                  <dd>{propertyType(dialog.properties)}</dd>
+                  <dt>Size</dt>
+                  <dd>
+                    {formatSize(
+                      dialog.properties.size ?? dialog.properties.totalSize,
+                    )}
+                  </dd>
+                  <dt>Items</dt>
+                  <dd>{dialog.properties.itemCount ?? "Unavailable"}</dd>
+                  <dt>Modified</dt>
+                  <dd>{formatDate(dialog.properties.modifiedAt)}</dd>
+                  <dt>Created</dt>
+                  <dd>{formatDate(dialog.properties.createdAt)}</dd>
+                  <dt>Accessed</dt>
+                  <dd>{formatDate(dialog.properties.accessedAt)}</dd>
+                  <dt>Hidden</dt>
+                  <dd>{dialog.properties.isHidden ? "Yes" : "No"}</dd>
+                  <dt>Read-only</dt>
+                  <dd>{dialog.properties.readonly ? "Yes" : "No"}</dd>
+                </dl>
+                {dialog.properties.warnings.length > 0 ? (
+                  <div className="fo-dialog-summary">
+                    {dialog.properties.warnings.slice(0, 3).map((warning) => (
+                      <span key={warning}>{warning}</span>
+                    ))}
+                  </div>
+                ) : null}
+                <div className="fo-dialog-actions">
+                  <button
+                    type="button"
+                    onClick={() => onCopyPath(dialog.panelId)}
+                  >
+                    Copy Path
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onReveal(dialog.panelId, dialog.entry)}
+                  >
+                    Reveal
+                  </button>
+                </div>
+              </>
+            ) : null}
+          </div>
         ) : null}
       </section>
     </div>

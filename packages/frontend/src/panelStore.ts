@@ -3,6 +3,7 @@ import type { DirectoryBatchEventDto, FileEntryDto } from "@fileoctopus/ts-api";
 export type PanelId = "left" | "right";
 export type SortField = "name" | "type" | "size" | "modified";
 export type SortDirection = "asc" | "desc";
+export type ViewMode = "details" | "list" | "icons";
 
 export interface SortState {
   field: SortField;
@@ -22,7 +23,12 @@ export interface PanelTabState {
   loading: boolean;
   error: string | null;
   filter: string;
+  recursiveQuery: string;
   sort: SortState;
+  viewMode: ViewMode;
+  showHidden: boolean;
+  backStack: string[];
+  forwardStack: string[];
 }
 
 export interface PanelState {
@@ -38,10 +44,13 @@ export interface FileOctopusState {
 
 export type PanelAction =
   | { type: "setActivePanel"; panelId: PanelId }
-  | { type: "navigate"; panelId: PanelId; uri: string }
+  | { type: "navigate"; panelId: PanelId; uri: string; replace?: boolean }
+  | { type: "goBack"; panelId: PanelId }
+  | { type: "goForward"; panelId: PanelId }
   | { type: "startSession"; panelId: PanelId; sessionId: string }
   | { type: "applyBatch"; batch: DirectoryBatchEventDto }
   | { type: "setSelection"; panelId: PanelId; entryId: string | null }
+  | { type: "selectAll"; panelId: PanelId }
   | {
       type: "selectEntry";
       panelId: PanelId;
@@ -52,13 +61,10 @@ export type PanelAction =
   | { type: "setLoading"; panelId: PanelId; loading: boolean }
   | { type: "setError"; panelId: PanelId; error: string | null }
   | { type: "setFilter"; panelId: PanelId; filter: string }
-  | { type: "setSort"; panelId: PanelId; field: SortField };
-
-const defaultSort: SortState = {
-  field: "name",
-  direction: "asc",
-  directoriesFirst: true,
-};
+  | { type: "setRecursiveQuery"; panelId: PanelId; query: string }
+  | { type: "setSort"; panelId: PanelId; field: SortField }
+  | { type: "setViewMode"; panelId: PanelId; viewMode: ViewMode }
+  | { type: "toggleHidden"; panelId: PanelId };
 
 export function createInitialState(
   leftUri = homeUri(),
@@ -84,19 +90,39 @@ export function panelReducer(
         activePanelId: action.panelId,
       };
     case "navigate":
-      return updatePanel(state, action.panelId, (tab) => ({
-        ...tab,
-        uri: normalizeLocalInput(action.uri),
-        entriesById: {},
-        orderedEntryIds: [],
-        selectedIds: [],
-        selectedId: null,
-        focusedId: null,
-        anchorId: null,
-        sessionId: null,
-        loading: true,
-        error: null,
-      }));
+      return updatePanel(state, action.panelId, (tab) =>
+        applyNavigation(tab, normalizeLocalInput(action.uri), {
+          replace: action.replace,
+        }),
+      );
+    case "goBack":
+      return updatePanel(state, action.panelId, (tab) => {
+        const uri = tab.backStack[tab.backStack.length - 1];
+
+        if (!uri) {
+          return tab;
+        }
+
+        return applyNavigation(tab, uri, {
+          replace: true,
+          backStack: tab.backStack.slice(0, -1),
+          forwardStack: [tab.uri, ...tab.forwardStack],
+        });
+      });
+    case "goForward":
+      return updatePanel(state, action.panelId, (tab) => {
+        const [uri, ...rest] = tab.forwardStack;
+
+        if (!uri) {
+          return tab;
+        }
+
+        return applyNavigation(tab, uri, {
+          replace: true,
+          backStack: [...tab.backStack, tab.uri],
+          forwardStack: rest,
+        });
+      });
     case "startSession":
       return updatePanel(state, action.panelId, (tab) => ({
         ...tab,
@@ -114,6 +140,18 @@ export function panelReducer(
         focusedId: action.entryId,
         anchorId: action.entryId,
       }));
+    case "selectAll":
+      return updatePanel(state, action.panelId, (tab) => {
+        const ids = selectVisibleEntries(tab).map((entry) => entry.uri);
+
+        return {
+          ...tab,
+          selectedIds: ids,
+          selectedId: ids[0] ?? null,
+          focusedId: ids[0] ?? null,
+          anchorId: ids[0] ?? null,
+        };
+      });
     case "selectEntry":
       return updatePanel(state, action.panelId, (tab) =>
         selectEntry(tab, action.entryId, action.mode),
@@ -138,20 +176,54 @@ export function panelReducer(
         ...tab,
         filter: action.filter,
       }));
+    case "setRecursiveQuery":
+      return updatePanel(state, action.panelId, (tab) => ({
+        ...tab,
+        recursiveQuery: action.query,
+      }));
     case "setSort":
       return updatePanel(state, action.panelId, (tab) => {
-        const direction =
+        const direction: SortDirection =
           tab.sort.field === action.field && tab.sort.direction === "asc"
             ? "desc"
             : "asc";
+        const sort = {
+          ...tab.sort,
+          field: action.field,
+          direction,
+        };
+
+        persistJson("fileoctopus.sort", sort);
 
         return {
           ...tab,
-          sort: {
-            ...tab.sort,
-            field: action.field,
-            direction,
-          },
+          sort,
+        };
+      });
+    case "setViewMode":
+      persistValue("fileoctopus.viewMode", action.viewMode);
+
+      return updatePanel(state, action.panelId, (tab) => ({
+        ...tab,
+        viewMode: action.viewMode,
+      }));
+    case "toggleHidden":
+      return updatePanel(state, action.panelId, (tab) => {
+        const showHidden = !tab.showHidden;
+
+        persistValue("fileoctopus.showHidden", String(showHidden));
+
+        return {
+          ...tab,
+          showHidden,
+          entriesById: {},
+          orderedEntryIds: [],
+          selectedIds: [],
+          selectedId: null,
+          focusedId: null,
+          anchorId: null,
+          sessionId: null,
+          loading: true,
         };
       });
     default:
@@ -220,9 +292,49 @@ function createPanel(id: PanelId, uri: string): PanelState {
         loading: false,
         error: null,
         filter: "",
-        sort: defaultSort,
+        recursiveQuery: "",
+        sort: storedSort(),
+        viewMode: storedViewMode(),
+        showHidden: storedShowHidden(),
+        backStack: [],
+        forwardStack: [],
       },
     },
+  };
+}
+
+function applyNavigation(
+  tab: PanelTabState,
+  uri: string,
+  options: {
+    replace?: boolean;
+    backStack?: string[];
+    forwardStack?: string[];
+  } = {},
+): PanelTabState {
+  const changed = uri !== tab.uri;
+  const backStack =
+    options.backStack ??
+    (!options.replace && changed ? [...tab.backStack, tab.uri] : tab.backStack);
+  const forwardStack =
+    options.forwardStack ??
+    (!options.replace && changed ? [] : tab.forwardStack);
+
+  return {
+    ...tab,
+    uri,
+    entriesById: {},
+    orderedEntryIds: [],
+    selectedIds: [],
+    selectedId: null,
+    focusedId: null,
+    anchorId: null,
+    sessionId: null,
+    loading: true,
+    error: null,
+    filter: "",
+    backStack,
+    forwardStack,
   };
 }
 
@@ -452,12 +564,69 @@ function dateValue(value?: string | null): number {
   return value ? Date.parse(value) || 0 : 0;
 }
 
-function homeUri(): string {
+function storedViewMode(): ViewMode {
+  const value = readValue("fileoctopus.viewMode");
+
+  return value === "list" || value === "icons" || value === "details"
+    ? value
+    : "details";
+}
+
+function storedShowHidden(): boolean {
+  return readValue("fileoctopus.showHidden") === "true";
+}
+
+function storedSort(): SortState {
+  const value = readJson<Partial<SortState>>("fileoctopus.sort");
+  const field = value?.field;
+  const direction = value?.direction;
+
+  return {
+    field:
+      field === "type" || field === "size" || field === "modified"
+        ? field
+        : "name",
+    direction: direction === "desc" ? "desc" : "asc",
+    directoriesFirst: true,
+  };
+}
+
+function readValue(key: string): string | null {
   const storage = globalThis.localStorage;
-  const home =
-    storage && typeof storage.getItem === "function"
-      ? storage.getItem("fileoctopus.homeUri")
-      : null;
+
+  return storage && typeof storage.getItem === "function"
+    ? storage.getItem(key)
+    : null;
+}
+
+function persistValue(key: string, value: string) {
+  const storage = globalThis.localStorage;
+
+  if (storage && typeof storage.setItem === "function") {
+    storage.setItem(key, value);
+  }
+}
+
+function readJson<T>(key: string): T | null {
+  const value = readValue(key);
+
+  if (!value) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return null;
+  }
+}
+
+function persistJson(key: string, value: unknown) {
+  persistValue(key, JSON.stringify(value));
+}
+
+function homeUri(): string {
+  const home = readValue("fileoctopus.homeUri");
 
   if (home) return home;
 
