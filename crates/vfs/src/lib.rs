@@ -296,6 +296,7 @@ pub enum FileOperationError {
     DestinationMissing { uri: String },
     DestinationConflict { uri: String },
     RecursiveOperation { message: String },
+    UnsupportedSymlink { uri: String, message: String },
     UnsupportedTrash { message: String },
     Cancelled { job_id: Option<String> },
     Io { code: String, message: String },
@@ -314,6 +315,7 @@ impl FileOperationError {
             Self::DestinationMissing { .. } => "destination_missing",
             Self::DestinationConflict { .. } => "destination_conflict",
             Self::RecursiveOperation { .. } => "recursive_operation",
+            Self::UnsupportedSymlink { .. } => "unsupported_symlink",
             Self::UnsupportedTrash { .. } => "unsupported_trash",
             Self::Cancelled { .. } => "cancelled",
             Self::Io { .. } => "io_error",
@@ -326,6 +328,7 @@ impl FileOperationError {
             Self::InvalidRequest { message }
             | Self::InvalidPath { message, .. }
             | Self::RecursiveOperation { message }
+            | Self::UnsupportedSymlink { message, .. }
             | Self::UnsupportedTrash { message }
             | Self::Io { message, .. }
             | Self::Internal { message } => message.clone(),

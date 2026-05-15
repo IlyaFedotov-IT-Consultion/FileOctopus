@@ -13,6 +13,8 @@ import {
   normalizeIpcError,
 } from "@fileoctopus/ts-api";
 import type {
+  AppDataHealthResponse,
+  AppInfoResponse,
   ConflictPolicy,
   FileEntryDto,
   FileOperationPlanDto,
@@ -39,6 +41,9 @@ import {
 
 const rowHeight = 30;
 const overscan = 8;
+const isProductionBuild = Boolean(
+  (import.meta as ImportMeta & { env?: { PROD?: boolean } }).env?.PROD,
+);
 
 type CopyMoveKind = Extract<FileOperationKind, "copy" | "move">;
 
@@ -81,6 +86,17 @@ export function FileOctopusShell() {
   );
   const [jobs, setJobs] = useState<Record<string, JobSnapshot>>({});
   const [history, setHistory] = useState<OperationHistoryRecordDto[]>([]);
+  const [appInfo, setAppInfo] = useState<AppInfoResponse | null>(null);
+  const [appHealth, setAppHealth] = useState<AppDataHealthResponse | null>(
+    null,
+  );
+  const [diagnosticsDestination, setDiagnosticsDestination] = useState(
+    "/tmp/fileoctopus-diagnostics.zip",
+  );
+  const [diagnosticsMessage, setDiagnosticsMessage] = useState<string | null>(
+    null,
+  );
+  const [exportingDiagnostics, setExportingDiagnostics] = useState(false);
   const [operationError, setOperationError] = useState<string | null>(null);
   const [dialog, setDialog] = useState<OperationDialog | null>(null);
   const left = activeTab(state.panels.left);
@@ -132,6 +148,7 @@ export function FileOctopusShell() {
           ...current,
           [jobIdValue(event.jobId)]: mergeFailed(current, event),
         }));
+        refreshVisiblePanels();
         void refreshHistory();
       }),
       client.fileOperations.onJobCancelled((event) => {
@@ -159,6 +176,7 @@ export function FileOctopusShell() {
     void navigatePanel("left", activeTab(state.panels.left).uri);
     void navigatePanel("right", activeTab(state.panels.right).uri);
     void refreshHistory();
+    void refreshDiagnostics();
   }, []);
 
   async function navigatePanel(panelId: PanelId, input: string) {
@@ -222,6 +240,51 @@ export function FileOctopusShell() {
       setHistory(response.operations);
     } catch (error) {
       setOperationError(normalizeIpcError(error).message);
+    }
+  }
+
+  async function refreshDiagnostics() {
+    try {
+      const [info, health] = await Promise.all([
+        client.getAppInfo(),
+        client.diagnostics.appDataHealth(),
+      ]);
+
+      setAppInfo(info);
+      setAppHealth(health);
+    } catch (error) {
+      setOperationError(normalizeIpcError(error).message);
+    }
+  }
+
+  async function clearHistory() {
+    try {
+      await client.operationHistory.clearOperationHistory();
+      await refreshHistory();
+    } catch (error) {
+      setOperationError(normalizeIpcError(error).message);
+    }
+  }
+
+  async function exportDiagnostics() {
+    if (!diagnosticsDestination.trim()) {
+      setDiagnosticsMessage("Enter a diagnostics bundle destination.");
+      return;
+    }
+
+    setExportingDiagnostics(true);
+    setDiagnosticsMessage(null);
+
+    try {
+      const response = await client.diagnostics.exportBundle({
+        destination: diagnosticsDestination.trim(),
+      });
+
+      setDiagnosticsMessage(`Exported ${response.files.length} file(s).`);
+    } catch (error) {
+      setDiagnosticsMessage(normalizeIpcError(error).message);
+    } finally {
+      setExportingDiagnostics(false);
     }
   }
 
@@ -466,15 +529,68 @@ export function FileOctopusShell() {
   }
 
   function handleShellKeyDown(event: KeyboardEvent<HTMLElement>) {
-    if (event.key !== "Tab") {
+    if (event.key === "Escape" && dialog) {
+      event.preventDefault();
+      setDialog(null);
       return;
     }
 
-    event.preventDefault();
-    dispatch({
-      type: "setActivePanel",
-      panelId: state.activePanelId === "left" ? "right" : "left",
-    });
+    if (isEditableTarget(event.target)) {
+      return;
+    }
+
+    if (event.key === "Tab") {
+      event.preventDefault();
+      dispatch({
+        type: "setActivePanel",
+        panelId: state.activePanelId === "left" ? "right" : "left",
+      });
+      return;
+    }
+
+    if (dialog) {
+      return;
+    }
+
+    const panelId = state.activePanelId;
+    const tab = activeTab(state.panels[panelId]);
+    const selectedEntry =
+      selectVisibleEntries(tab).find((entry) => entry.uri === tab.selectedId) ??
+      null;
+
+    if (event.key === "Enter") {
+      event.preventDefault();
+      activateEntry(panelId, selectedEntry);
+      return;
+    }
+
+    if (
+      event.key === "Backspace" ||
+      (event.altKey && event.key === "ArrowUp")
+    ) {
+      const upUri = parentUri(tab.uri);
+
+      if (upUri) {
+        event.preventDefault();
+        void navigatePanel(panelId, upUri);
+      }
+
+      return;
+    }
+
+    if (
+      event.key === "F5" ||
+      (event.ctrlKey && event.key.toLowerCase() === "r")
+    ) {
+      event.preventDefault();
+      void navigatePanel(panelId, tab.uri);
+      return;
+    }
+
+    if (event.key === "Delete") {
+      event.preventDefault();
+      handleTrash(panelId);
+    }
   }
 
   return (
@@ -561,9 +677,18 @@ export function FileOctopusShell() {
         <JobActivityPanel
           jobs={Object.values(jobs)}
           history={history}
+          appInfo={appInfo}
+          appHealth={appHealth}
+          diagnosticsDestination={diagnosticsDestination}
+          diagnosticsMessage={diagnosticsMessage}
+          exportingDiagnostics={exportingDiagnostics}
           error={operationError}
           onCancel={(jobId) => void client.jobs.cancelJob({ jobId })}
           onRefreshHistory={() => void refreshHistory()}
+          onClearHistory={() => void clearHistory()}
+          onRefreshDiagnostics={() => void refreshDiagnostics()}
+          onDiagnosticsDestinationChange={setDiagnosticsDestination}
+          onExportDiagnostics={() => void exportDiagnostics()}
         />
         <OperationDialogView
           dialog={dialog}
@@ -1255,17 +1380,35 @@ function OperationDialogView({
 interface JobActivityPanelProps {
   jobs: JobSnapshot[];
   history: OperationHistoryRecordDto[];
+  appInfo: AppInfoResponse | null;
+  appHealth: AppDataHealthResponse | null;
+  diagnosticsDestination: string;
+  diagnosticsMessage: string | null;
+  exportingDiagnostics: boolean;
   error: string | null;
   onCancel: (jobId: string) => void;
   onRefreshHistory: () => void;
+  onClearHistory: () => void;
+  onRefreshDiagnostics: () => void;
+  onDiagnosticsDestinationChange: (value: string) => void;
+  onExportDiagnostics: () => void;
 }
 
 function JobActivityPanel({
   jobs,
   history,
+  appInfo,
+  appHealth,
+  diagnosticsDestination,
+  diagnosticsMessage,
+  exportingDiagnostics,
   error,
   onCancel,
   onRefreshHistory,
+  onClearHistory,
+  onRefreshDiagnostics,
+  onDiagnosticsDestinationChange,
+  onExportDiagnostics,
 }: JobActivityPanelProps) {
   const activeJobs = jobs.filter(
     (job) => job.status === "queued" || job.status === "running",
@@ -1318,7 +1461,12 @@ function JobActivityPanel({
         })
       )}
       <section className="fo-history" aria-label="Operation history">
-        <strong>History</strong>
+        <header>
+          <strong>History</strong>
+          <button type="button" onClick={onClearHistory}>
+            Clear
+          </button>
+        </header>
         {history.length === 0 ? (
           <div className="fo-empty-inline">No recent operations</div>
         ) : (
@@ -1330,6 +1478,52 @@ function JobActivityPanel({
             </div>
           ))
         )}
+      </section>
+      <section className="fo-diagnostics" aria-label="Diagnostics">
+        <header>
+          <strong>Diagnostics</strong>
+          <button type="button" onClick={onRefreshDiagnostics}>
+            Refresh
+          </button>
+        </header>
+        <div className="fo-diagnostics-grid">
+          <span>Version</span>
+          <span>
+            {appInfo
+              ? `${appInfo.version} ${appInfo.buildProfile} ${appInfo.targetOs}`
+              : "Loading"}
+          </span>
+          <span>Commit</span>
+          <span>{appInfo?.commitSha ?? "unavailable"}</span>
+          <span>Schema</span>
+          <span>{appHealth?.schemaVersion ?? "unknown"}</span>
+          <span>Recovered</span>
+          <span>{appHealth?.startupRecoveryCount ?? 0}</span>
+          <span>Data</span>
+          <span>{appHealth?.dataDir ?? "unknown"}</span>
+          <span>Logs</span>
+          <span>{appHealth?.logDir ?? "unknown"}</span>
+        </div>
+        <label>
+          Diagnostics bundle
+          <input
+            aria-label="Diagnostics bundle destination"
+            value={diagnosticsDestination}
+            onChange={(event) =>
+              onDiagnosticsDestinationChange(event.target.value)
+            }
+          />
+        </label>
+        <button
+          type="button"
+          disabled={exportingDiagnostics}
+          onClick={onExportDiagnostics}
+        >
+          {exportingDiagnostics ? "Exporting" : "Export"}
+        </button>
+        {diagnosticsMessage ? (
+          <div className="fo-empty-inline">{diagnosticsMessage}</div>
+        ) : null}
       </section>
     </aside>
   );
@@ -1463,13 +1657,30 @@ function operationErrorMessage(code: string, fallback: string): string {
   const messages: Record<string, string> = {
     permission_denied: "Permission denied for this operation.",
     not_found: "The selected file or folder no longer exists.",
+    destination_missing: "The destination folder no longer exists.",
     destination_conflict: "A destination item already exists.",
     invalid_name: "Enter a valid name without path separators.",
+    unsupported_symlink:
+      "Symlink file operations are not supported in this MVP.",
     unsupported_trash: "Move to Trash is not supported on this platform.",
     cancelled: "Operation cancelled.",
+    interrupted: "Operation interrupted by app shutdown.",
   };
 
   return messages[code] ?? fallback;
+}
+
+function isEditableTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+
+  return (
+    target instanceof HTMLInputElement ||
+    target instanceof HTMLTextAreaElement ||
+    target instanceof HTMLSelectElement ||
+    target.isContentEditable
+  );
 }
 
 interface ErrorBoundaryState {
@@ -1490,7 +1701,23 @@ class ErrorBoundary extends Component<
     if (this.state.error) {
       return (
         <main className="fo-shell fo-fatal-error">
-          {this.state.error.message}
+          <h1>FileOctopus recovered from a UI error</h1>
+          {!isProductionBuild ? <pre>{this.state.error.message}</pre> : null}
+          <div className="fo-dialog-actions">
+            <button type="button" onClick={() => globalThis.location.reload()}>
+              Reload
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                void globalThis.navigator.clipboard?.writeText(
+                  this.state.error?.stack ?? this.state.error?.message ?? "",
+                )
+              }
+            >
+              Copy Diagnostics
+            </button>
+          </div>
         </main>
       );
     }

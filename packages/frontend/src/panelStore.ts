@@ -459,7 +459,16 @@ function homeUri(): string {
       ? storage.getItem("fileoctopus.homeUri")
       : null;
 
-  return home || "local:///Users/ilya";
+  if (home) return home;
+
+  const platform = typeof navigator !== "undefined" ? navigator.platform : "";
+  if (platform.startsWith("Linux")) {
+    return "local:///home/ilya";
+  }
+  if (platform.startsWith("Win")) {
+    return "local:///C:/Users/ilya";
+  }
+  return "local:///Users/ilya";
 }
 
 function documentsUri(): string {

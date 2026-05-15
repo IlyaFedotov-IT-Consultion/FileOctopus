@@ -23,3 +23,4 @@ telemetry = { path = "../../../crates/telemetry" }
 tokio = { version = "1", features = ["sync"] }
 uuid = { version = "1", features = ["v4"] }
 vfs = { path = "../../../crates/vfs" }
+zip = "0.6"

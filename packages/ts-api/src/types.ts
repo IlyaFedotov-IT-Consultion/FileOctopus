@@ -22,6 +22,33 @@ export type UnlistenFn = () => void;
 export interface AppInfoResponse {
   name: string;
   version: string;
+  buildProfile: string;
+  commitSha?: string | null;
+  targetOs: string;
+}
+
+export interface AppDataHealthResponse {
+  configDir: string;
+  dataDir: string;
+  logDir: string;
+  databasePath: string;
+  databaseExists: boolean;
+  schemaVersion: number;
+  missingDirectories: string[];
+  startupRecoveryCount: number;
+}
+
+export interface ExportDiagnosticsBundleRequest {
+  destination: string;
+}
+
+export interface ExportDiagnosticsBundleResponse {
+  path: string;
+  files: string[];
+}
+
+export interface ClearOperationHistoryResponse {
+  deletedCount: number;
 }
 
 export interface IpcError {

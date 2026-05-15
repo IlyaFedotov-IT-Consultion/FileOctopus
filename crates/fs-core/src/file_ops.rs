@@ -201,7 +201,8 @@ fn plan_rename_item(
         })?;
     let destination = parent.join(request.new_name.as_ref().unwrap());
     let destination_uri = ResourceUri::from_local_path(&destination)?;
-    let metadata = fs::metadata(&source_path).map_err(|error| map_io_error(&source, error))?;
+    let metadata =
+        fs::symlink_metadata(&source_path).map_err(|error| map_io_error(&source, error))?;
 
     Ok(FileOperationItem {
         source: Some(source),
@@ -254,7 +255,8 @@ fn plan_trash_items(
         .iter()
         .map(|source| {
             let path = canonical_existing_path(&source.to_local_path()?, source)?;
-            let metadata = fs::metadata(&path).map_err(|error| map_io_error(source, error))?;
+            let metadata =
+                fs::symlink_metadata(&path).map_err(|error| map_io_error(source, error))?;
 
             Ok(FileOperationItem {
                 source: Some(source.clone()),
@@ -275,7 +277,7 @@ fn collect_copy_or_move_items(
     warnings: &mut Vec<FileOperationWarning>,
 ) -> Result<(), FileOperationError> {
     let uri = ResourceUri::from_local_path(path)?;
-    let metadata = match fs::metadata(path) {
+    let metadata = match fs::symlink_metadata(path) {
         Ok(metadata) => metadata,
         Err(error) => {
             warnings.push(FileOperationWarning {
@@ -367,11 +369,7 @@ fn execute_copy(
         match item.kind {
             FileKind::Directory => fs::create_dir_all(&destination)
                 .map_err(|error| map_std_io_error(&destination, error))?,
-            FileKind::File
-            | FileKind::Symlink
-            | FileKind::Archive
-            | FileKind::Virtual
-            | FileKind::Unknown => {
+            FileKind::File | FileKind::Archive | FileKind::Virtual | FileKind::Unknown => {
                 if let Some(parent) = destination.parent() {
                     fs::create_dir_all(parent).map_err(|error| map_std_io_error(parent, error))?;
                 }
@@ -386,6 +384,19 @@ fn execute_copy(
                         sink,
                     )?;
                 }
+            }
+            FileKind::Symlink => {
+                let source =
+                    item.source
+                        .as_ref()
+                        .ok_or_else(|| FileOperationError::InvalidRequest {
+                            message: "symlink item has no source".to_string(),
+                        })?;
+
+                return Err(FileOperationError::UnsupportedSymlink {
+                    uri: source.as_str().to_string(),
+                    message: "copying symlink objects is not supported in the MVP".to_string(),
+                });
             }
         }
 
@@ -708,7 +719,9 @@ fn canonical_existing_path(path: &Path, uri: &ResourceUri) -> Result<PathBuf, Fi
 }
 
 fn file_kind(metadata: &fs::Metadata) -> FileKind {
-    if metadata.is_dir() {
+    if metadata.file_type().is_symlink() {
+        FileKind::Symlink
+    } else if metadata.is_dir() {
         FileKind::Directory
     } else if metadata.is_file() {
         FileKind::File
@@ -876,6 +889,62 @@ mod tests {
     }
 
     #[test]
+    fn planner_reports_directory_destination_conflicts() {
+        let dir = tempdir().unwrap();
+        let source = dir.path().join("source");
+        let dest = dir.path().join("dest");
+
+        fs::create_dir(&source).unwrap();
+        fs::create_dir(&dest).unwrap();
+        fs::create_dir(dest.join("source")).unwrap();
+
+        let plan = plan_file_operation(request(
+            FileOperationKind::Copy,
+            vec![uri(&source)],
+            Some(uri(&dest)),
+        ))
+        .unwrap();
+
+        assert_eq!(plan.conflicts.len(), 1);
+    }
+
+    #[test]
+    fn planner_reports_missing_source() {
+        let dir = tempdir().unwrap();
+        let source = dir.path().join("missing.txt");
+        let dest = dir.path().join("dest");
+
+        fs::create_dir(&dest).unwrap();
+
+        let error = plan_file_operation(request(
+            FileOperationKind::Copy,
+            vec![uri(&source)],
+            Some(uri(&dest)),
+        ))
+        .unwrap_err();
+
+        assert_eq!(error.code(), "not_found");
+    }
+
+    #[test]
+    fn planner_reports_missing_destination_parent() {
+        let dir = tempdir().unwrap();
+        let source = dir.path().join("source.txt");
+        let dest = dir.path().join("missing");
+
+        fs::write(&source, b"a").unwrap();
+
+        let error = plan_file_operation(request(
+            FileOperationKind::Copy,
+            vec![uri(&source)],
+            Some(uri(&dest)),
+        ))
+        .unwrap_err();
+
+        assert_eq!(error.code(), "destination_missing");
+    }
+
+    #[test]
     fn copy_file_produces_identical_content() {
         let dir = tempdir().unwrap();
         let source = dir.path().join("a.txt");
@@ -929,6 +998,80 @@ mod tests {
             fs::read(dest.join("source/nested/file.txt")).unwrap(),
             b"nested"
         );
+    }
+
+    #[test]
+    fn unicode_paths_copy_move_rename_and_trash_plan_without_lossy_conversion() {
+        let dir = tempdir().unwrap();
+        let source = dir.path().join("файл 🚀 e\u{301}.txt");
+        let dest = dir.path().join("назначение");
+
+        fs::write(&source, b"unicode").unwrap();
+        fs::create_dir(&dest).unwrap();
+
+        let copy = plan_file_operation(request(
+            FileOperationKind::Copy,
+            vec![uri(&source)],
+            Some(uri(&dest)),
+        ))
+        .unwrap();
+        execute_file_operation(
+            &copy,
+            &JobId::new("job"),
+            &CancellationToken::new(),
+            &|_| {},
+        )
+        .unwrap();
+
+        assert_eq!(
+            fs::read(dest.join("файл 🚀 e\u{301}.txt")).unwrap(),
+            b"unicode"
+        );
+
+        let mut rename = request(FileOperationKind::Rename, vec![uri(&source)], None);
+        rename.new_name = Some("renamed-ß.txt".to_string());
+        let rename = plan_file_operation(rename).unwrap();
+        execute_file_operation(
+            &rename,
+            &JobId::new("job"),
+            &CancellationToken::new(),
+            &|_| {},
+        )
+        .unwrap();
+
+        assert!(dir.path().join("renamed-ß.txt").exists());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn symlink_listing_policy_does_not_recurse_or_copy_link_objects() {
+        let dir = tempdir().unwrap();
+        let source = dir.path().join("source");
+        let dest = dir.path().join("dest");
+        let link = source.join("loop");
+
+        fs::create_dir(&source).unwrap();
+        fs::create_dir(&dest).unwrap();
+        std::os::unix::fs::symlink(&source, &link).unwrap();
+
+        let plan = plan_file_operation(request(
+            FileOperationKind::Copy,
+            vec![uri(&source)],
+            Some(uri(&dest)),
+        ))
+        .unwrap();
+
+        assert!(plan.items.iter().any(|item| item.kind == FileKind::Symlink));
+
+        let error = execute_file_operation(
+            &plan,
+            &JobId::new("job"),
+            &CancellationToken::new(),
+            &|_| {},
+        )
+        .unwrap_err();
+
+        assert_eq!(error.code(), "unsupported_symlink");
     }
 
     #[test]
@@ -1047,6 +1190,32 @@ mod tests {
     }
 
     #[test]
+    fn open_file_rename_does_not_crash() {
+        let dir = tempdir().unwrap();
+        let source = dir.path().join("open.txt");
+
+        fs::write(&source, b"data").unwrap();
+        let _open_handle = File::open(&source).unwrap();
+
+        let mut operation = request(FileOperationKind::Rename, vec![uri(&source)], None);
+        operation.new_name = Some("renamed-open.txt".to_string());
+        let plan = plan_file_operation(operation).unwrap();
+        let result = execute_file_operation(
+            &plan,
+            &JobId::new("job"),
+            &CancellationToken::new(),
+            &|_| {},
+        );
+
+        if let Err(error) = result {
+            assert!(matches!(
+                error.code(),
+                "permission_denied" | "io_error" | "destination_conflict"
+            ));
+        }
+    }
+
+    #[test]
     fn create_directory_rejects_duplicate() {
         let dir = tempdir().unwrap();
         let target = dir.path().join("new");
@@ -1079,6 +1248,33 @@ mod tests {
 
         fs::write(&source, vec![7_u8; (PROGRESS_BYTE_INTERVAL as usize) * 2]).unwrap();
         fs::create_dir(&dest).unwrap();
+
+        let plan = plan_file_operation(request(
+            FileOperationKind::Copy,
+            vec![uri(&source)],
+            Some(uri(&dest)),
+        ))
+        .unwrap();
+        let token = cancel.clone();
+        let result = execute_file_operation(&plan, &JobId::new("job"), &cancel, &move |_| {
+            token.cancel();
+        });
+
+        assert_eq!(result.unwrap_err().code(), "cancelled");
+    }
+
+    #[test]
+    fn cancellation_stops_many_small_file_copy() {
+        let dir = tempdir().unwrap();
+        let source = dir.path().join("source");
+        let dest = dir.path().join("dest");
+        let cancel = CancellationToken::new();
+
+        fs::create_dir(&source).unwrap();
+        fs::create_dir(&dest).unwrap();
+        for index in 0..50 {
+            fs::write(source.join(format!("file-{index}.txt")), b"x").unwrap();
+        }
 
         let plan = plan_file_operation(request(
             FileOperationKind::Copy,

@@ -335,8 +335,44 @@ button:disabled {
   gap: 4px;
 }
 
+.fo-history header,
+.fo-diagnostics header {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 8px;
+}
+
 .fo-history-row {
   grid-template-columns: 110px 90px minmax(0, 1fr);
+}
+
+.fo-diagnostics {
+  display: grid;
+  gap: 6px;
+  border-top: 1px solid #c3ccd8;
+  padding-top: 6px;
+}
+
+.fo-diagnostics-grid {
+  display: grid;
+  grid-template-columns: 74px minmax(0, 1fr);
+  gap: 4px 8px;
+}
+
+.fo-diagnostics-grid span,
+.fo-diagnostics label {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.fo-diagnostics input {
+  width: 100%;
+  min-height: 30px;
+  border: 1px solid #929dac;
+  background: #ffffff;
+  color: #18202a;
+  padding: 5px 8px;
 }
 
 .fo-operation-error {

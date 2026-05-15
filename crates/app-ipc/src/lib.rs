@@ -7,12 +7,54 @@ use vfs::{
     FileOperationWarning, ResourceUri, VfsError,
 };
 
-pub const DIRECTORY_BATCH_EVENT: &str = "directory.batch";
-pub const JOB_STARTED_EVENT: &str = "fileOperation.job.started";
-pub const JOB_PROGRESS_EVENT: &str = "fileOperation.job.progress";
-pub const JOB_COMPLETED_EVENT: &str = "fileOperation.job.completed";
-pub const JOB_FAILED_EVENT: &str = "fileOperation.job.failed";
-pub const JOB_CANCELLED_EVENT: &str = "fileOperation.job.cancelled";
+pub const DIRECTORY_BATCH_EVENT: &str = "directory:batch";
+pub const JOB_STARTED_EVENT: &str = "fileOperation:job:started";
+pub const JOB_PROGRESS_EVENT: &str = "fileOperation:job:progress";
+pub const JOB_COMPLETED_EVENT: &str = "fileOperation:job:completed";
+pub const JOB_FAILED_EVENT: &str = "fileOperation:job:failed";
+pub const JOB_CANCELLED_EVENT: &str = "fileOperation:job:cancelled";
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AppInfoResponse {
+    pub name: String,
+    pub version: String,
+    pub build_profile: String,
+    pub commit_sha: Option<String>,
+    pub target_os: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AppDataHealthResponse {
+    pub config_dir: String,
+    pub data_dir: String,
+    pub log_dir: String,
+    pub database_path: String,
+    pub database_exists: bool,
+    pub schema_version: u32,
+    pub missing_directories: Vec<String>,
+    pub startup_recovery_count: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ExportDiagnosticsBundleRequest {
+    pub destination: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ExportDiagnosticsBundleResponse {
+    pub path: String,
+    pub files: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ClearOperationHistoryResponse {
+    pub deleted_count: usize,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

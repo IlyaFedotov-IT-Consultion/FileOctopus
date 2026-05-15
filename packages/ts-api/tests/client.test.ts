@@ -12,7 +12,13 @@ describe("FileOctopusClient", () => {
     const transport: IpcTransport = {
       async invoke<TResponse>(command: string) {
         calls.push(command);
-        return { name: "FileOctopus", version: "0.1.0" } as TResponse;
+        return {
+          name: "FileOctopus",
+          version: "0.1.0",
+          buildProfile: "debug",
+          commitSha: null,
+          targetOs: "linux",
+        } as TResponse;
       },
     };
 
@@ -20,6 +26,7 @@ describe("FileOctopusClient", () => {
     const response = await client.getAppInfo();
 
     expect(response.name).toBe("FileOctopus");
+    expect(response.targetOs).toBe("linux");
     expect(calls).toEqual(["app.get_info"]);
   });
 
@@ -109,6 +116,27 @@ describe("FileOctopusClient", () => {
           return { operations: [] } as TResponse;
         }
 
+        if (command === "diagnostics.appDataHealth") {
+          return {
+            configDir: "~/.fileoctopus/config",
+            dataDir: "~/.fileoctopus",
+            logDir: "~/.fileoctopus/logs",
+            databasePath: "~/.fileoctopus/operation-history.sqlite",
+            databaseExists: true,
+            schemaVersion: 1,
+            missingDirectories: [],
+            startupRecoveryCount: 0,
+          } as TResponse;
+        }
+
+        if (command === "diagnostics.exportBundle") {
+          return { path: "/tmp/fileoctopus.zip", files: [] } as TResponse;
+        }
+
+        if (command === "operationHistory.clear") {
+          return { deletedCount: 1 } as TResponse;
+        }
+
         return {
           job: {
             jobId: "job-1",
@@ -160,6 +188,11 @@ describe("FileOctopusClient", () => {
     await client.jobs.cancelJob({ jobId: "job-1" });
     await client.jobs.getJobStatus({ jobId: "job-1" });
     await client.operationHistory.listRecentOperations({ limit: 10 });
+    await client.operationHistory.clearOperationHistory();
+    await client.diagnostics.appDataHealth();
+    await client.diagnostics.exportBundle({
+      destination: "/tmp/fileoctopus.zip",
+    });
     await client.fileOperations.onJobProgress((event) =>
       events.push(String(event.jobId)),
     );
@@ -170,6 +203,9 @@ describe("FileOctopusClient", () => {
       "job.cancel",
       "job.status",
       "operationHistory.listRecent",
+      "operationHistory.clear",
+      "diagnostics.appDataHealth",
+      "diagnostics.exportBundle",
     ]);
     expect(events).toEqual(["job-1"]);
   });

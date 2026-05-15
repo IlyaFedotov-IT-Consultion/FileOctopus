@@ -13,6 +13,9 @@ use rusqlite::{params, Connection};
 use thiserror::Error;
 use vfs::{FileOperationError, FileOperationPlan, FileOperationRequest, VfsRegistry};
 
+const SCHEMA_VERSION: u32 = 1;
+const HISTORY_RETENTION_LIMIT: u32 = 500;
+
 #[derive(Debug, Error)]
 pub enum AppCoreError {
     #[error("failed to initialize telemetry: {0}")]
@@ -27,6 +30,8 @@ pub enum AppCoreError {
 pub struct AppState {
     vfs: Arc<VfsRegistry>,
     operations: Arc<OperationRuntime>,
+    paths: AppPaths,
+    startup_recovery_count: usize,
 }
 
 impl AppState {
@@ -37,30 +42,130 @@ impl AppState {
     pub fn operations(&self) -> Arc<OperationRuntime> {
         self.operations.clone()
     }
+
+    pub fn app_data_health(&self) -> AppDataHealth {
+        let schema_version = self.operations.schema_version().unwrap_or(0);
+        let database_exists = self.paths.history_db.exists();
+        let mut missing_directories = Vec::new();
+
+        for (name, path) in [
+            ("configDir", &self.paths.config_dir),
+            ("dataDir", &self.paths.data_dir),
+            ("logDir", &self.paths.log_dir),
+        ] {
+            if !path.exists() {
+                missing_directories.push(name.to_string());
+            }
+        }
+
+        AppDataHealth {
+            config_dir: self.paths.config_dir.to_string_lossy().to_string(),
+            data_dir: self.paths.data_dir.to_string_lossy().to_string(),
+            log_dir: self.paths.log_dir.to_string_lossy().to_string(),
+            database_path: self.paths.history_db.to_string_lossy().to_string(),
+            database_exists,
+            schema_version,
+            missing_directories,
+            startup_recovery_count: self.startup_recovery_count,
+        }
+    }
+
+    pub fn paths(&self) -> &AppPaths {
+        &self.paths
+    }
 }
 
 pub struct AppCore;
 
 impl AppCore {
     pub fn boot() -> Result<Arc<AppState>, AppCoreError> {
-        Self::boot_with_history_path(default_history_path())
+        let paths = AppPaths::default();
+
+        Self::boot_with_paths(paths)
     }
 
     pub fn boot_with_history_path(history_path: PathBuf) -> Result<Arc<AppState>, AppCoreError> {
+        let paths = AppPaths {
+            history_db: history_path,
+            ..AppPaths::default()
+        };
+
+        Self::boot_with_paths(paths)
+    }
+
+    pub fn boot_with_paths(paths: AppPaths) -> Result<Arc<AppState>, AppCoreError> {
         telemetry::init().map_err(|error| AppCoreError::Telemetry(error.to_string()))?;
+        paths
+            .ensure_directories()
+            .map_err(|error| AppCoreError::History(error.to_string()))?;
 
         let vfs = Arc::new(VfsRegistry::new());
 
         vfs.register(Arc::new(LocalFsProvider::new()))
             .map_err(|error| AppCoreError::Vfs(error.to_string()))?;
-        let history = OperationHistoryRepository::new(history_path)
+        let history = OperationHistoryRepository::new(paths.history_db.clone())
+            .map_err(|error| AppCoreError::History(error.to_string()))?;
+        let startup_recovery_count = history
+            .mark_interrupted_jobs()
             .map_err(|error| AppCoreError::History(error.to_string()))?;
         let operations = Arc::new(OperationRuntime::new(history));
 
         telemetry::info("FileOctopus app core booted");
 
-        Ok(Arc::new(AppState { vfs, operations }))
+        Ok(Arc::new(AppState {
+            vfs,
+            operations,
+            paths,
+            startup_recovery_count,
+        }))
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AppPaths {
+    pub config_dir: PathBuf,
+    pub data_dir: PathBuf,
+    pub log_dir: PathBuf,
+    pub history_db: PathBuf,
+}
+
+impl AppPaths {
+    pub fn ensure_directories(&self) -> std::io::Result<()> {
+        std::fs::create_dir_all(&self.config_dir)?;
+        std::fs::create_dir_all(&self.data_dir)?;
+        std::fs::create_dir_all(&self.log_dir)?;
+
+        if let Some(parent) = self.history_db.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+
+        Ok(())
+    }
+}
+
+impl Default for AppPaths {
+    fn default() -> Self {
+        let root = fileoctopus_home();
+
+        Self {
+            config_dir: root.join("config"),
+            data_dir: root.clone(),
+            log_dir: telemetry::default_log_dir(),
+            history_db: root.join("operation-history.sqlite"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AppDataHealth {
+    pub config_dir: String,
+    pub data_dir: String,
+    pub log_dir: String,
+    pub database_path: String,
+    pub database_exists: bool,
+    pub schema_version: u32,
+    pub missing_directories: Vec<String>,
+    pub startup_recovery_count: usize,
 }
 
 #[derive(Clone)]
@@ -261,6 +366,22 @@ impl OperationRuntime {
     pub fn recent_history(&self, limit: u32) -> Vec<OperationHistoryRecord> {
         self.history.list_recent(limit).unwrap_or_default()
     }
+
+    pub fn clear_terminal_history(&self) -> Result<usize, String> {
+        self.history
+            .clear_terminal_history()
+            .map_err(|error| error.to_string())
+    }
+
+    pub fn cleanup_history(&self) -> Result<usize, String> {
+        self.history
+            .cleanup_terminal_history(HISTORY_RETENTION_LIMIT)
+            .map_err(|error| error.to_string())
+    }
+
+    pub fn schema_version(&self) -> rusqlite::Result<u32> {
+        self.history.schema_version()
+    }
 }
 
 #[derive(Clone)]
@@ -291,7 +412,22 @@ impl OperationHistoryRepository {
 
     pub fn migrate(&self) -> rusqlite::Result<()> {
         let connection = self.connect()?;
+        let user_version: u32 =
+            connection.query_row("pragma user_version", [], |row| row.get(0))?;
 
+        if user_version > SCHEMA_VERSION {
+            return Err(rusqlite::Error::InvalidParameterName(format!(
+                "unsupported future schema version {user_version}"
+            )));
+        }
+
+        connection.execute(
+            "create table if not exists schema_meta (
+                key text primary key,
+                value text not null
+            )",
+            [],
+        )?;
         connection.execute(
             "create table if not exists operation_history (
                 job_id text primary key,
@@ -306,8 +442,45 @@ impl OperationHistoryRepository {
             )",
             [],
         )?;
+        connection.execute(
+            "insert into schema_meta (key, value) values ('schema_version', ?1)
+             on conflict(key) do update set value = excluded.value",
+            [SCHEMA_VERSION.to_string()],
+        )?;
+        connection.pragma_update(None, "user_version", SCHEMA_VERSION)?;
 
         Ok(())
+    }
+
+    pub fn schema_version(&self) -> rusqlite::Result<u32> {
+        let connection = self.connect()?;
+        let value: String = connection
+            .query_row(
+                "select value from schema_meta where key = 'schema_version'",
+                [],
+                |row| row.get(0),
+            )
+            .or_else(|_| {
+                connection.query_row("pragma user_version", [], |row| {
+                    let version: u32 = row.get(0)?;
+                    Ok(version.to_string())
+                })
+            })?;
+
+        Ok(value.parse().unwrap_or(0))
+    }
+
+    pub fn mark_interrupted_jobs(&self) -> rusqlite::Result<usize> {
+        let connection = self.connect()?;
+
+        connection.execute(
+            "update operation_history
+             set status = 'interrupted',
+                 completed_at = ?1,
+                 error_code = 'interrupted'
+             where status in ('queued', 'running', 'cancelling')",
+            [Utc::now().to_rfc3339()],
+        )
     }
 
     fn insert_started(&self, plan: &FileOperationPlan, snapshot: &JobSnapshot) {
@@ -401,6 +574,32 @@ impl OperationHistoryRepository {
         Ok(records)
     }
 
+    pub fn cleanup_terminal_history(&self, retain_count: u32) -> rusqlite::Result<usize> {
+        let connection = self.connect()?;
+
+        connection.execute(
+            "delete from operation_history
+             where status not in ('queued', 'running', 'cancelling')
+               and job_id not in (
+                   select job_id from operation_history
+                   where status not in ('queued', 'running', 'cancelling')
+                   order by started_at desc
+                   limit ?1
+               )",
+            [retain_count.max(1)],
+        )
+    }
+
+    pub fn clear_terminal_history(&self) -> rusqlite::Result<usize> {
+        let connection = self.connect()?;
+
+        connection.execute(
+            "delete from operation_history
+             where status not in ('queued', 'running', 'cancelling')",
+            [],
+        )
+    }
+
     fn connect(&self) -> rusqlite::Result<Connection> {
         Connection::open(&*self.path)
     }
@@ -461,15 +660,10 @@ fn status_string(status: JobStatus) -> &'static str {
     }
 }
 
-fn default_history_path() -> PathBuf {
-    std::env::var_os("FILEOCTOPUS_HISTORY_DB")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| {
-            home_dir()
-                .unwrap_or_else(|| PathBuf::from("."))
-                .join(".fileoctopus")
-                .join("operation-history.sqlite")
-        })
+fn fileoctopus_home() -> PathBuf {
+    home_dir()
+        .unwrap_or_else(|| PathBuf::from("."))
+        .join(".fileoctopus")
 }
 
 fn home_dir() -> Option<PathBuf> {
@@ -504,6 +698,77 @@ mod tests {
         repository.migrate().unwrap();
 
         assert!(repository.list_recent(10).unwrap().is_empty());
+        assert_eq!(repository.schema_version().unwrap(), SCHEMA_VERSION);
+    }
+
+    #[test]
+    fn startup_marks_previously_running_jobs_as_interrupted() {
+        let dir = tempfile::tempdir().unwrap();
+        let history_path = dir.path().join("history.sqlite");
+        let repository = OperationHistoryRepository::new(history_path.clone()).unwrap();
+        let connection = repository.connect().unwrap();
+
+        connection
+            .execute(
+                "insert into operation_history (
+                    job_id, operation_kind, source_count, status, started_at
+                ) values ('job-running', 'Copy', 1, 'running', ?1)",
+                [Utc::now().to_rfc3339()],
+            )
+            .unwrap();
+
+        drop(connection);
+        let state = AppCore::boot_with_history_path(history_path).unwrap();
+        let history = state.operations().recent_history(10);
+
+        assert_eq!(state.app_data_health().startup_recovery_count, 1);
+        assert_eq!(history[0].status, "interrupted");
+        assert_eq!(history[0].error_code.as_deref(), Some("interrupted"));
+    }
+
+    #[test]
+    fn history_cleanup_keeps_active_jobs() {
+        let dir = tempfile::tempdir().unwrap();
+        let repository =
+            OperationHistoryRepository::new(dir.path().join("history.sqlite")).unwrap();
+        let connection = repository.connect().unwrap();
+
+        for index in 0..3 {
+            connection
+                .execute(
+                    "insert into operation_history (
+                        job_id, operation_kind, source_count, status, started_at, completed_at
+                    ) values (?1, 'Copy', 1, 'completed', ?2, ?2)",
+                    params![
+                        format!("done-{index}"),
+                        format!("2026-01-01T00:00:0{index}Z")
+                    ],
+                )
+                .unwrap();
+        }
+
+        connection
+            .execute(
+                "insert into operation_history (
+                    job_id, operation_kind, source_count, status, started_at
+                ) values ('active', 'Copy', 1, 'running', '2026-01-01T00:00:09Z')",
+                [],
+            )
+            .unwrap();
+
+        drop(connection);
+        let deleted = repository.cleanup_terminal_history(1).unwrap();
+        let records = repository.list_recent(10).unwrap();
+
+        assert_eq!(deleted, 2);
+        assert!(records.iter().any(|record| record.job_id == "active"));
+        assert_eq!(
+            records
+                .iter()
+                .filter(|record| record.status == "completed")
+                .count(),
+            1
+        );
     }
 
     #[test]

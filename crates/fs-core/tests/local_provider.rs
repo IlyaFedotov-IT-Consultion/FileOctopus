@@ -110,3 +110,63 @@ async fn list_streams_without_collecting_all_entries_first() {
     drop(receiver);
     let _ = task.await;
 }
+
+#[cfg(unix)]
+#[tokio::test]
+async fn list_returns_permission_denied_for_inaccessible_directory() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let temp = tempfile::tempdir().unwrap();
+    let blocked = temp.path().join("blocked");
+
+    fs::create_dir(&blocked).unwrap();
+    fs::set_permissions(&blocked, fs::Permissions::from_mode(0o000)).unwrap();
+
+    let uri = ResourceUri::from_local_path(&blocked).unwrap();
+    let provider = LocalFsProvider::new();
+    let (sender, _receiver) = tokio::sync::mpsc::channel(1);
+    let error = provider
+        .list(
+            &uri,
+            ListOptions {
+                session_id: ListSessionId::new("permission-denied"),
+                batch_size: 2,
+                include_hidden: true,
+            },
+            sender,
+        )
+        .await
+        .unwrap_err();
+
+    fs::set_permissions(&blocked, fs::Permissions::from_mode(0o700)).unwrap();
+
+    assert_eq!(error.code(), "permission_denied");
+}
+
+#[tokio::test]
+async fn list_preserves_unicode_names() {
+    let temp = tempfile::tempdir().unwrap();
+
+    fs::write(temp.path().join("файл 🚀.txt"), "").unwrap();
+
+    let uri = ResourceUri::from_local_path(temp.path()).unwrap();
+    let provider = LocalFsProvider::new();
+    let (sender, mut receiver) = tokio::sync::mpsc::channel(1);
+
+    provider
+        .list(
+            &uri,
+            ListOptions {
+                session_id: ListSessionId::new("unicode"),
+                batch_size: 4,
+                include_hidden: true,
+            },
+            sender,
+        )
+        .await
+        .unwrap();
+
+    let batch = receiver.recv().await.unwrap();
+
+    assert_eq!(batch.entries[0].name, "файл 🚀.txt");
+}

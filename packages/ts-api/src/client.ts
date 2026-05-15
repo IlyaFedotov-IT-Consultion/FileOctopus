@@ -2,8 +2,12 @@ import { invoke as tauriInvoke } from "@tauri-apps/api/core";
 import { listen as tauriListen } from "@tauri-apps/api/event";
 import type {
   AppInfoResponse,
+  AppDataHealthResponse,
   CancelJobRequest,
+  ClearOperationHistoryResponse,
   DirectoryBatchEventDto,
+  ExportDiagnosticsBundleRequest,
+  ExportDiagnosticsBundleResponse,
   JobCancelledEvent,
   JobCompletedEvent,
   JobFailedEvent,
@@ -26,12 +30,12 @@ import type {
   UnlistenFn,
 } from "./types";
 
-export const DIRECTORY_BATCH_EVENT = "directory.batch";
-export const JOB_STARTED_EVENT = "fileOperation.job.started";
-export const JOB_PROGRESS_EVENT = "fileOperation.job.progress";
-export const JOB_COMPLETED_EVENT = "fileOperation.job.completed";
-export const JOB_FAILED_EVENT = "fileOperation.job.failed";
-export const JOB_CANCELLED_EVENT = "fileOperation.job.cancelled";
+export const DIRECTORY_BATCH_EVENT = "directory:batch";
+export const JOB_STARTED_EVENT = "fileOperation:job:started";
+export const JOB_PROGRESS_EVENT = "fileOperation:job:progress";
+export const JOB_COMPLETED_EVENT = "fileOperation:job:completed";
+export const JOB_FAILED_EVENT = "fileOperation:job:failed";
+export const JOB_CANCELLED_EVENT = "fileOperation:job:cancelled";
 
 const commandMap: Record<string, string> = {
   "app.get_info": "app_get_info",
@@ -42,6 +46,9 @@ const commandMap: Record<string, string> = {
   "job.cancel": "cancel_job",
   "job.status": "get_job_status",
   "operationHistory.listRecent": "list_recent_operations",
+  "operationHistory.clear": "clear_operation_history",
+  "diagnostics.appDataHealth": "diagnostics_app_data_health",
+  "diagnostics.exportBundle": "export_diagnostics_bundle",
 };
 
 export class FileOctopusClient {
@@ -49,12 +56,14 @@ export class FileOctopusClient {
   readonly fileOperations: FileOperationsClient;
   readonly jobs: JobsClient;
   readonly operationHistory: OperationHistoryClient;
+  readonly diagnostics: DiagnosticsClient;
 
   constructor(private readonly transport: IpcTransport) {
     this.fs = new FsClient(transport);
     this.fileOperations = new FileOperationsClient(transport);
     this.jobs = new JobsClient(transport);
     this.operationHistory = new OperationHistoryClient(transport);
+    this.diagnostics = new DiagnosticsClient(transport);
   }
 
   getAppInfo(): Promise<AppInfoResponse> {
@@ -157,6 +166,43 @@ export class OperationHistoryClient {
       throw normalizeIpcError(error);
     }
   }
+
+  async clearOperationHistory(): Promise<ClearOperationHistoryResponse> {
+    try {
+      return await this.transport.invoke<ClearOperationHistoryResponse>(
+        "operationHistory.clear",
+      );
+    } catch (error) {
+      throw normalizeIpcError(error);
+    }
+  }
+}
+
+export class DiagnosticsClient {
+  constructor(private readonly transport: IpcTransport) {}
+
+  async appDataHealth(): Promise<AppDataHealthResponse> {
+    try {
+      return await this.transport.invoke<AppDataHealthResponse>(
+        "diagnostics.appDataHealth",
+      );
+    } catch (error) {
+      throw normalizeIpcError(error);
+    }
+  }
+
+  async exportBundle(
+    request: ExportDiagnosticsBundleRequest,
+  ): Promise<ExportDiagnosticsBundleResponse> {
+    try {
+      return await this.transport.invoke<ExportDiagnosticsBundleResponse>(
+        "diagnostics.exportBundle",
+        { request },
+      );
+    } catch (error) {
+      throw normalizeIpcError(error);
+    }
+  }
 }
 
 export class FsClient {
@@ -220,7 +266,37 @@ export function createPreviewTransport(): IpcTransport {
   return {
     async invoke<TResponse>(command: string, args?: Record<string, unknown>) {
       if (command === "app.get_info") {
-        return { name: "FileOctopus", version: "0.1.0" } as TResponse;
+        return {
+          name: "FileOctopus",
+          version: "0.1.0",
+          buildProfile: "preview",
+          commitSha: null,
+          targetOs: "browser",
+        } as TResponse;
+      }
+
+      if (command === "diagnostics.appDataHealth") {
+        return {
+          configDir: "~/.fileoctopus/config",
+          dataDir: "~/.fileoctopus",
+          logDir: "~/.fileoctopus/logs",
+          databasePath: "~/.fileoctopus/operation-history.sqlite",
+          databaseExists: false,
+          schemaVersion: 0,
+          missingDirectories: [],
+          startupRecoveryCount: 0,
+        } as TResponse;
+      }
+
+      if (command === "operationHistory.clear") {
+        return { deletedCount: 0 } as TResponse;
+      }
+
+      if (command === "diagnostics.exportBundle") {
+        return {
+          path: "preview-diagnostics.zip",
+          files: ["app-info.json", "app-data-health.json"],
+        } as TResponse;
       }
 
       if (command === "fs.list_start") {

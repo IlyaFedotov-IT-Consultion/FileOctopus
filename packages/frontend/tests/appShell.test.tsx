@@ -32,6 +32,28 @@ const onDirectoryBatch = vi.fn(
   },
 );
 const listRecentOperations = vi.fn(async () => ({ operations: [] }));
+const clearOperationHistory = vi.fn(async () => ({ deletedCount: 0 }));
+const getAppInfo = vi.fn(async () => ({
+  name: "FileOctopus",
+  version: "0.1.0",
+  buildProfile: "debug",
+  commitSha: null,
+  targetOs: "linux",
+}));
+const appDataHealth = vi.fn(async () => ({
+  configDir: "~/.fileoctopus/config",
+  dataDir: "~/.fileoctopus",
+  logDir: "~/.fileoctopus/logs",
+  databasePath: "~/.fileoctopus/operation-history.sqlite",
+  databaseExists: true,
+  schemaVersion: 1,
+  missingDirectories: [],
+  startupRecoveryCount: 0,
+}));
+const exportBundle = vi.fn(async () => ({
+  path: "/tmp/fileoctopus-diagnostics.zip",
+  files: ["app-info.json"],
+}));
 const planFileOperation = vi.fn(
   async ({ operation }: { operation: FileOperationRequestDto }) => ({
     plan: {
@@ -128,6 +150,7 @@ const cancelJob = vi.fn(async () => ({
 
 vi.mock("@fileoctopus/ts-api", () => ({
   createFileOctopusClient: () => ({
+    getAppInfo,
     fs: {
       listStart,
       onDirectoryBatch,
@@ -146,6 +169,11 @@ vi.mock("@fileoctopus/ts-api", () => ({
     },
     operationHistory: {
       listRecentOperations,
+      clearOperationHistory,
+    },
+    diagnostics: {
+      appDataHealth,
+      exportBundle,
     },
   }),
   normalizeIpcError: (error: unknown) =>
@@ -173,6 +201,10 @@ describe("FileOctopusShell", () => {
     listStart.mockClear();
     onDirectoryBatch.mockClear();
     listRecentOperations.mockClear();
+    clearOperationHistory.mockClear();
+    getAppInfo.mockClear();
+    appDataHealth.mockClear();
+    exportBundle.mockClear();
     subscribeJob.mockClear();
     planFileOperation.mockClear();
     startFileOperation.mockClear();
@@ -366,6 +398,30 @@ describe("FileOctopusShell", () => {
 
     expect(screen.getByText("copy completed")).toBeTruthy();
   });
+
+  it("shows app diagnostics and exports a bundle", async () => {
+    render(<FileOctopusShell />);
+
+    expect(await screen.findByText("0.1.0 debug linux")).toBeTruthy();
+    fireEvent.click(screen.getByText("Export"));
+
+    await waitFor(() => expect(exportBundle).toHaveBeenCalledTimes(1));
+    expect(await screen.findByText("Exported 1 file(s).")).toBeTruthy();
+  });
+
+  it("handles baseline keyboard shortcuts outside text inputs", async () => {
+    render(<FileOctopusShell />);
+    await applyLeftEntries([folderEntry("Projects"), entry("alpha.txt")]);
+
+    fireEvent.keyDown(screen.getByLabelText("File panels"), { key: "Delete" });
+    expect(screen.getByText("Move 1 item(s) to Trash")).toBeTruthy();
+
+    fireEvent.keyDown(screen.getByLabelText("File panels"), { key: "Escape" });
+    expect(screen.queryByText("Move 1 item(s) to Trash")).toBeNull();
+
+    fireEvent.keyDown(screen.getByLabelText("File panels"), { key: "F5" });
+    await waitFor(() => expect(listStart).toHaveBeenCalledTimes(3));
+  });
 });
 
 function entry(name: string): FileEntryDto {
@@ -382,6 +438,15 @@ function entry(name: string): FileEntryDto {
     canWrite: true,
     canDelete: true,
     canRename: true,
+  };
+}
+
+function folderEntry(name: string): FileEntryDto {
+  return {
+    ...entry(name),
+    uri: `local:///tmp/${name}`,
+    kind: "directory",
+    canList: true,
   };
 }
 
