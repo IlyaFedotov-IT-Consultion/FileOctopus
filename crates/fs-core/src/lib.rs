@@ -9,6 +9,7 @@ use vfs::{
 };
 
 pub mod file_ops;
+pub mod sprint4;
 
 #[derive(Debug, Default)]
 pub struct LocalFsProvider;
