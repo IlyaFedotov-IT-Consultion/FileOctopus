@@ -1687,6 +1687,7 @@ export function FileOctopusShell() {
                 onReveal={(entry) => void revealEntry("left", entry)}
                 onRefresh={() => refreshPanel("left")}
                 onToggleHidden={() => toggleHidden("left")}
+                onSelectAll={() => dispatch({ type: "selectAll", panelId: "left" })}
                 onMove={(delta) =>
                   dispatch({ type: "moveSelection", panelId: "left", delta })
                 }
@@ -1760,6 +1761,7 @@ export function FileOctopusShell() {
                 onReveal={(entry) => void revealEntry("right", entry)}
                 onRefresh={() => refreshPanel("right")}
                 onToggleHidden={() => toggleHidden("right")}
+                onSelectAll={() => dispatch({ type: "selectAll", panelId: "right" })}
                 onMove={(delta) =>
                   dispatch({ type: "moveSelection", panelId: "right", delta })
                 }
@@ -1866,7 +1868,13 @@ export function FileOctopusShell() {
                 ? starredUriSet.has(contextMenu.entry.uri)
                 : false
             }
+            showHidden={
+              contextMenu?.panelId
+                ? state.panels[contextMenu.panelId].showHidden
+                : false
+            }
             onClose={() => setContextMenu(null)}
+            onToggleHidden={(panelId) => toggleHidden(panelId)}
             onOpen={(panelId, entry) => activateEntry(panelId, entry)}
             onRename={handleRename}
             onCopy={(panelId) => copySelectionToFileClipboard(panelId, "copy")}
@@ -1957,6 +1965,7 @@ interface FilePanelProps {
   onReveal: (entry: FileEntryDto | null) => void;
   onRefresh: () => void;
   onToggleHidden: () => void;
+  onSelectAll: () => void;
   canPaste: boolean;
   pathFocusToken: number;
   filterFocusToken: number;
@@ -2000,6 +2009,7 @@ function FilePanel({
   onReveal,
   onRefresh,
   onToggleHidden,
+  onSelectAll,
   canPaste,
   pathFocusToken,
   filterFocusToken,
@@ -2119,6 +2129,7 @@ function FilePanel({
           onProperties={() => onProperties(selectedEntry)}
           onRefresh={onRefresh}
           onToggleHidden={onToggleHidden}
+          onSelectAll={onSelectAll}
           onViewMode={onViewMode}
         />
         <div className="fo-panel-filter-row">
