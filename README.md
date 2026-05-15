@@ -4,20 +4,40 @@ FileOctopus is a Tauri v2 desktop file manager with a Rust-owned filesystem boun
 
 ## Current Status
 
-Sprint 3 (MVP Release Candidate) is complete. Sprint 4 (Baseline File Manager Completeness) is in progress.
+Sprint 4 (Baseline File Manager Completeness) is implemented for the local desktop MVP.
 
 ### What Works Today
 
 - **Dual-pane file browsing** with virtualized rendering for large directories (100k+ entries)
 - **Local filesystem navigation** through `local://` resource URIs
 - **File operations**: copy, move, rename, create folder, and move-to-trash with conflict detection
+- **Baseline file manager actions**: open files with the OS default app, reveal items, create empty files, inspect properties, permanent delete with confirmation, and hidden-file toggle
 - **Job engine**: queued, running, paused, cancelled, completed, and failed states with progress reporting
 - **Operation history** persisted in SQLite
 - **Diagnostics export** with app info, health, and log bundles
-- **Keyboard navigation** and shortcuts (arrow keys, Page Up/Down, Home/End, Enter, Delete, F5, Tab)
+- **Keyboard navigation** and shortcuts (arrow keys, Page Up/Down, Home/End, Enter, F2, Delete, Shift+Delete, F5, Tab, Ctrl/Cmd+C/X/V/A/L/R)
 - **Sorting and filtering** by name, size, modified date, and type
-- **Path bar** with editable navigation
+- **Sidebar, breadcrumb, and path entry navigation** with back, forward, and up controls
+- **Details, list, and icon views** with consistent selection and status summaries
+- **Current-folder filtering and non-indexed recursive search**
+- **Current-folder watcher refresh** with manual refresh fallback
 - **Conflict resolution policies**: fail, skip, overwrite, rename new, rename existing
+
+### MVP Core File Manager Baseline
+
+The MVP baseline is now testable as a normal desktop file manager contract:
+
+- Navigate via sidebar locations, breadcrumb parents, raw path entry, Back, Forward, and Up.
+- Open folders internally and files externally through the operating system.
+- Sort and inspect file lists with name, size, modified, and type data.
+- Select single, multiple, and ranges of items across details, list, and icon views.
+- Copy, cut, paste, rename, create folders, create empty files, move to Trash, permanently delete with confirmation, reveal, and inspect properties.
+- Toggle hidden files, refresh manually, and update the current folder from watcher events.
+- Filter current folder contents and run a cancellable baseline recursive name search.
+- Present common filesystem errors in user-facing language with diagnostics available through the app.
+- Apply the visual customization baseline across sidebar, breadcrumb, file views, status, context menus, properties, search, errors, confirmations, and focus states.
+
+Known MVP exclusions remain tabs, archive browsing, file previews, remote/cloud providers, plugins, custom theme import/export, icon marketplaces, indexed search, git decorations, and bulk rename templates.
 
 ## Prerequisites
 
@@ -90,6 +110,7 @@ pnpm tauri:build      # Build Tauri release bundles (.deb, .rpm, .AppImage)
 - `docs/adr` — Architecture decision records
 - `docs/architecture` — Module architecture and API reference
 - `docs/testing` — Test protocols and performance benchmarks
+- `docs/qa` — Manual QA checklists, including the Sprint 4 baseline checklist
 - `docs/release` — Sprint QA and release checklists
 - `docs/release-notes` — Release candidate notes
 - `docs/planning` — Sprint implementation backlogs
