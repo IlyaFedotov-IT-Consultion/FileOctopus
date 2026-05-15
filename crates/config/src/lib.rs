@@ -277,7 +277,10 @@ impl UserPreferences {
                 self.confirm_permanent_delete.to_string(),
             ),
             ("useTrashByDefault", self.use_trash_by_default.to_string()),
-            ("defaultConflictPolicy", self.default_conflict_policy.clone()),
+            (
+                "defaultConflictPolicy",
+                self.default_conflict_policy.clone(),
+            ),
         ]
     }
 }

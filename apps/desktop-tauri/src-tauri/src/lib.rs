@@ -159,10 +159,7 @@ async fn fs_list_start(
 
     eprintln!(
         "[FO-RS] fs.list_start requested uri={} request_id={} panel_key={} session_id={}",
-        request.uri,
-        request_id,
-        panel_key,
-        response.session_id
+        request.uri, request_id, panel_key, response.session_id
     );
 
     tauri::async_runtime::spawn(async move {
