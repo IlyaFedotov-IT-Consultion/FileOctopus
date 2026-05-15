@@ -600,7 +600,7 @@ describe("FileOctopusShell", () => {
     render(<FileOctopusShell />);
     await applyLeftEntries([entry("alpha.txt")]);
 
-    clickToolbar("Copy To", 0);
+    clickToolbar("Copy To…", 0);
     expect(
       (screen.getByLabelText("Conflict policy") as HTMLSelectElement).value,
     ).toBe("fail");
@@ -652,7 +652,7 @@ describe("FileOctopusShell", () => {
       });
     });
 
-    expect(screen.getByText(/copy running/i)).toBeTruthy();
+    expect(screen.getByText(/copying/i)).toBeTruthy();
     fireEvent.click(screen.getAllByText("Cancel")[0]);
     expect(cancelJob).toHaveBeenCalledWith({ jobId: "job-live" });
 
@@ -666,7 +666,7 @@ describe("FileOctopusShell", () => {
       });
     });
 
-    expect(screen.getByText("copy completed")).toBeTruthy();
+    expect(screen.getByText(/copied/i)).toBeTruthy();
     expect(screen.getByText("Operation completed")).toBeTruthy();
   });
 

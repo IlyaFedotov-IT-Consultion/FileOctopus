@@ -1,8 +1,8 @@
-import type { FileEntryDto } from "@fileoctopus/ts-api";
+export { fileEntryIcon as fileIconGlyph } from "@fileoctopus/ui";
 
 export function formatSize(size?: number | null): string {
   if (size == null) {
-    return "";
+    return "—";
   }
 
   if (size < 1024) {
@@ -18,40 +18,36 @@ export function formatSize(size?: number | null): string {
 
 export function formatDate(value?: string | null): string {
   if (!value) {
-    return "";
+    return "—";
   }
 
-  return new Date(value).toLocaleString();
-}
-
-export function fileIconGlyph(
-  entry: Pick<FileEntryDto, "kind" | "extension" | "name">,
-): string {
-  if (entry.kind === "directory") {
-    return "DIR";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "—";
   }
 
-  const extension = (
-    entry.extension ??
-    entry.name.split(".").pop() ??
-    ""
-  ).toLowerCase();
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const valueDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const time = date.toLocaleTimeString(undefined, {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
 
-  if (["png", "jpg", "jpeg", "gif", "webp", "svg"].includes(extension)) {
-    return "IMG";
-  }
-  if (["mp4", "mov", "mkv", "avi"].includes(extension)) {
-    return "VID";
-  }
-  if (["mp3", "wav", "flac", "aac"].includes(extension)) {
-    return "AUD";
-  }
-  if (["zip", "tar", "gz", "rar", "7z"].includes(extension)) {
-    return "ZIP";
-  }
-  if (["pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx"].includes(extension)) {
-    return extension.slice(0, 3).toUpperCase();
+  if (valueDay.getTime() === today.getTime()) {
+    return `Today, ${time}`;
   }
 
-  return "TXT";
+  if (valueDay.getTime() === yesterday.getTime()) {
+    return `Yesterday, ${time}`;
+  }
+
+  return date.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
 }

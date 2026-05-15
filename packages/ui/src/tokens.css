@@ -11,9 +11,10 @@
   --fo-accent: #3578ff;
   --fo-accent-soft: #e8f0ff;
   --fo-shell-shadow: rgb(29 42 68 / 16%);
-  --fo-sidebar-width: 224px;
-  --fo-activity-width: 288px;
-  --fo-left-pane-fr: 0.5;
+  --fo-sidebar-width: 240px;
+  --fo-activity-width: 320px;
+  --fo-left-pane-fr: 1fr;
+  --fo-right-pane-fr: 1fr;
   --fo-row-height: 30px;
   --fo-success: #24a148;
   --fo-warning: #f59e0b;
@@ -44,4 +45,20 @@
   --fo-dark-danger-bg: #331b1b;
   --fo-dark-danger-border: #7a342f;
   --fo-dark-danger-text: #ffd1cc;
+
+  --color-text-primary: var(--fo-text);
+  --color-text-muted: var(--fo-muted-text);
+  --color-text-secondary: var(--fo-secondary-text);
+  --color-bg-app: var(--fo-app-bg);
+  --color-bg-workspace: var(--fo-workspace-bg);
+  --color-bg-surface: var(--fo-surface);
+  --color-bg-strip: var(--fo-strip-bg);
+  --color-border: var(--fo-border);
+  --color-border-strong: var(--fo-strong-border);
+  --color-accent: var(--fo-accent);
+  --color-accent-soft: var(--fo-accent-soft);
+  --color-focus: var(--fo-focus);
+  --color-success: var(--fo-success);
+  --color-warning: var(--fo-warning);
+  --color-danger: var(--fo-danger);
 }

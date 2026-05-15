@@ -12,6 +12,12 @@ export { Divider, type DividerProps } from "./Divider";
 export { Tooltip, type TooltipProps } from "./Tooltip";
 export { DropdownMenu, type DropdownMenuItem, type DropdownMenuProps } from "./DropdownMenu";
 export {
+  BreadcrumbPath,
+  type BreadcrumbPathProps,
+  type BreadcrumbSegment,
+} from "./BreadcrumbPath";
+export { Icons, fileEntryIcon, iconSize, renderIcon } from "./icons";
+export {
   SegmentedControl,
   type SegmentedControlProps,
   type SegmentedOption,

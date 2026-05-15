@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { FileEntryDto } from "@fileoctopus/ts-api";
 import { createFileOctopusClient } from "@fileoctopus/ts-api";
 import { createRequestId } from "../paneTypes";
@@ -9,7 +9,7 @@ interface ColumnsViewProps {
   showHidden: boolean;
   onNavigate: (uri: string) => void;
   onOpen: (entry: FileEntryDto) => void;
-  fileIcon: (entry: FileEntryDto) => string;
+  fileIcon: (entry: FileEntryDto) => ReactNode;
 }
 
 const MAX_COLUMNS = 4;

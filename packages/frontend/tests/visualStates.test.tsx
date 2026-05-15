@@ -65,6 +65,25 @@ describe("visual state fixtures", () => {
     view.restore();
   });
 
+  it("renders not found pane state", () => {
+    const view = renderVisualState(
+      <PaneStateView
+        loadState="notFound"
+        uri="local:///Users/ilya/Documents/Missing"
+        message="not found"
+        onRetry={noop}
+        onRefresh={noop}
+        onCreateFolder={noop}
+      />,
+    );
+
+    expect(screen.getByText("Folder not found")).toBeTruthy();
+    expect(
+      screen.getByText("The path may have been moved, renamed, or deleted."),
+    ).toBeTruthy();
+    view.restore();
+  });
+
   it("renders generic error pane state", () => {
     const view = renderVisualState(
       <PaneStateView
@@ -77,7 +96,7 @@ describe("visual state fixtures", () => {
       />,
     );
 
-    expect(screen.getByText("Unable to load this folder")).toBeTruthy();
+    expect(screen.getByText("Unable to read this location")).toBeTruthy();
     view.restore();
   });
 

@@ -57,6 +57,27 @@ export const shortcutEntries: ShortcutEntry[] = [
     category: "Navigation",
   },
   {
+    id: "recursive-search",
+    label: "Focus recursive search",
+    mac: "⌘⇧F",
+    windowsLinux: "Ctrl+Shift+F",
+    category: "Navigation",
+  },
+  {
+    id: "toggle-hidden",
+    label: "Toggle hidden files",
+    mac: "⌘.",
+    windowsLinux: "Ctrl+.",
+    category: "View",
+  },
+  {
+    id: "dismiss",
+    label: "Close dialog or menu",
+    mac: "Esc",
+    windowsLinux: "Esc",
+    category: "View",
+  },
+  {
     id: "copy",
     label: "Copy selection",
     mac: "⌘C",

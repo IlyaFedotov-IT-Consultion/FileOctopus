@@ -21,7 +21,12 @@ function entrySummary(loadState: PaneLoadState, entryCount: number): string {
   if (loadState === "empty") {
     return "Empty folder";
   }
-  if (loadState === "error" || loadState === "permissionDenied") {
+  if (
+    loadState === "error" ||
+    loadState === "notFound" ||
+    loadState === "permissionDenied" ||
+    loadState === "timeout"
+  ) {
     return "Unavailable";
   }
   return `${entryCount} item${entryCount === 1 ? "" : "s"}`;
@@ -31,7 +36,12 @@ function readinessLabel(loadState: PaneLoadState): string {
   if (loadState === "loading") {
     return "Loading";
   }
-  if (loadState === "error" || loadState === "permissionDenied") {
+  if (
+    loadState === "error" ||
+    loadState === "notFound" ||
+    loadState === "permissionDenied" ||
+    loadState === "timeout"
+  ) {
     return "Attention";
   }
   return "Ready";

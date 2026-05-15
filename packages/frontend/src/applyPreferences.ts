@@ -20,14 +20,24 @@ export function applyDensityPreference(density: string): DensityPreference {
   return resolved;
 }
 
+export function applySplitRatio(ratio: number) {
+  const root = document.documentElement;
+  const resolved = Math.min(0.75, Math.max(0.25, Number(ratio) || 0.5));
+  const leftWeight = Math.max(1, Math.round(resolved * 100));
+  const rightWeight = Math.max(1, Math.round((1 - resolved) * 100));
+  root.style.setProperty("--fo-left-pane-fr", `${leftWeight}fr`);
+  root.style.setProperty("--fo-right-pane-fr", `${rightWeight}fr`);
+  return resolved;
+}
+
 export function applyLayoutPreferences(preferences: UserPreferencesDto) {
   const root = document.documentElement;
   root.style.setProperty("--fo-sidebar-width", `${preferences.sidebarWidth}px`);
   root.style.setProperty(
     "--fo-activity-width",
-    preferences.activityPanelVisible ? `${preferences.activityPanelWidth}px` : "0px",
+    preferences.activityPanelVisible ? `${preferences.activityPanelWidth}px` : "44px",
   );
-  root.style.setProperty("--fo-left-pane-fr", String(preferences.splitRatio));
+  applySplitRatio(preferences.splitRatio);
   root.dataset.activityPanel = preferences.activityPanelVisible ? "visible" : "hidden";
 }
 

@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { DropdownMenu, ToolbarButton } from "@fileoctopus/ui";
+import { DropdownMenu, Icons, ToolbarButton } from "@fileoctopus/ui";
+
 import type { ViewMode } from "../panelStore";
 
 export interface OperationToolbarProps {
@@ -53,34 +54,59 @@ export function OperationToolbar({
 
   return (
     <div className="fo-operation-toolbar" aria-label="File operations">
-      <div className="fo-toolbar-group fo-toolbar-primary">
-        <ToolbarButton primary onClick={onCreateFolder}>
-          <ToolbarAction icon="+D" label="New Folder" />
+      <div className="fo-toolbar-actions">
+        <ToolbarButton primary className="fo-toolbar-priority-high" onClick={onCreateFolder}>
+          {Icons.folderPlus()}
+          <span>New Folder</span>
         </ToolbarButton>
-        <ToolbarButton onClick={onCreateFile}>
-          <ToolbarAction icon="+F" label="New File" />
+        <ToolbarButton className="fo-toolbar-priority-high" onClick={onCreateFile}>
+          {Icons.filePlus()}
+          <span>New File</span>
         </ToolbarButton>
-        <ToolbarButton disabled={!canRename} onClick={onRename}>
-          <ToolbarAction icon="Rn" label="Rename" />
+        <ToolbarButton
+          className="fo-toolbar-priority-high"
+          disabled={!canRename}
+          onClick={onRename}
+        >
+          {Icons.pencil()}
+          <span>Rename</span>
         </ToolbarButton>
-        <ToolbarButton disabled={selectedCount === 0} onClick={onCopy}>
-          <ToolbarAction icon="Cp" label="Copy" />
+        <ToolbarButton
+          className="fo-toolbar-priority-medium"
+          disabled={selectedCount === 0}
+          onClick={onCopy}
+        >
+          {Icons.copy()}
+          <span>Copy</span>
         </ToolbarButton>
-        <ToolbarButton disabled={selectedCount === 0} onClick={onMove}>
-          <ToolbarAction icon="Mv" label="Move" />
+        <ToolbarButton
+          className="fo-toolbar-priority-medium"
+          disabled={selectedCount === 0}
+          onClick={onMove}
+        >
+          {Icons.move()}
+          <span>Move</span>
         </ToolbarButton>
         {canPaste ? (
-          <ToolbarButton onClick={onPaste}>
-            <ToolbarAction icon="Ps" label="Paste" />
+          <ToolbarButton className="fo-toolbar-priority-medium" onClick={onPaste}>
+            {Icons.copy()}
+            <span>Paste</span>
           </ToolbarButton>
         ) : null}
-        <ToolbarButton disabled={selectedCount === 0} onClick={onTrash}>
-          <ToolbarAction icon="Tr" label="Trash" />
+        <ToolbarButton
+          className="fo-toolbar-priority-low"
+          disabled={selectedCount === 0}
+          onClick={onTrash}
+        >
+          {Icons.trash()}
+          <span>Trash</span>
         </ToolbarButton>
-        <ToolbarButton onClick={onRefresh}>
-          <ToolbarAction icon="Rf" label="Refresh" />
+        <ToolbarButton className="fo-toolbar-priority-low" onClick={onRefresh}>
+          {Icons.refresh()}
+          <span>Refresh</span>
         </ToolbarButton>
       </div>
+      <span className="fo-toolbar-spacer" aria-hidden="true" />
       <DropdownMenu
         label="More"
         open={overflowOpen}
@@ -90,14 +116,14 @@ export function OperationToolbar({
           {
             id: "new-file",
             label: "New File",
-            icon: "+F",
+            icon: Icons.filePlus(),
             shortcut: "Cmd+N",
             onSelect: onCreateFile,
           },
           {
             id: "rename",
             label: "Rename",
-            icon: "Rn",
+            icon: Icons.pencil(),
             shortcut: "F2",
             disabled: !canRename,
             onSelect: onRename,
@@ -105,7 +131,7 @@ export function OperationToolbar({
           {
             id: "cut",
             label: "Cut",
-            icon: "Ct",
+            icon: Icons.move(),
             shortcut: "Cmd+X",
             disabled: selectedCount === 0,
             onSelect: onCut,
@@ -113,37 +139,45 @@ export function OperationToolbar({
           {
             id: "paste",
             label: "Paste",
-            icon: "Ps",
+            icon: Icons.copy(),
             shortcut: "Cmd+V",
             disabled: !canPaste,
             onSelect: onPaste,
           },
           {
             id: "copy-to",
-            label: "Copy To",
-            icon: "To",
+            label: "Copy To…",
+            icon: Icons.copy(),
             separatorBefore: true,
             disabled: selectedCount === 0,
             onSelect: onCopyOperation,
           },
           {
+            id: "move-to",
+            label: "Move To…",
+            icon: Icons.move(),
+            disabled: selectedCount === 0,
+            onSelect: onMove,
+          },
+          {
             id: "copy-path",
             label: "Copy Path",
-            icon: "Pa",
+            icon: Icons.file(),
+            separatorBefore: true,
             disabled: selectedCount === 0,
             onSelect: onCopyPath,
           },
           {
             id: "copy-name",
             label: "Copy Name",
-            icon: "Nm",
+            icon: Icons.file(),
             disabled: selectedCount === 0,
             onSelect: onCopyName,
           },
           {
             id: "delete",
             label: "Delete Permanently",
-            icon: "Del",
+            icon: Icons.trash(),
             danger: true,
             separatorBefore: true,
             disabled: selectedCount === 0,
@@ -152,14 +186,14 @@ export function OperationToolbar({
           {
             id: "properties",
             label: "Properties",
-            icon: "Info",
+            icon: Icons.file(),
             shortcut: "Cmd+I",
             onSelect: onProperties,
           },
           {
             id: "hidden",
             label: showHidden ? "Hide Hidden" : "Show Hidden",
-            icon: "Eye",
+            icon: Icons.file(),
             shortcut: "Cmd+.",
             checked: showHidden,
             separatorBefore: true,
@@ -168,7 +202,7 @@ export function OperationToolbar({
           {
             id: "view-details",
             label: "Details view",
-            icon: "Det",
+            icon: Icons.file(),
             checked: viewMode === "details",
             separatorBefore: true,
             onSelect: () => onViewMode("details"),
@@ -176,40 +210,30 @@ export function OperationToolbar({
           {
             id: "view-list",
             label: "List view",
-            icon: "Lst",
+            icon: Icons.file(),
             checked: viewMode === "list",
             onSelect: () => onViewMode("list"),
           },
           {
             id: "view-icons",
             label: "Icons view",
-            icon: "Ico",
+            icon: Icons.pictures(),
             checked: viewMode === "icons",
             onSelect: () => onViewMode("icons"),
           },
           {
             id: "view-columns",
             label: "Columns view",
-            icon: "Col",
+            icon: Icons.folder(),
             checked: viewMode === "columns",
             onSelect: () => onViewMode("columns"),
           },
         ]}
       >
-        <ToolbarAction icon="..." label="More" />
+        {Icons.more()}
+        <span>More</span>
       </DropdownMenu>
       <span className="fo-toolbar-meta">{selectedCount} selected</span>
     </div>
-  );
-}
-
-function ToolbarAction({ icon, label }: { icon: string; label: string }) {
-  return (
-    <>
-      <span className="fo-toolbar-icon" aria-hidden="true">
-        {icon}
-      </span>
-      <span>{label}</span>
-    </>
   );
 }

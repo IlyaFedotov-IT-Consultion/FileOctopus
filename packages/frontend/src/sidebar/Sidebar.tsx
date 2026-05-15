@@ -4,7 +4,7 @@ import type {
   StandardLocationDto,
   StarredEntryDto,
 } from "@fileoctopus/ts-api";
-import { Button, cx } from "@fileoctopus/ui";
+import { Button, cx, Icons } from "@fileoctopus/ui";
 import { useState, type MouseEvent, type ReactNode } from "react";
 
 interface SidebarProps {
@@ -80,7 +80,7 @@ export function Sidebar({
           {favorites.map((item) => (
             <SidebarItem
               key={item.id}
-              icon="PIN"
+              icon={Icons.pin()}
               label={item.label}
               active={item.uri === activeUri}
               onClick={() => onNavigate(item.uri)}
@@ -101,7 +101,7 @@ export function Sidebar({
           recentToday.map((item) => (
             <SidebarItem
               key={item.uri}
-              icon="-"
+              icon={Icons.recent()}
               label={item.label}
               active={item.uri === activeUri}
               onClick={() => onNavigate(item.uri)}
@@ -117,7 +117,7 @@ export function Sidebar({
           recentWeek.map((item) => (
             <SidebarItem
               key={item.uri}
-              icon="-"
+              icon={Icons.recent()}
               label={item.label}
               active={item.uri === activeUri}
               onClick={() => onNavigate(item.uri)}
@@ -133,7 +133,7 @@ export function Sidebar({
           {starred.map((item) => (
             <SidebarItem
               key={item.uri}
-              icon="STR"
+              icon={Icons.star()}
               label={item.label}
               active={item.uri === activeUri}
               onClick={() => onNavigate(item.uri)}
@@ -221,7 +221,7 @@ function SidebarItem({
   indented = false,
   subdued = false,
 }: {
-  icon: string;
+  icon: ReactNode;
   label: string;
   active: boolean;
   onClick: () => void;
@@ -252,21 +252,21 @@ function SidebarItem({
   );
 }
 
-function locationIcon(id: string): string {
+function locationIcon(id: string): ReactNode {
   switch (id) {
     case "home":
-      return "H";
+      return Icons.home();
     case "desktop":
-      return "DSK";
+      return Icons.desktop();
     case "documents":
-      return "DOC";
+      return Icons.documents();
     case "downloads":
-      return "DL";
+      return Icons.downloads();
     case "pictures":
-      return "PIC";
+      return Icons.pictures();
     case "music":
-      return "MUS";
+      return Icons.music();
     default:
-      return "VOL";
+      return Icons.volume();
   }
 }

@@ -118,61 +118,48 @@ exports[`visual regression snapshots > matches the shell chrome structure in dar
           title="Collapse activity panel"
           type="button"
         >
-          -
+          −
         </button>
       </header>
       <div
         aria-label="Activity views"
-        class="fo-activity-tabs"
-        role="tablist"
+        class="fo-ui-segmented fo-activity-segmented"
+        role="group"
       >
-        <span
-          class="fo-activity-tab-active"
+        <button
+          aria-pressed="true"
+          class="fo-ui-segmented-item fo-ui-segmented-item--active"
+          type="button"
         >
           Activity
-        </span>
-        <span>
+        </button>
+        <button
+          aria-pressed="false"
+          class="fo-ui-segmented-item"
+          type="button"
+        >
           History
-        </span>
+        </button>
       </div>
       <div
-        class="fo-activity-cards"
+        class="fo-activity-body"
       >
-        <div
-          class="fo-empty-inline"
+        <section
+          aria-label="Active jobs"
+          class="fo-activity-cards"
         >
-          No active jobs
-        </div>
-      </div>
-      <section
-        aria-label="Operation history"
-        class="fo-history"
-      >
-        <header>
-          <strong>
-            History
-          </strong>
-          <div>
-            <button
-              class="fo-ui-btn fo-ui-btn--ghost fo-ui-btn--sm"
-              type="button"
-            >
-              Refresh
-            </button>
-            <button
-              class="fo-ui-btn fo-ui-btn--ghost fo-ui-btn--sm"
-              type="button"
-            >
-              Clear
-            </button>
+          <h3
+            class="fo-activity-section-title"
+          >
+            Active Jobs
+          </h3>
+          <div
+            class="fo-empty-inline"
+          >
+            No active jobs
           </div>
-        </header>
-        <div
-          class="fo-empty-inline"
-        >
-          No recent operations
-        </div>
-      </section>
+        </section>
+      </div>
     </aside>
   </section>
   <footer
@@ -332,61 +319,48 @@ exports[`visual regression snapshots > matches the shell chrome structure in lig
           title="Collapse activity panel"
           type="button"
         >
-          -
+          −
         </button>
       </header>
       <div
         aria-label="Activity views"
-        class="fo-activity-tabs"
-        role="tablist"
+        class="fo-ui-segmented fo-activity-segmented"
+        role="group"
       >
-        <span
-          class="fo-activity-tab-active"
+        <button
+          aria-pressed="true"
+          class="fo-ui-segmented-item fo-ui-segmented-item--active"
+          type="button"
         >
           Activity
-        </span>
-        <span>
+        </button>
+        <button
+          aria-pressed="false"
+          class="fo-ui-segmented-item"
+          type="button"
+        >
           History
-        </span>
+        </button>
       </div>
       <div
-        class="fo-activity-cards"
+        class="fo-activity-body"
       >
-        <div
-          class="fo-empty-inline"
+        <section
+          aria-label="Active jobs"
+          class="fo-activity-cards"
         >
-          No active jobs
-        </div>
-      </div>
-      <section
-        aria-label="Operation history"
-        class="fo-history"
-      >
-        <header>
-          <strong>
-            History
-          </strong>
-          <div>
-            <button
-              class="fo-ui-btn fo-ui-btn--ghost fo-ui-btn--sm"
-              type="button"
-            >
-              Refresh
-            </button>
-            <button
-              class="fo-ui-btn fo-ui-btn--ghost fo-ui-btn--sm"
-              type="button"
-            >
-              Clear
-            </button>
+          <h3
+            class="fo-activity-section-title"
+          >
+            Active Jobs
+          </h3>
+          <div
+            class="fo-empty-inline"
+          >
+            No active jobs
           </div>
-        </header>
-        <div
-          class="fo-empty-inline"
-        >
-          No recent operations
-        </div>
-      </section>
+        </section>
+      </div>
     </aside>
   </section>
   <footer

@@ -2,8 +2,13 @@ import type {
   JobSnapshot,
   OperationHistoryRecordDto,
 } from "@fileoctopus/ts-api";
-import { Badge, Button, IconButton } from "@fileoctopus/ui";
-import { useMemo } from "react";
+import { Badge, Button, IconButton, Icons, SegmentedControl } from "@fileoctopus/ui";
+import { useMemo, useState } from "react";
+import { formatDate } from "../pane/fileTableUtils";
+import { JobCard } from "./JobCard";
+import { jobIdValue } from "./jobCardUtils";
+
+type ActivityTab = "activity" | "history";
 
 interface JobMetrics {
   speedLabel: string | null;
@@ -33,14 +38,17 @@ export function ActivityPanel({
   onClearHistory,
   jobMetrics,
 }: ActivityPanelProps) {
+  const [tab, setTab] = useState<ActivityTab>("activity");
+
   const activeJobs = jobs.filter(
     (job) => job.status === "queued" || job.status === "running",
   );
   const recentJobs = jobs
     .filter((job) => job.status !== "queued" && job.status !== "running")
-    .slice(-5);
+    .slice(-5)
+    .reverse();
 
-  const cards = useMemo(
+  const activityCards = useMemo(
     () => [...activeJobs, ...recentJobs],
     [activeJobs, recentJobs],
   );
@@ -55,6 +63,7 @@ export function ActivityPanel({
           type="button"
           variant="ghost"
           size="sm"
+          aria-label="Expand Jobs and Activity panel"
           onClick={onToggleCollapsed}
         >
           Activity
@@ -83,143 +92,94 @@ export function ActivityPanel({
           size="sm"
           onClick={onToggleCollapsed}
         >
-          -
+          −
         </IconButton>
       </header>
       {error ? <div className="fo-operation-error">{error}</div> : null}
-      <div
-        className="fo-activity-tabs"
-        role="tablist"
+      <SegmentedControl
         aria-label="Activity views"
-      >
-        <span className="fo-activity-tab-active">Activity</span>
-        <span>History</span>
-      </div>
-      <div className="fo-activity-cards">
-        {cards.length === 0 ? (
-          <div className="fo-empty-inline">No active jobs</div>
+        className="fo-activity-segmented"
+        value={tab}
+        options={[
+          { value: "activity", label: "Activity" },
+          { value: "history", label: "History" },
+        ]}
+        onChange={setTab}
+      />
+      <div className="fo-activity-body">
+        {tab === "activity" ? (
+          <section className="fo-activity-cards" aria-label="Active jobs">
+            <h3 className="fo-activity-section-title">Active Jobs</h3>
+            {activityCards.length === 0 ? (
+              <div className="fo-empty-inline">No active jobs</div>
+            ) : (
+              activityCards.map((job) => {
+                const jobId = jobIdValue(job.jobId);
+                return (
+                  <JobCard
+                    key={jobId}
+                    job={job}
+                    metrics={jobMetrics[jobId]}
+                    onCancel={
+                      job.status === "running" || job.status === "queued"
+                        ? () => onCancel(jobId)
+                        : undefined
+                    }
+                  />
+                );
+              })
+            )}
+          </section>
         ) : (
-          cards.map((job) => {
-            const jobId = jobIdValue(job.jobId);
-            const percent = progressPercent(job);
-            const metrics = jobMetrics[jobId];
-            const tone =
-              job.status === "failed"
-                ? "failed"
-                : job.status === "completed"
-                  ? "completed"
-                  : job.status === "queued"
-                    ? "queued"
-                    : "running";
-
-            return (
-              <article
-                className={`fo-job-card fo-job-card-${tone}`}
-                key={jobId}
-              >
-                <div className="fo-job-card-title">
+          <section className="fo-history" aria-label="Operation history">
+            <header>
+              <h3 className="fo-activity-section-title">History</h3>
+              <div className="fo-history-actions">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={onRefreshHistory}
+                >
+                  {Icons.refresh()}
+                  Refresh
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={onClearHistory}
+                >
+                  Clear
+                </Button>
+              </div>
+            </header>
+            {history.length === 0 ? (
+              <div className="fo-empty-inline">No recent operations</div>
+            ) : (
+              history.slice(0, 12).map((item) => (
+                <div className="fo-history-row" key={item.jobId}>
+                  <span className="fo-history-kind">{item.operationKind}</span>
                   <span
-                    className="fo-job-operation"
-                    data-icon={operationIcon(job.operationKind)}
+                    className={`fo-history-status fo-history-status-${item.status}`}
                   >
-                    {job.operationKind} {job.status}
+                    {item.status}
                   </span>
-                  <span>{percent}%</span>
-                </div>
-                <p className="fo-job-card-status">{job.status}</p>
-                <div className="fo-job-card-bar">
-                  <div style={{ width: `${percent}%` }} />
-                </div>
-                <p className="fo-job-card-meta">
-                  {job.completedItems}/{job.totalItems} items
-                  {metrics?.speedLabel ? ` - ${metrics.speedLabel}` : ""}
-                  {metrics?.etaLabel ? ` - ${metrics.etaLabel}` : ""}
-                </p>
-                {job.status === "running" || job.status === "queued" ? (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => onCancel(jobId)}
+                  <span
+                    className="fo-history-path"
+                    title={item.representativeSourcePath ?? ""}
                   >
-                    Cancel
-                  </Button>
-                ) : null}
-              </article>
-            );
-          })
+                    {item.representativeSourcePath ?? "—"}
+                  </span>
+                  <span className="fo-history-time">
+                    {formatDate(item.completedAt ?? item.startedAt)}
+                  </span>
+                </div>
+              ))
+            )}
+          </section>
         )}
       </div>
-      <section className="fo-history" aria-label="Operation history">
-        <header>
-          <strong>History</strong>
-          <div>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={onRefreshHistory}
-            >
-              Refresh
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={onClearHistory}
-            >
-              Clear
-            </Button>
-          </div>
-        </header>
-        {history.length === 0 ? (
-          <div className="fo-empty-inline">No recent operations</div>
-        ) : (
-          history.slice(0, 8).map((item) => (
-            <div className="fo-history-row" key={item.jobId}>
-              <span>{item.operationKind}</span>
-              <span>{item.status}</span>
-              <span>{item.representativeSourcePath ?? ""}</span>
-            </div>
-          ))
-        )}
-      </section>
     </aside>
   );
-}
-
-function jobIdValue(jobId: JobSnapshot["jobId"]): string {
-  return typeof jobId === "string" ? jobId : String(jobId.value ?? "");
-}
-
-function progressPercent(job: JobSnapshot): number {
-  if (job.totalBytes && job.totalBytes > 0) {
-    return Math.min(
-      100,
-      Math.round((job.completedBytes / job.totalBytes) * 100),
-    );
-  }
-  if (job.totalItems > 0) {
-    return Math.min(
-      100,
-      Math.round((job.completedItems / job.totalItems) * 100),
-    );
-  }
-  return 0;
-}
-
-function operationIcon(operationKind: string): string {
-  switch (operationKind) {
-    case "copy":
-      return "CP";
-    case "move":
-      return "MV";
-    case "trash":
-    case "delete":
-      return "TR";
-    case "rename":
-      return "RN";
-    default:
-      return "OP";
-  }
 }

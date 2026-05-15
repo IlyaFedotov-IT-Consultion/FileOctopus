@@ -53,13 +53,16 @@ import {
   applyAllPreferences,
   applyDensityPreference,
   applyLayoutPreferences,
+  applySplitRatio,
   rowHeightForDensity,
   viewModeFromPreference,
   type DensityPreference,
 } from "./applyPreferences";
 import {
+  BreadcrumbPath,
   Button,
   IconButton,
+  Icons,
   SearchInput,
   SegmentedControl,
   cx,
@@ -73,6 +76,7 @@ import {
   readDraggedUri,
   useFileOctopusDragTarget,
 } from "./hooks/useFileOctopusDragTarget";
+import { useWorkspaceLayout } from "./hooks/useWorkspaceLayout";
 import { SidebarResizer, SplitResizer } from "./shell/LayoutResizers";
 import { StatusBar } from "./shell/StatusBar";
 import { TitleBar } from "./shell/TitleBar";
@@ -192,6 +196,7 @@ export function FileOctopusShell() {
   const [search, setSearch] = useState<SearchState | null>(null);
   const [pathFocusToken, setPathFocusToken] = useState(0);
   const [filterFocusToken, setFilterFocusToken] = useState(0);
+  const [recursiveSearchFocusToken, setRecursiveSearchFocusToken] = useState(0);
   const [preferences, setPreferences] = useState<UserPreferencesDto | null>(
     null,
   );
@@ -206,6 +211,17 @@ export function FileOctopusShell() {
   const [recentWeek, setRecentWeek] = useState<RecentEntryDto[]>([]);
   const [starred, setStarred] = useState<StarredEntryDto[]>([]);
   const [activityCollapsed, setActivityCollapsed] = useState(false);
+  const workspaceRef = useRef<HTMLElement | null>(null);
+  const { markActivityPinnedOpen } = useWorkspaceLayout({
+    workspaceRef,
+    sidebarWidth: preferences?.sidebarWidth ?? 240,
+    activityCollapsed,
+    activityPanelVisible: preferences?.activityPanelVisible ?? true,
+    onCollapseActivity: () => {
+      setActivityCollapsed(true);
+      void updatePreference("activityPanelVisible", "false");
+    },
+  });
   const [jobMetrics, setJobMetrics] = useState<
     Record<
       string,
@@ -1302,10 +1318,22 @@ export function FileOctopusShell() {
   }
 
   function handleShellKeyDown(event: KeyboardEvent<HTMLElement>) {
-    if (event.key === "Escape" && dialog) {
-      event.preventDefault();
-      setDialog(null);
-      return;
+    if (event.key === "Escape") {
+      if (dialog) {
+        event.preventDefault();
+        setDialog(null);
+        return;
+      }
+      if (contextMenu) {
+        event.preventDefault();
+        setContextMenu(null);
+        return;
+      }
+      if (helpOpen) {
+        event.preventDefault();
+        setHelpOpen(false);
+        return;
+      }
     }
 
     if (isEditableTarget(event.target)) {
@@ -1343,9 +1371,25 @@ export function FileOctopusShell() {
       return;
     }
 
+    if (
+      (event.metaKey || event.ctrlKey) &&
+      event.shiftKey &&
+      event.key.toLowerCase() === "f"
+    ) {
+      event.preventDefault();
+      setRecursiveSearchFocusToken((value) => value + 1);
+      return;
+    }
+
     if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "f") {
       event.preventDefault();
       setFilterFocusToken((value) => value + 1);
+      return;
+    }
+
+    if ((event.metaKey || event.ctrlKey) && event.key === ".") {
+      event.preventDefault();
+      toggleHidden(panelId);
       return;
     }
 
@@ -1450,7 +1494,11 @@ export function FileOctopusShell() {
               setDiagnosticsOpen(true);
             }}
           />
-          <section className="fo-workspace" aria-label="File workspace">
+          <section
+            ref={workspaceRef}
+            className="fo-workspace"
+            aria-label="File workspace"
+          >
             <Sidebar
               locations={locations}
               favorites={favorites}
@@ -1562,6 +1610,7 @@ export function FileOctopusShell() {
                 canPaste={Boolean(clipboard)}
                 pathFocusToken={pathFocusToken}
                 filterFocusToken={filterFocusToken}
+                recursiveSearchFocusToken={recursiveSearchFocusToken}
                 rowHeight={rowHeight}
                 search={search?.panelId === "left" ? search : null}
                 onContextMenu={setContextMenu}
@@ -1569,11 +1618,8 @@ export function FileOctopusShell() {
               />
               <SplitResizer
                 onSplitResize={(ratio) => {
-                  document.documentElement.style.setProperty(
-                    "--fo-left-pane-fr",
-                    String(ratio),
-                  );
-                  void updatePreference("splitRatio", String(ratio));
+                  const nextRatio = applySplitRatio(ratio);
+                  void updatePreference("splitRatio", String(nextRatio));
                 }}
               />
               <FilePanel
@@ -1637,6 +1683,7 @@ export function FileOctopusShell() {
                 canPaste={Boolean(clipboard)}
                 pathFocusToken={pathFocusToken}
                 filterFocusToken={filterFocusToken}
+                recursiveSearchFocusToken={recursiveSearchFocusToken}
                 rowHeight={rowHeight}
                 search={search?.panelId === "right" ? search : null}
                 onContextMenu={setContextMenu}
@@ -1651,6 +1698,9 @@ export function FileOctopusShell() {
               jobMetrics={jobMetrics}
               onToggleCollapsed={() => {
                 const next = !activityCollapsed;
+                if (!next) {
+                  markActivityPinnedOpen();
+                }
                 setActivityCollapsed(next);
                 void updatePreference("activityPanelVisible", String(!next));
               }}
@@ -1810,6 +1860,7 @@ interface FilePanelProps {
   canPaste: boolean;
   pathFocusToken: number;
   filterFocusToken: number;
+  recursiveSearchFocusToken: number;
   rowHeight: number;
   search: SearchState | null;
   onContextMenu: (menu: ContextMenuState | null) => void;
@@ -1852,6 +1903,7 @@ function FilePanel({
   canPaste,
   pathFocusToken,
   filterFocusToken,
+  recursiveSearchFocusToken,
   rowHeight,
   search,
   onContextMenu,
@@ -1860,7 +1912,15 @@ function FilePanel({
   const selectedEntry =
     entries.find((entry) => entry.uri === tab.selectedId) ?? null;
   const upUri = parentUri(tab.uri);
+  const recursiveSearchRef = useRef<HTMLInputElement | null>(null);
   const { dragOver, reset, dragTargetProps } = useFileOctopusDragTarget();
+
+  useEffect(() => {
+    if (recursiveSearchFocusToken > 0 && active) {
+      recursiveSearchRef.current?.focus();
+      recursiveSearchRef.current?.select();
+    }
+  }, [active, recursiveSearchFocusToken]);
 
   return (
     <section
@@ -1877,7 +1937,7 @@ function FilePanel({
               disabled={tab.backStack.length === 0}
               onClick={onBack}
             >
-              Back
+              {Icons.chevronLeft()}
             </IconButton>
             <IconButton
               label={`${panelId} forward`}
@@ -1885,7 +1945,7 @@ function FilePanel({
               disabled={tab.forwardStack.length === 0}
               onClick={onForward}
             >
-              Fwd
+              {Icons.chevronRight()}
             </IconButton>
             <IconButton
               label={`${panelId} up`}
@@ -1893,7 +1953,7 @@ function FilePanel({
               disabled={!upUri}
               onClick={() => upUri && onNavigate(upUri)}
             >
-              Up
+              {Icons.arrowUp()}
             </IconButton>
           </div>
           <PathBar
@@ -1920,6 +1980,14 @@ function FilePanel({
           onNavigate(uri);
         }}
       >
+        {dragOver ? (
+          <div className="fo-panel-drop-overlay" aria-live="polite">
+            Drop here to open in {title.toLowerCase()} pane
+            <span className="fo-panel-drop-path">
+              {localPathFromUri(tab.uri)}
+            </span>
+          </div>
+        ) : null}
         <OperationToolbar
           selectedCount={tab.selectedIds.length}
           canRename={tab.selectedIds.length === 1}
@@ -1972,9 +2040,10 @@ function FilePanel({
         </div>
         <div className="fo-search-strip">
           <input
+            ref={recursiveSearchRef}
             aria-label={`${panelId} recursive search`}
             value={tab.recursiveQuery}
-            placeholder="Recursive search"
+            placeholder="Search in subfolders..."
             onChange={(event) => onRecursiveQuery(event.target.value)}
           />
           <Button
@@ -2081,30 +2150,17 @@ function PathBar({ value, error, focusToken, onSubmit }: PathBarProps) {
   if (!editing) {
     return (
       <div
-        className={error ? "fo-breadcrumb fo-path-error" : "fo-breadcrumb"}
+        className={error ? "fo-path-error-wrap" : undefined}
         onDoubleClick={() => setEditing(true)}
       >
-        {breadcrumbSegments(value).map((segment) => (
-          <Button
-            key={segment.uri}
-            type="button"
-            variant="ghost"
-            size="sm"
-            title={segment.uri}
-            onClick={() => onSubmit(segment.uri)}
-          >
-            {segment.label}
-          </Button>
-        ))}
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          aria-label="Edit current path"
-          onClick={() => setEditing(true)}
-        >
-          Edit path
-        </Button>
+        <BreadcrumbPath
+          segments={breadcrumbSegments(value).map((segment) => ({
+            label: segment.label,
+            path: segment.uri,
+          }))}
+          onNavigate={onSubmit}
+          onEditPath={() => setEditing(true)}
+        />
       </div>
     );
   }

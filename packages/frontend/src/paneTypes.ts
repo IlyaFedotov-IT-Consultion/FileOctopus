@@ -6,6 +6,7 @@ export type PaneLoadState =
   | "loaded"
   | "empty"
   | "error"
+  | "notFound"
   | "permissionDenied"
   | "timeout";
 
@@ -20,6 +21,10 @@ export function createRequestId(): string {
 export function loadStateFromBatchError(error: IpcError | null | undefined): PaneLoadState {
   if (!error) {
     return "error";
+  }
+
+  if (error.code === "not_found") {
+    return "notFound";
   }
 
   if (error.code === "permission_denied") {
@@ -60,6 +65,8 @@ export function paneStateLabel(loadState: PaneLoadState): string {
       return "Empty folder";
     case "error":
       return "Error";
+    case "notFound":
+      return "Not found";
     case "permissionDenied":
       return "Permission denied";
     case "timeout":

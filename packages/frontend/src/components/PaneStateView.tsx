@@ -46,16 +46,20 @@ export function PaneStateView({
   }
 
   const title =
-    loadState === "permissionDenied"
-      ? "Permission denied"
-      : loadState === "timeout"
-        ? "Directory listing timed out"
-        : "Unable to load this folder";
+    loadState === "notFound"
+      ? "Folder not found"
+      : loadState === "permissionDenied"
+        ? "Permission denied"
+        : loadState === "timeout"
+          ? "Directory listing timed out"
+          : "Unable to read this location";
 
   const guidance =
-    loadState === "permissionDenied"
-      ? "Check macOS privacy settings or choose another location."
-      : null;
+    loadState === "notFound"
+      ? "The path may have been moved, renamed, or deleted."
+      : loadState === "permissionDenied"
+        ? "Check macOS privacy settings or choose another location."
+        : null;
 
   return (
     <div className="fo-pane-state fo-pane-state-error">
