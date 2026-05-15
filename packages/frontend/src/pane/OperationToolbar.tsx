@@ -22,6 +22,7 @@ export interface OperationToolbarProps {
   onCopyPath: () => void;
   onCopyName: () => void;
   onProperties: () => void;
+  onSelectAll: () => void;
   onRefresh: () => void;
   onToggleHidden: () => void;
   onViewMode: (viewMode: ViewMode) => void;
@@ -46,6 +47,7 @@ export function OperationToolbar({
   onCopyPath,
   onCopyName,
   onProperties,
+  onSelectAll,
   onRefresh,
   onToggleHidden,
   onViewMode,
@@ -191,12 +193,19 @@ export function OperationToolbar({
             onSelect: onProperties,
           },
           {
+            id: "select-all",
+            label: "Select All",
+            icon: Icons.file(),
+            shortcut: "Cmd+A",
+            separatorBefore: true,
+            onSelect: onSelectAll,
+          },
+          {
             id: "hidden",
             label: showHidden ? "Hide Hidden" : "Show Hidden",
             icon: Icons.file(),
             shortcut: "Cmd+.",
             checked: showHidden,
-            separatorBefore: true,
             onSelect: onToggleHidden,
           },
           {
