@@ -1870,7 +1870,7 @@ export function FileOctopusShell() {
             }
             showHidden={
               contextMenu?.panelId
-                ? state.panels[contextMenu.panelId].showHidden
+                ? activeTab(state.panels[contextMenu.panelId]).showHidden
                 : false
             }
             onClose={() => setContextMenu(null)}

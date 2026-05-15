@@ -119,7 +119,7 @@ describe("visual state fixtures", () => {
   it("renders shortcuts dialog", () => {
     const view = renderVisualState(<ShortcutsDialog open onClose={noop} />);
 
-    expect(screen.getByText("Keyboard shortcuts")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Keyboard shortcuts" })).toBeTruthy();
     expect(screen.getByText("Copy selection")).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Navigation" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "File operations" })).toBeTruthy();

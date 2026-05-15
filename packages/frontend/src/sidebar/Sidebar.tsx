@@ -198,10 +198,6 @@ function SidebarSection({
   );
 }
 
-function SidebarGroupLabel({ children }: { children: ReactNode }) {
-  return <div className="fo-sidebar-group-label">{children}</div>;
-}
-
 function SidebarEmptyHint({ children }: { children: ReactNode }) {
   return <p className="fo-sidebar-empty-hint">{children}</p>;
 }
