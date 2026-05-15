@@ -134,8 +134,14 @@ impl PreferencesRepository {
         let defaults = UserPreferences::default();
         let now = chrono_lite_now();
         let rows = [
-            ("activityPanelVisible", defaults.activity_panel_visible.to_string()),
-            ("activityPanelWidth", defaults.activity_panel_width.to_string()),
+            (
+                "activityPanelVisible",
+                defaults.activity_panel_visible.to_string(),
+            ),
+            (
+                "activityPanelWidth",
+                defaults.activity_panel_width.to_string(),
+            ),
         ];
 
         for (key, value) in rows {

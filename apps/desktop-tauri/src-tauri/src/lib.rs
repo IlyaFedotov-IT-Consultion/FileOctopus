@@ -16,10 +16,10 @@ use app_ipc::{
     NavigationAddFavoriteRequest, NavigationFavoriteResponse, NavigationIsStarredRequest,
     NavigationIsStarredResponse, NavigationListFavoritesResponse, NavigationListRecentRequest,
     NavigationListRecentResponse, NavigationListStarredResponse, NavigationRecordVisitRequest,
-    NavigationRemoveFavoriteRequest, NavigationRenameFavoriteRequest, NavigationToggleStarredRequest,
-    NavigationToggleStarredResponse, OkResponse, OperationHistoryRecordDto, PathPropertiesDto,
-    PathPropertiesRequest,
-    PathPropertiesResponse, PathRequest, PlanFileOperationRequest, PlanFileOperationResponse,
+    NavigationRemoveFavoriteRequest, NavigationRenameFavoriteRequest,
+    NavigationToggleStarredRequest, NavigationToggleStarredResponse, OkResponse,
+    OperationHistoryRecordDto, PathPropertiesDto, PathPropertiesRequest, PathPropertiesResponse,
+    PathRequest, PlanFileOperationRequest, PlanFileOperationResponse,
     RecursiveSearchCompletedEventDto, RecursiveSearchJobResponse, RecursiveSearchMatchEventDto,
     RecursiveSearchRequest, RecursiveSearchResponse, RecursiveSearchResultDto, SearchMatchDto,
     SetPreferenceRequest, SetPreferenceResponse, StandardLocationDto, StandardLocationsResponse,
@@ -29,13 +29,13 @@ use app_ipc::{
     WATCH_CHANGED_EVENT,
 };
 use chrono::Utc;
+use config::RecentBucket;
 use fs_core::sprint4;
 use jobs::{
     CancellationToken, JobCancelledEvent, JobCompletedEvent, JobEvent, JobFailedEvent, JobId,
     JobProgressEvent, JobSnapshot, JobStartedEvent, JobStatus,
 };
 use tauri::{AppHandle, Emitter, State};
-use config::RecentBucket;
 use vfs::{
     DirectoryBatch, FileOperationError, FileOperationKind, ListCancellation, ListOptions,
     ListSessionId, ResourceUri, VfsError,

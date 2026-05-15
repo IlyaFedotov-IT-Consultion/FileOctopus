@@ -144,10 +144,12 @@ fn standard_locations_tag_sections_consistently() {
         .expect("home location is required");
     assert_eq!(home.section, "Favorites");
 
-    for location in locations
-        .iter()
-        .filter(|location| matches!(location.id.as_str(), "desktop" | "documents" | "downloads" | "pictures" | "music" | "videos"))
-    {
+    for location in locations.iter().filter(|location| {
+        matches!(
+            location.id.as_str(),
+            "desktop" | "documents" | "downloads" | "pictures" | "music" | "videos"
+        )
+    }) {
         assert_eq!(location.section, "User folders");
     }
 

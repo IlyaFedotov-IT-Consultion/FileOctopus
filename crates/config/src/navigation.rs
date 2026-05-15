@@ -100,9 +100,8 @@ impl NavigationRepository {
 
     pub fn list_favorites(&self) -> Result<Vec<FavoriteEntry>, NavigationError> {
         let connection = self.connect()?;
-        let mut statement = connection.prepare(
-            "select id, uri, label from favorites order by sort_order asc, label asc",
-        )?;
+        let mut statement = connection
+            .prepare("select id, uri, label from favorites order by sort_order asc, label asc")?;
         let rows = statement.query_map([], |row| {
             Ok(FavoriteEntry {
                 id: row.get::<_, i64>(0)? as u64,
@@ -111,7 +110,8 @@ impl NavigationRepository {
             })
         })?;
 
-        rows.collect::<Result<Vec<_>, _>>().map_err(NavigationError::from)
+        rows.collect::<Result<Vec<_>, _>>()
+            .map_err(NavigationError::from)
     }
 
     pub fn add_favorite(&self, uri: &str, label: &str) -> Result<FavoriteEntry, NavigationError> {
@@ -155,18 +155,19 @@ impl NavigationRepository {
         if updated == 0 {
             return Err(NavigationError::FavoriteNotFound);
         }
-        connection.query_row(
-            "select id, uri, label from favorites where id = ?1",
-            params![id],
-            |row| {
-                Ok(FavoriteEntry {
-                    id: row.get::<_, i64>(0)? as u64,
-                    uri: row.get(1)?,
-                    label: row.get(2)?,
-                })
-            },
-        )
-        .map_err(NavigationError::from)
+        connection
+            .query_row(
+                "select id, uri, label from favorites where id = ?1",
+                params![id],
+                |row| {
+                    Ok(FavoriteEntry {
+                        id: row.get::<_, i64>(0)? as u64,
+                        uri: row.get(1)?,
+                        label: row.get(2)?,
+                    })
+                },
+            )
+            .map_err(NavigationError::from)
     }
 
     pub fn list_recent(&self, bucket: RecentBucket) -> Result<Vec<RecentEntry>, NavigationError> {
@@ -186,7 +187,8 @@ impl NavigationRepository {
             })
         })?;
 
-        rows.collect::<Result<Vec<_>, _>>().map_err(NavigationError::from)
+        rows.collect::<Result<Vec<_>, _>>()
+            .map_err(NavigationError::from)
     }
 
     pub fn list_starred(&self) -> Result<Vec<StarredEntry>, NavigationError> {
@@ -202,7 +204,8 @@ impl NavigationRepository {
             })
         })?;
 
-        rows.collect::<Result<Vec<_>, _>>().map_err(NavigationError::from)
+        rows.collect::<Result<Vec<_>, _>>()
+            .map_err(NavigationError::from)
     }
 
     pub fn toggle_starred(&self, uri: &str, label: &str) -> Result<bool, NavigationError> {
@@ -286,10 +289,13 @@ fn recent_cutoff(bucket: RecentBucket) -> Result<DateTime<Utc>, NavigationError>
             local_now.date_naive() - chrono::Duration::days(weekday as i64)
         }
     };
-    let cutoff_naive = cutoff_date.and_hms_opt(0, 0, 0).ok_or_else(|| NavigationError::InvalidValue {
-        field: "bucket".to_string(),
-        reason: "failed to compute start of day".to_string(),
-    })?;
+    let cutoff_naive =
+        cutoff_date
+            .and_hms_opt(0, 0, 0)
+            .ok_or_else(|| NavigationError::InvalidValue {
+                field: "bucket".to_string(),
+                reason: "failed to compute start of day".to_string(),
+            })?;
 
     Local
         .from_local_datetime(&cutoff_naive)
@@ -309,8 +315,7 @@ mod tests {
     #[test]
     fn favorites_and_recent_work() {
         let dir = tempdir().unwrap();
-        let repository =
-            NavigationRepository::new(dir.path().join("navigation.sqlite")).unwrap();
+        let repository = NavigationRepository::new(dir.path().join("navigation.sqlite")).unwrap();
 
         repository
             .record_visit("local:///Users/test", "test")
@@ -323,9 +328,13 @@ mod tests {
         let recent = repository.list_recent(RecentBucket::Today).unwrap();
         assert_eq!(recent.len(), 1);
 
-        assert!(repository.toggle_starred("local:///Users/test", "test").unwrap());
+        assert!(repository
+            .toggle_starred("local:///Users/test", "test")
+            .unwrap());
         assert_eq!(repository.list_starred().unwrap().len(), 1);
-        assert!(!repository.toggle_starred("local:///Users/test", "test").unwrap());
+        assert!(!repository
+            .toggle_starred("local:///Users/test", "test")
+            .unwrap());
 
         repository.remove_favorite(favorite.id).unwrap();
         assert!(repository.list_favorites().unwrap().is_empty());
