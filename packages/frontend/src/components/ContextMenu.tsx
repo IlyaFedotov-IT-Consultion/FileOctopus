@@ -32,6 +32,8 @@ interface ContextMenuProps {
   onSelectAll: (panelId: PanelId) => void;
   onViewMode: (panelId: PanelId, viewMode: ViewMode) => void;
   onSort: (panelId: PanelId, field: SortField) => void;
+  showHidden: boolean;
+  onToggleHidden: (panelId: PanelId) => void;
 }
 
 function ContextMenuItem({
@@ -81,6 +83,8 @@ export function ContextMenu({
   onSelectAll,
   onViewMode,
   onSort,
+  showHidden,
+  onToggleHidden,
 }: ContextMenuProps) {
   if (!menu) {
     return null;
@@ -177,6 +181,9 @@ export function ContextMenu({
         </ContextMenuItem>
         <ContextMenuItem onClick={() => run(() => onRefresh(menu.panelId))}>
           Refresh
+        </ContextMenuItem>
+        <ContextMenuItem onClick={() => run(() => onToggleHidden(menu.panelId))}>
+          {showHidden ? "Hide Hidden Files" : "Show Hidden Files"}
         </ContextMenuItem>
         <ContextMenuItem onClick={() => run(() => onSelectAll(menu.panelId))}>
           Select All
