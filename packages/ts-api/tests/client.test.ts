@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   DIRECTORY_BATCH_EVENT,
+  FOLDER_SIZE_COMPLETED_EVENT,
   FileOctopusClient,
+  RECURSIVE_SEARCH_COMPLETED_EVENT,
+  RECURSIVE_SEARCH_MATCH_EVENT,
   normalizeIpcError,
 } from "../src/client";
 import type { IpcTransport } from "../src/types";
@@ -60,6 +63,231 @@ describe("FileOctopusClient", () => {
       "fs.stat",
       "fs.list_start",
     ]);
+  });
+
+  it("routes Sprint 4 baseline filesystem commands through typed clients", async () => {
+    const calls: Array<{ command: string; args?: Record<string, unknown> }> =
+      [];
+    const transport: IpcTransport = {
+      async invoke<TResponse>(command: string, args?: Record<string, unknown>) {
+        calls.push({ command, args });
+
+        if (command === "fs.standard_locations") {
+          return {
+            locations: [
+              {
+                id: "home",
+                name: "Home",
+                uri: "local:///Users/ilya",
+                section: "Favorites",
+              },
+            ],
+          } as TResponse;
+        }
+
+        if (command === "fs.properties") {
+          return {
+            properties: {
+              uri: "local:///tmp/a.txt",
+              name: "a.txt",
+              kind: "file",
+              size: 1,
+              totalSize: null,
+              itemCount: null,
+              fileCount: null,
+              directoryCount: null,
+              modifiedAt: null,
+              createdAt: null,
+              accessedAt: null,
+              isHidden: false,
+              isSymlink: false,
+              symlinkTarget: null,
+              readonly: false,
+              warnings: [],
+            },
+          } as TResponse;
+        }
+
+        if (command === "fs.folder_size") {
+          return {
+            summary: {
+              totalSize: 1,
+              itemCount: 1,
+              fileCount: 1,
+              directoryCount: 0,
+              warnings: [],
+              incomplete: false,
+            },
+          } as TResponse;
+        }
+
+        if (command === "fs.folder_size_start") {
+          return {
+            job: {
+              jobId: "folder-job",
+              operationKind: "folderSize",
+              status: "running",
+              completedItems: 0,
+              totalItems: 0,
+              completedBytes: 0,
+              startedAt: new Date(0).toISOString(),
+              updatedAt: new Date(0).toISOString(),
+            },
+          } as TResponse;
+        }
+
+        if (command === "fs.recursive_search") {
+          return {
+            result: { matches: [], warnings: [], incomplete: false },
+          } as TResponse;
+        }
+
+        if (command === "fs.recursive_search_start") {
+          return {
+            job: {
+              jobId: "search-job",
+              operationKind: "recursiveSearch",
+              status: "running",
+              completedItems: 0,
+              totalItems: 0,
+              completedBytes: 0,
+              startedAt: new Date(0).toISOString(),
+              updatedAt: new Date(0).toISOString(),
+            },
+          } as TResponse;
+        }
+
+        if (command === "fs.create_file") {
+          return {
+            entry: {
+              uri: "local:///tmp/new.txt",
+              name: "new.txt",
+              kind: "file",
+              size: 0,
+              isHidden: false,
+              isSymlink: false,
+              providerId: "local",
+              canRead: true,
+              canList: false,
+              canWrite: false,
+              canDelete: false,
+              canRename: false,
+            },
+          } as TResponse;
+        }
+
+        return { ok: true } as TResponse;
+      },
+    };
+    const client = new FileOctopusClient(transport);
+
+    await client.fs.standardLocations();
+    await client.fs.openPathWithDefaultApp({ uri: "local:///tmp/a.txt" });
+    await client.fs.revealPathInFileManager({ uri: "local:///tmp/a.txt" });
+    await client.fs.createFile({ uri: "local:///tmp/new.txt" });
+    await client.fs.properties({
+      uri: "local:///tmp/a.txt",
+      includeFolderSummary: true,
+    });
+    await client.fs.folderSize({ uri: "local:///tmp" });
+    await client.fs.startFolderSizeJob({ uri: "local:///tmp" });
+    await client.fs.recursiveSearch({
+      uri: "local:///tmp",
+      query: "needle",
+      limit: 100,
+    });
+    await client.fs.startRecursiveSearchJob({
+      uri: "local:///tmp",
+      query: "needle",
+      limit: 100,
+    });
+    await client.fs.deletePermanently({ uris: ["local:///tmp/a.txt"] });
+    await client.fs.startWatching({ uri: "local:///tmp" });
+    await client.fs.stopWatching();
+
+    expect(calls.map((call) => call.command)).toEqual([
+      "fs.standard_locations",
+      "fs.open_default",
+      "fs.reveal",
+      "fs.create_file",
+      "fs.properties",
+      "fs.folder_size",
+      "fs.folder_size_start",
+      "fs.recursive_search",
+      "fs.recursive_search_start",
+      "fs.delete_permanently",
+      "fs.watch_start",
+      "fs.watch_stop",
+    ]);
+  });
+
+  it("subscribes to Sprint 4 metadata job events", async () => {
+    const subscribed: string[] = [];
+    const transport: IpcTransport = {
+      async invoke<TResponse>() {
+        return {} as TResponse;
+      },
+      async listen(event, handler) {
+        subscribed.push(event);
+
+        if (event === FOLDER_SIZE_COMPLETED_EVENT) {
+          handler({
+            jobId: "folder-job",
+            uri: "local:///tmp",
+            summary: {
+              totalSize: 1,
+              itemCount: 1,
+              fileCount: 1,
+              directoryCount: 0,
+              warnings: [],
+              incomplete: false,
+            },
+          });
+        }
+
+        if (event === RECURSIVE_SEARCH_MATCH_EVENT) {
+          handler({
+            jobId: "search-job",
+            uri: "local:///tmp",
+            query: "needle",
+            item: {
+              uri: "local:///tmp/needle.txt",
+              parentUri: "local:///tmp",
+              name: "needle.txt",
+              kind: "file",
+            },
+          });
+        }
+
+        if (event === RECURSIVE_SEARCH_COMPLETED_EVENT) {
+          handler({
+            jobId: "search-job",
+            uri: "local:///tmp",
+            query: "needle",
+            result: { matches: [], warnings: [], incomplete: false },
+          });
+        }
+
+        return () => undefined;
+      },
+    };
+    const client = new FileOctopusClient(transport);
+    const seen: string[] = [];
+
+    await client.fs.onFolderSizeCompleted((event) => seen.push(event.jobId));
+    await client.fs.onRecursiveSearchMatch((event) =>
+      seen.push(event.item.name),
+    );
+    await client.fs.onRecursiveSearchCompleted((event) =>
+      seen.push(event.jobId),
+    );
+
+    expect(subscribed).toEqual([
+      FOLDER_SIZE_COMPLETED_EVENT,
+      RECURSIVE_SEARCH_MATCH_EVENT,
+      RECURSIVE_SEARCH_COMPLETED_EVENT,
+    ]);
+    expect(seen).toEqual(["folder-job", "needle.txt", "search-job"]);
   });
 
   it("subscribes to directory batch events", async () => {

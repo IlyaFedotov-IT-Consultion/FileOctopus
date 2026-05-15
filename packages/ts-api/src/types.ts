@@ -74,6 +74,144 @@ export interface ListStartResponse {
   sessionId: string;
 }
 
+export interface StandardLocationDto {
+  id: string;
+  name: string;
+  uri: string;
+  section: string;
+}
+
+export interface StandardLocationsResponse {
+  locations: StandardLocationDto[];
+}
+
+export interface PathRequest {
+  uri: string;
+}
+
+export interface DeletePermanentlyRequest {
+  uris: string[];
+}
+
+export interface OkResponse {
+  ok: boolean;
+}
+
+export interface CreateFileRequest {
+  uri: string;
+}
+
+export interface CreateFileResponse {
+  entry: FileEntryDto;
+}
+
+export interface PathPropertiesRequest {
+  uri: string;
+  includeFolderSummary?: boolean;
+}
+
+export interface PathPropertiesDto {
+  uri: string;
+  name: string;
+  kind: FileKind;
+  size?: number | null;
+  totalSize?: number | null;
+  itemCount?: number | null;
+  fileCount?: number | null;
+  directoryCount?: number | null;
+  modifiedAt?: string | null;
+  createdAt?: string | null;
+  accessedAt?: string | null;
+  isHidden: boolean;
+  isSymlink: boolean;
+  symlinkTarget?: string | null;
+  readonly: boolean;
+  warnings: string[];
+}
+
+export interface PathPropertiesResponse {
+  properties: PathPropertiesDto;
+}
+
+export interface FolderSizeRequest {
+  uri: string;
+}
+
+export interface FolderSizeSummaryDto {
+  totalSize: number;
+  itemCount: number;
+  fileCount: number;
+  directoryCount: number;
+  warnings: string[];
+  incomplete: boolean;
+}
+
+export interface FolderSizeResponse {
+  summary: FolderSizeSummaryDto;
+}
+
+export interface FolderSizeJobResponse {
+  job: JobSnapshot;
+}
+
+export interface FolderSizeCompletedEventDto {
+  jobId: string;
+  uri: string;
+  summary: FolderSizeSummaryDto;
+}
+
+export interface RecursiveSearchRequest {
+  uri: string;
+  query: string;
+  limit?: number;
+}
+
+export interface SearchMatchDto {
+  uri: string;
+  parentUri: string;
+  name: string;
+  kind: FileKind;
+  size?: number | null;
+  modifiedAt?: string | null;
+}
+
+export interface RecursiveSearchResultDto {
+  matches: SearchMatchDto[];
+  warnings: string[];
+  incomplete: boolean;
+}
+
+export interface RecursiveSearchResponse {
+  result: RecursiveSearchResultDto;
+}
+
+export interface RecursiveSearchJobResponse {
+  job: JobSnapshot;
+}
+
+export interface RecursiveSearchMatchEventDto {
+  jobId: string;
+  uri: string;
+  query: string;
+  item: SearchMatchDto;
+}
+
+export interface RecursiveSearchCompletedEventDto {
+  jobId: string;
+  uri: string;
+  query: string;
+  result: RecursiveSearchResultDto;
+}
+
+export interface WatchStartRequest {
+  uri: string;
+}
+
+export interface WatchEventDto {
+  uri: string;
+  changedAt: string;
+}
+
 export interface FileEntryDto {
   uri: string;
   name: string;
@@ -109,7 +247,9 @@ export type FileOperationKind =
   | "move"
   | "rename"
   | "deleteToTrash"
-  | "createDirectory";
+  | "createDirectory"
+  | "folderSize"
+  | "recursiveSearch";
 
 export type ConflictPolicy =
   | "fail"
