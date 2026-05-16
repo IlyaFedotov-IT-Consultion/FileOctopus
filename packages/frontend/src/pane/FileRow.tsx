@@ -100,7 +100,16 @@ export function FileRow({
           <span title={entry.modifiedAt ?? undefined}>
             {formatDate(entry.modifiedAt)}
           </span>
+          <span title={entry.createdAt ?? undefined}>
+            {formatDate(entry.createdAt)}
+          </span>
           <span>{typeLabel}</span>
+          <span>{entry.extension ?? "—"}</span>
+          <span className="fo-row-permissions">
+            {entry.canRead ? "r" : "–"}
+            {entry.canWrite ? "w" : "–"}
+            {entry.canDelete ? "d" : "–"}
+          </span>
         </>
       ) : null}
     </div>

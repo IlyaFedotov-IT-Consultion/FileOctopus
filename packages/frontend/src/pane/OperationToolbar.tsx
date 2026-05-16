@@ -26,6 +26,12 @@ export interface OperationToolbarProps {
   onRefresh: () => void;
   onToggleHidden: () => void;
   onViewMode: (viewMode: ViewMode) => void;
+  onRevealInFileManager: () => void;
+  onCalculateSize: () => void;
+  onCompress: () => void;
+  onExtract: () => void;
+  onOpenTerminal: () => void;
+  onChecksum: () => void;
 }
 
 export function OperationToolbar({
@@ -51,6 +57,12 @@ export function OperationToolbar({
   onRefresh,
   onToggleHidden,
   onViewMode,
+  onRevealInFileManager,
+  onCalculateSize,
+  onCompress,
+  onExtract,
+  onOpenTerminal,
+  onChecksum,
 }: OperationToolbarProps) {
   const [overflowOpen, setOverflowOpen] = useState(false);
 
@@ -201,6 +213,49 @@ export function OperationToolbar({
             icon: Icons.file(),
             shortcut: "Cmd+I",
             onSelect: onProperties,
+          },
+          {
+            id: "reveal-in-fm",
+            label: "Reveal in File Manager",
+            icon: Icons.folder(),
+            separatorBefore: true,
+            disabled: selectedCount === 0,
+            onSelect: onRevealInFileManager,
+          },
+          {
+            id: "calculate-size",
+            label: "Calculate Size",
+            icon: Icons.file(),
+            disabled: selectedCount === 0,
+            onSelect: onCalculateSize,
+          },
+          {
+            id: "compress",
+            label: "Compress…",
+            icon: Icons.file(),
+            separatorBefore: true,
+            disabled: selectedCount === 0,
+            onSelect: onCompress,
+          },
+          {
+            id: "extract",
+            label: "Extract…",
+            icon: Icons.file(),
+            disabled: selectedCount === 0,
+            onSelect: onExtract,
+          },
+          {
+            id: "open-terminal",
+            label: "Open Terminal",
+            icon: Icons.file(),
+            onSelect: onOpenTerminal,
+          },
+          {
+            id: "checksum",
+            label: "Checksum…",
+            icon: Icons.file(),
+            disabled: selectedCount === 0,
+            onSelect: onChecksum,
           },
           {
             id: "select-all",

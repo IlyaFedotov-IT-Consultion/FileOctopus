@@ -1314,7 +1314,7 @@ button:disabled {
   display: grid;
   gap: 2px;
   min-width: 180px;
-  max-height: min(520px, calc(100vh - 16px));
+  max-height: min(80vh, calc(100vh - 16px));
   overflow: auto;
   border: 1px solid var(--fo-dialog-border);
   background: var(--fo-surface);
@@ -1331,6 +1331,12 @@ button:disabled {
 
 .fo-context-menu .fo-context-menu-item:hover:not(:disabled) {
   border-color: var(--fo-border);
+}
+
+.fo-context-menu .fo-context-menu-separator {
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--fo-border);
 }
 
 .fo-properties dl {
