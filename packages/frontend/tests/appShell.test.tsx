@@ -386,6 +386,11 @@ vi.mock("@fileoctopus/ts-api", () => ({
       onFolderSizeCompleted,
       onRecursiveSearchMatch,
       onRecursiveSearchCompleted,
+      computeHash: vi.fn(async () => ({
+        hash: "abc123def456",
+        algorithm: "sha256",
+        fileSize: 1024,
+      })),
     },
     fileOperations: {
       planFileOperation,

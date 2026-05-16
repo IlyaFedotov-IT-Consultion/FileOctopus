@@ -1,4 +1,5 @@
 import type { DirectoryBatchEventDto, FileEntryDto } from "@fileoctopus/ts-api";
+import type { HashState } from "./pane/hashUtils";
 import {
   type PaneLoadState,
   shouldApplyBatch,
@@ -45,6 +46,7 @@ export interface PanelTabState {
   showHidden: boolean;
   backStack: string[];
   forwardStack: string[];
+  hashMap: Record<string, HashState>;
 }
 
 export interface PanelState {
@@ -101,6 +103,12 @@ export type PanelAction =
       type: "hydratePreferences";
       showHidden: boolean;
       viewMode: ViewMode;
+    }
+  | {
+      type: "setHash";
+      panelId: PanelId;
+      entryId: string;
+      hashState: HashState;
     };
 
 export function createInitialState(
@@ -303,6 +311,14 @@ export function panelReducer(
           { ...state.panels },
         ),
       };
+    case "setHash":
+      return updatePanel(state, action.panelId, (tab) => ({
+        ...tab,
+        hashMap: {
+          ...tab.hashMap,
+          [action.entryId]: action.hashState,
+        },
+      }));
     default:
       return state;
   }
@@ -377,6 +393,7 @@ function createPanel(id: PanelId, uri: string): PanelState {
         showHidden: storedShowHidden(),
         backStack: [],
         forwardStack: [],
+        hashMap: {},
       },
     },
   };

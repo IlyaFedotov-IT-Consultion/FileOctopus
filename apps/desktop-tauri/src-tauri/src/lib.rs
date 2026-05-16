@@ -11,15 +11,16 @@ use tauri_plugin_autostart::ManagerExt;
 use app_core::{AppCore, AppState, OperationHistoryRecord};
 use app_ipc::{
     job_event_name, job_event_payload, AppDataHealthResponse, AppInfoResponse, AutostartStatusDto,
-    CancelJobRequest, ClearOperationHistoryResponse, CreateFileRequest, CreateFileResponse,
-    DeletePermanentlyRequest, DirectoryBatchEventDto, ExportDiagnosticsBundleRequest,
-    ExportDiagnosticsBundleResponse, FolderSizeCompletedEventDto, FolderSizeJobResponse,
-    FolderSizeRequest, FolderSizeResponse, FolderSizeSummaryDto, GetPreferencesResponse, IpcError,
-    JobStatusRequest, JobStatusResponse, ListRecentOperationsRequest, ListRecentOperationsResponse,
-    ListStartRequest, ListStartResponse, NavigationAddFavoriteRequest, NavigationFavoriteResponse,
-    NavigationIsStarredRequest, NavigationIsStarredResponse, NavigationListFavoritesResponse,
-    NavigationListRecentRequest, NavigationListRecentResponse, NavigationListStarredResponse,
-    NavigationRecordVisitRequest, NavigationRemoveFavoriteRequest, NavigationRenameFavoriteRequest,
+    CancelJobRequest, ClearOperationHistoryResponse, ComputeHashRequest, ComputeHashResponse,
+    CreateFileRequest, CreateFileResponse, DeletePermanentlyRequest, DirectoryBatchEventDto,
+    ExportDiagnosticsBundleRequest, ExportDiagnosticsBundleResponse, FolderSizeCompletedEventDto,
+    FolderSizeJobResponse, FolderSizeRequest, FolderSizeResponse, FolderSizeSummaryDto,
+    GetPreferencesResponse, IpcError, JobStatusRequest, JobStatusResponse,
+    ListRecentOperationsRequest, ListRecentOperationsResponse, ListStartRequest, ListStartResponse,
+    NavigationAddFavoriteRequest, NavigationFavoriteResponse, NavigationIsStarredRequest,
+    NavigationIsStarredResponse, NavigationListFavoritesResponse, NavigationListRecentRequest,
+    NavigationListRecentResponse, NavigationListStarredResponse, NavigationRecordVisitRequest,
+    NavigationRemoveFavoriteRequest, NavigationRenameFavoriteRequest,
     NavigationToggleStarredRequest, NavigationToggleStarredResponse, OkResponse,
     OperationHistoryRecordDto, PathPropertiesDto, PathPropertiesRequest, PathPropertiesResponse,
     PathRequest, PlanFileOperationRequest, PlanFileOperationResponse, ReadTextFileRequest,
@@ -224,6 +225,59 @@ async fn fs_read_text_file(
     Ok(ReadTextFileResponse {
         content,
         truncated: file_size > max_bytes,
+        byte_size: file_size,
+    })
+}
+
+#[tauri::command]
+async fn fs_compute_hash(
+    request: ComputeHashRequest,
+    _state: State<'_, Arc<AppState>>,
+) -> Result<ComputeHashResponse, IpcError> {
+    let uri = ResourceUri::parse(&request.uri).map_err(IpcError::from)?;
+    let path = uri.to_local_path().map_err(IpcError::from)?;
+
+    let metadata = std::fs::metadata(&path).map_err(|e| IpcError {
+        code: "io_error".to_string(),
+        message: e.to_string(),
+    })?;
+
+    if metadata.is_dir() {
+        return Err(IpcError {
+            code: "is_directory".to_string(),
+            message: "cannot compute hash for a directory".to_string(),
+        });
+    }
+
+    let file_size = metadata.len();
+
+    // Limit to 100 MB for safety
+    if file_size > 100 * 1024 * 1024 {
+        return Err(IpcError {
+            code: "file_too_large".to_string(),
+            message: format!(
+                "file too large for hash computation ({} bytes, max 100 MB)",
+                file_size
+            ),
+        });
+    }
+
+    let algo = request.algorithm.to_lowercase();
+    if algo != "sha256" && algo != "sha-256" {
+        return Err(IpcError {
+            code: "unsupported_algorithm".to_string(),
+            message: format!("unsupported hash algorithm: {}", request.algorithm),
+        });
+    }
+
+    let hash = sha256::digest_file(&path).map_err(|e| IpcError {
+        code: "io_error".to_string(),
+        message: e.to_string(),
+    })?;
+
+    Ok(ComputeHashResponse {
+        hash,
+        algorithm: "sha256".to_string(),
         byte_size: file_size,
     })
 }
@@ -1114,6 +1168,7 @@ pub fn run() {
             app_get_info,
             fs_stat,
             fs_read_text_file,
+            fs_compute_hash,
             fs_list_start,
             get_preferences,
             set_preference,

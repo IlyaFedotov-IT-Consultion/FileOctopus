@@ -3,6 +3,8 @@ import { cx, fileEntryIcon } from "@fileoctopus/ui";
 import type { DragEvent, MouseEvent } from "react";
 import { formatDate, formatSize } from "./fileTableUtils";
 import type { ViewMode } from "../panelStore";
+import type { HashState } from "./hashUtils";
+import { formatHash } from "./hashUtils";
 
 const URI_MIME = "application/x-fileoctopus-uri";
 
@@ -14,6 +16,7 @@ export interface FileRowProps {
   selected: boolean;
   multiSelected: boolean;
   focused: boolean;
+  hashState?: HashState;
   onSelect: (entryId: string | null) => void;
   onEntrySelect: (entryId: string, mode: "single" | "toggle" | "range") => void;
   onEntryActivate: (entry: FileEntryDto) => void;
@@ -31,6 +34,7 @@ export function FileRow({
   selected,
   multiSelected,
   focused,
+  hashState,
   onSelect,
   onEntrySelect,
   onEntryActivate,
@@ -107,6 +111,9 @@ export function FileRow({
           <span>{entry.extension ?? "—"}</span>
           <span className="fo-row-permissions">{entry.permissions ?? "—"}</span>
           <span className="fo-row-owner">{entry.owner ?? "—"}</span>
+          <span className="fo-row-hash" title={hashState ?? undefined}>
+            {entry.kind === "directory" ? "—" : formatHash(hashState)}
+          </span>
         </>
       ) : null}
     </div>
