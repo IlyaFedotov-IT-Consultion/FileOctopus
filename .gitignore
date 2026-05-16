@@ -14,3 +14,4 @@ apps/desktop-tauri/src-tauri/gen/
 e2e-report/
 e2e-dist/
 /test-results/
+.hermes/
