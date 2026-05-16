@@ -345,6 +345,8 @@ export interface FileEntryDto {
   canWrite: boolean;
   canDelete: boolean;
   canRename: boolean;
+  permissions?: string | null;
+  owner?: string | null;
 }
 
 export interface DirectoryBatchEventDto {

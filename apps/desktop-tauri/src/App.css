@@ -674,6 +674,15 @@ button:disabled {
   font-size: 12px;
 }
 
+.fo-row-permissions {
+  font-family: var(--fo-mono, monospace);
+  letter-spacing: 0.5px;
+}
+
+.fo-row-owner {
+  min-width: 60px;
+}
+
 .fo-row:hover:not(.fo-row-selected) {
   background: var(--fo-workspace-bg);
 }

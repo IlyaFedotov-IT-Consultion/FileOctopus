@@ -105,11 +105,8 @@ export function FileRow({
           </span>
           <span>{typeLabel}</span>
           <span>{entry.extension ?? "—"}</span>
-          <span className="fo-row-permissions">
-            {entry.canRead ? "r" : "–"}
-            {entry.canWrite ? "w" : "–"}
-            {entry.canDelete ? "d" : "–"}
-          </span>
+          <span className="fo-row-permissions">{entry.permissions ?? "—"}</span>
+          <span className="fo-row-owner">{entry.owner ?? "—"}</span>
         </>
       ) : null}
     </div>

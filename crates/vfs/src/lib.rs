@@ -118,6 +118,8 @@ pub struct FileEntry {
     pub symlink_target: Option<ResourceUri>,
     pub provider_id: ProviderId,
     pub capabilities: EntryCapabilities,
+    pub permissions: Option<String>,
+    pub owner: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
