@@ -196,9 +196,9 @@ button:disabled {
   display: flex;
   align-items: center;
   gap: 0;
-  padding: 0 8px;
+  padding: 0 4px;
   height: 100%;
-  flex: 1;
+  flex: 0 0 auto;
   min-width: 0;
 }
 

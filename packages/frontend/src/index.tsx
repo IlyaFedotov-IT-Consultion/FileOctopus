@@ -2049,17 +2049,7 @@ export function FileOctopusShell() {
       <main className="fo-shell" tabIndex={-1} onKeyDown={handleShellKeyDown}>
         <div className="fo-shell-frame">
           <TitleBar
-            helpOpen={helpOpen}
-            onToggleHelp={() => setHelpOpen((value) => !value)}
             onSettings={() => setSettingsOpen(true)}
-            onShortcuts={() => {
-              setHelpOpen(false);
-              setShortcutsOpen(true);
-            }}
-            onDiagnostics={() => {
-              setHelpOpen(false);
-              setDiagnosticsOpen(true);
-            }}
             menuBarProps={menuBarProps}
           />
           <section
