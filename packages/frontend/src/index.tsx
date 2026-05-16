@@ -207,6 +207,22 @@ export function FileOctopusShell() {
   const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [helpOpen, setHelpOpen] = useState(false);
+
+  // ── E2E test bridge ──────────────────────────────────────────────
+  useEffect(() => {
+    (window as unknown as Record<string, unknown>).__FO_TEST__ = {
+      openSettings: () => setSettingsOpen(true),
+      closeSettings: () => setSettingsOpen(false),
+      openShortcuts: () => setShortcutsOpen(true),
+      closeShortcuts: () => setShortcutsOpen(false),
+      openDiagnostics: () => setDiagnosticsOpen(true),
+      closeDiagnostics: () => setDiagnosticsOpen(false),
+      toggleHelp: () => setHelpOpen((v) => !v),
+    };
+    return () => {
+      delete (window as unknown as Record<string, unknown>).__FO_TEST__;
+    };
+  }, []);
   const [favorites, setFavorites] = useState<FavoriteEntryDto[]>([]);
   const [recentToday, setRecentToday] = useState<RecentEntryDto[]>([]);
   const [recentWeek, setRecentWeek] = useState<RecentEntryDto[]>([]);
@@ -1487,9 +1503,18 @@ export function FileOctopusShell() {
       return;
     }
 
-    if ((event.metaKey || event.ctrlKey) && event.key === ".") {
+    if (
+      (event.metaKey || event.ctrlKey) &&
+      (event.code === "Period" || event.key.toLowerCase() === "h")
+    ) {
       event.preventDefault();
       toggleHidden(panelId);
+      return;
+    }
+
+    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "i") {
+      event.preventDefault();
+      void handleProperties(panelId, null);
       return;
     }
 

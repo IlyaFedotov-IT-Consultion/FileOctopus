@@ -80,8 +80,8 @@ export const shortcutEntries: ShortcutEntry[] = [
   {
     id: "toggle-hidden",
     label: "Toggle hidden files",
-    mac: "⌘.",
-    windowsLinux: "Ctrl+.",
+    mac: "⌘. or ⌘⇧.",
+    windowsLinux: "Ctrl+. or Ctrl+H",
     category: "View",
   },
   {
@@ -138,6 +138,13 @@ export const shortcutEntries: ShortcutEntry[] = [
     label: "Delete permanently",
     mac: "⇧Delete",
     windowsLinux: "Shift+Delete",
+    category: "File operations",
+  },
+  {
+    id: "properties",
+    label: "Properties",
+    mac: "⌘I",
+    windowsLinux: "Ctrl+I",
     category: "File operations",
   },
   {
