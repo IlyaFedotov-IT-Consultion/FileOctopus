@@ -286,7 +286,7 @@ export function FileOctopusShell() {
     let disposed = false;
     client.fs
       .onDirectoryBatch((event) => {
-        // eslint-disable-next-line no-console
+         
         console.log("[FO][batch]", {
           sessionId: event.sessionId,
           requestId: event.requestId,
@@ -683,7 +683,7 @@ export function FileOctopusShell() {
   ) {
     const requestId = createRequestId();
 
-    // eslint-disable-next-line no-console
+     
     console.log("[FO][listStart→]", { panelId, uri, requestId, includeHidden });
 
     try {
@@ -694,7 +694,7 @@ export function FileOctopusShell() {
         batchSize: 256,
         includeHidden,
       });
-      // eslint-disable-next-line no-console
+       
       console.log("[FO][listStart←]", {
         panelId,
         sessionId: response.sessionId,
@@ -1030,6 +1030,30 @@ export function FileOctopusShell() {
         await navigatePanel(panelId, parent);
         dispatch({ type: "setSelection", panelId, entryId: entry.uri });
       }
+    }
+  }
+
+  async function calculateSize(panelId: PanelId, entry: FileEntryDto | null) {
+    if (!entry || entry.kind !== "directory") {
+      return;
+    }
+
+    try {
+      const result = await client.fs.startFolderSizeJob({ uri: entry.uri });
+      setDialog({
+        type: "properties",
+        panelId,
+        entry,
+        properties: null,
+        loading: true,
+        folderSizeJobId: jobIdValue(result.job.jobId),
+        error: null,
+      });
+    } catch (error) {
+      const normalized = normalizeIpcError(error);
+      setOperationError(
+        operationErrorMessage(normalized.code, normalized.message),
+      );
     }
   }
 
@@ -1747,6 +1771,11 @@ export function FileOctopusShell() {
                 onCopyName={() => void copyTextFromSelection("left", "name")}
                 onProperties={(entry) => void handleProperties("left", entry)}
                 onReveal={(entry) => void revealEntry("left", entry)}
+                onCalculateSize={(entry) => void calculateSize("left", entry)}
+                onCompress={() => pushToast({ tone: "info", title: "Compress coming soon" })}
+                onExtract={() => pushToast({ tone: "info", title: "Extract coming soon" })}
+                onOpenTerminal={() => pushToast({ tone: "info", title: "Open Terminal coming soon" })}
+                onChecksum={() => pushToast({ tone: "info", title: "Checksum coming soon" })}
                 onRefresh={() => refreshPanel("left")}
                 onToggleHidden={() => toggleHidden("left")}
                 onSelectAll={() =>
@@ -1823,6 +1852,11 @@ export function FileOctopusShell() {
                 onCopyName={() => void copyTextFromSelection("right", "name")}
                 onProperties={(entry) => void handleProperties("right", entry)}
                 onReveal={(entry) => void revealEntry("right", entry)}
+                onCalculateSize={(entry) => void calculateSize("right", entry)}
+                onCompress={() => pushToast({ tone: "info", title: "Compress coming soon" })}
+                onExtract={() => pushToast({ tone: "info", title: "Extract coming soon" })}
+                onOpenTerminal={() => pushToast({ tone: "info", title: "Open Terminal coming soon" })}
+                onChecksum={() => pushToast({ tone: "info", title: "Checksum coming soon" })}
                 onRefresh={() => refreshPanel("right")}
                 onToggleHidden={() => toggleHidden("right")}
                 onSelectAll={() =>
@@ -1949,7 +1983,7 @@ export function FileOctopusShell() {
             onCut={(panelId) => copySelectionToFileClipboard(panelId, "move")}
             onPaste={(panelId) => void pasteClipboard(panelId)}
             onTrash={handleTrash}
-            onToggleStarred={(_panelId, entry) =>
+            onToggleStarred={(_, entry) =>
               void toggleStarredForEntry(entry)
             }
             onPermanentDelete={handlePermanentDelete}
@@ -1963,6 +1997,18 @@ export function FileOctopusShell() {
               void handleProperties(panelId, entry)
             }
             onReveal={(panelId, entry) => void revealEntry(panelId, entry)}
+            onCompress={() =>
+              pushToast({ tone: "info", title: "Compress coming soon" })
+            }
+            onExtract={() =>
+              pushToast({ tone: "info", title: "Extract coming soon" })
+            }
+            onOpenTerminal={() =>
+              pushToast({ tone: "info", title: "Open Terminal coming soon" })
+            }
+            onChecksum={() =>
+              pushToast({ tone: "info", title: "Checksum coming soon" })
+            }
             onCreateFolder={handleCreateFolder}
             onCreateFile={handleCreateFile}
             onRefresh={refreshPanel}
@@ -2031,6 +2077,11 @@ interface FilePanelProps {
   onCopyName: () => void;
   onProperties: (entry: FileEntryDto | null) => void;
   onReveal: (entry: FileEntryDto | null) => void;
+  onCalculateSize: (entry: FileEntryDto | null) => void;
+  onCompress: () => void;
+  onExtract: () => void;
+  onOpenTerminal: () => void;
+  onChecksum: () => void;
   onRefresh: () => void;
   onToggleHidden: () => void;
   onSelectAll: () => void;
@@ -2075,6 +2126,11 @@ function FilePanel({
   onCopyName,
   onProperties,
   onReveal,
+  onCalculateSize,
+  onCompress,
+  onExtract,
+  onOpenTerminal,
+  onChecksum,
   onRefresh,
   onToggleHidden,
   onSelectAll,
@@ -2087,7 +2143,7 @@ function FilePanel({
   onContextMenu,
 }: FilePanelProps) {
   const entries = selectVisibleEntries(tab);
-  // eslint-disable-next-line no-console
+   
   console.log("[FO][FilePanel render]", {
     panelId,
     uri: tab.uri,
@@ -2195,6 +2251,12 @@ function FilePanel({
           onCopyPath={onCopyPath}
           onCopyName={onCopyName}
           onProperties={() => onProperties(selectedEntry)}
+          onRevealInFileManager={() => onReveal(selectedEntry)}
+          onCalculateSize={() => onCalculateSize(selectedEntry)}
+          onCompress={onCompress}
+          onExtract={onExtract}
+          onOpenTerminal={onOpenTerminal}
+          onChecksum={onChecksum}
           onRefresh={onRefresh}
           onToggleHidden={onToggleHidden}
           onSelectAll={onSelectAll}

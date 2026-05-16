@@ -1,3 +1,4 @@
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { FileEntryDto } from "@fileoctopus/ts-api";
 import { Button } from "@fileoctopus/ui";
 import type { PanelId, SortField, ViewMode } from "../panelStore";
@@ -26,6 +27,10 @@ interface ContextMenuProps {
   onCopyName: (panelId: PanelId) => void;
   onProperties: (panelId: PanelId, entry: FileEntryDto | null) => void;
   onReveal: (panelId: PanelId, entry: FileEntryDto | null) => void;
+  onCompress: (panelId: PanelId) => void;
+  onExtract: (panelId: PanelId) => void;
+  onOpenTerminal: (panelId: PanelId) => void;
+  onChecksum: (panelId: PanelId) => void;
   onCreateFolder: (panelId: PanelId) => void;
   onCreateFile: (panelId: PanelId) => void;
   onRefresh: (panelId: PanelId) => void;
@@ -60,6 +65,10 @@ function ContextMenuItem({
   );
 }
 
+function ContextMenuSeparator() {
+  return <div className="fo-context-menu-separator" role="separator" />;
+}
+
 export function ContextMenu({
   menu,
   canPaste,
@@ -77,6 +86,10 @@ export function ContextMenu({
   onCopyName,
   onProperties,
   onReveal,
+  onCompress,
+  onExtract,
+  onOpenTerminal,
+  onChecksum,
   onCreateFolder,
   onCreateFile,
   onRefresh,
@@ -86,6 +99,59 @@ export function ContextMenu({
   showHidden,
   onToggleHidden,
 }: ContextMenuProps) {
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{
+    left: number;
+    top: number;
+    maxHeight?: number;
+  } | null>(null);
+
+  // Viewport-aware positioning: adjust so menu stays within window
+  useEffect(() => {
+    if (!menu || !menuRef.current) {
+      setPos(null);
+      return;
+    }
+    const el = menuRef.current;
+    const pad = 8;
+    // First render at click position to measure natural size
+    const rect = el.getBoundingClientRect();
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    let left = menu.x;
+    let top = menu.y;
+    let maxHeight: number | undefined;
+
+    // Clamp horizontal
+    if (left + rect.width > vw - pad) {
+      left = Math.max(pad, vw - rect.width - pad);
+    }
+
+    // Clamp vertical — compute maxHeight so menu fits below click point
+    const availableBelow = vh - top - pad;
+    if (rect.height > availableBelow) {
+      // Try shifting up
+      const availableAbove = top - pad;
+      if (availableAbove > availableBelow) {
+        top = Math.max(pad, vh - rect.height - pad);
+        maxHeight = vh - top - pad;
+      } else {
+        maxHeight = availableBelow;
+      }
+    }
+
+    setPos({ left, top, maxHeight });
+  }, [menu]);
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    },
+    [onClose],
+  );
+
   if (!menu) {
     return null;
   }
@@ -97,13 +163,24 @@ export function ContextMenu({
   };
 
   return (
-    <div className="fo-menu-backdrop" onClick={onClose} role="presentation">
+    <div
+      className="fo-menu-backdrop"
+      onClick={onClose}
+      onKeyDown={handleKeyDown}
+      role="presentation"
+    >
       <div
+        ref={menuRef}
         className="fo-context-menu"
         role="menu"
-        style={{ left: menu.x, top: menu.y }}
+        style={
+          pos
+            ? { left: pos.left, top: pos.top, maxHeight: pos.maxHeight }
+            : { left: menu.x, top: menu.y }
+        }
         onClick={(event) => event.stopPropagation()}
       >
+        {/* File actions */}
         <ContextMenuItem
           disabled={!itemMenu}
           onClick={() => run(() => onOpen(menu.panelId, menu.entry))}
@@ -116,6 +193,10 @@ export function ContextMenu({
         >
           Rename
         </ContextMenuItem>
+
+        <ContextMenuSeparator />
+
+        {/* Clipboard */}
         <ContextMenuItem
           disabled={!itemMenu}
           onClick={() => run(() => onCopy(menu.panelId))}
@@ -134,6 +215,10 @@ export function ContextMenu({
         >
           Paste
         </ContextMenuItem>
+
+        <ContextMenuSeparator />
+
+        {/* Create */}
         <ContextMenuItem
           onClick={() => run(() => onCreateFolder(menu.panelId))}
         >
@@ -142,6 +227,10 @@ export function ContextMenu({
         <ContextMenuItem onClick={() => run(() => onCreateFile(menu.panelId))}>
           New File
         </ContextMenuItem>
+
+        <ContextMenuSeparator />
+
+        {/* Delete */}
         <ContextMenuItem
           disabled={!itemMenu}
           onClick={() => run(() => onTrash(menu.panelId))}
@@ -154,6 +243,10 @@ export function ContextMenu({
         >
           Delete Permanently
         </ContextMenuItem>
+
+        <ContextMenuSeparator />
+
+        {/* Info & tools */}
         <ContextMenuItem
           disabled={!itemMenu}
           onClick={() => run(() => onCopyPath(menu.panelId))}
@@ -179,11 +272,38 @@ export function ContextMenu({
           Reveal
         </ContextMenuItem>
         <ContextMenuItem
+          disabled={!itemMenu}
+          onClick={() => run(() => onCompress(menu.panelId))}
+        >
+          Compress…
+        </ContextMenuItem>
+        <ContextMenuItem
+          disabled={!itemMenu}
+          onClick={() => run(() => onExtract(menu.panelId))}
+        >
+          Extract…
+        </ContextMenuItem>
+        <ContextMenuItem
+          onClick={() => run(() => onOpenTerminal(menu.panelId))}
+        >
+          Open Terminal
+        </ContextMenuItem>
+        <ContextMenuItem
+          disabled={!itemMenu}
+          onClick={() => run(() => onChecksum(menu.panelId))}
+        >
+          Checksum…
+        </ContextMenuItem>
+        <ContextMenuItem
           disabled={!itemMenu || !menu.entry}
           onClick={() => run(() => onToggleStarred(menu.panelId, menu.entry!))}
         >
           {isStarred ? "Remove Star" : "Add Star"}
         </ContextMenuItem>
+
+        <ContextMenuSeparator />
+
+        {/* View & selection */}
         <ContextMenuItem onClick={() => run(() => onRefresh(menu.panelId))}>
           Refresh
         </ContextMenuItem>
@@ -195,6 +315,10 @@ export function ContextMenu({
         <ContextMenuItem onClick={() => run(() => onSelectAll(menu.panelId))}>
           Select All
         </ContextMenuItem>
+
+        <ContextMenuSeparator />
+
+        {/* View modes */}
         <ContextMenuItem
           onClick={() => run(() => onViewMode(menu.panelId, "details"))}
         >
@@ -215,15 +339,39 @@ export function ContextMenu({
         >
           Columns View
         </ContextMenuItem>
+
+        <ContextMenuSeparator />
+
+        {/* Sort */}
         <ContextMenuItem
           onClick={() => run(() => onSort(menu.panelId, "name"))}
         >
-          Sort Name
+          Sort by Name
         </ContextMenuItem>
         <ContextMenuItem
           onClick={() => run(() => onSort(menu.panelId, "modified"))}
         >
-          Sort Modified
+          Sort by Modified
+        </ContextMenuItem>
+        <ContextMenuItem
+          onClick={() => run(() => onSort(menu.panelId, "size"))}
+        >
+          Sort by Size
+        </ContextMenuItem>
+        <ContextMenuItem
+          onClick={() => run(() => onSort(menu.panelId, "type"))}
+        >
+          Sort by Type
+        </ContextMenuItem>
+        <ContextMenuItem
+          onClick={() => run(() => onSort(menu.panelId, "created"))}
+        >
+          Sort by Created
+        </ContextMenuItem>
+        <ContextMenuItem
+          onClick={() => run(() => onSort(menu.panelId, "extension"))}
+        >
+          Sort by Extension
         </ContextMenuItem>
       </div>
     </div>

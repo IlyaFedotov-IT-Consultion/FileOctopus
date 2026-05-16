@@ -157,6 +157,14 @@ export function FileTable({
             Modified
           </ColumnHeader>
           <ColumnHeader
+            field="created"
+            active={sortField === "created"}
+            direction={sortDirection}
+            onSort={onSort}
+          >
+            Created
+          </ColumnHeader>
+          <ColumnHeader
             field="type"
             active={sortField === "type"}
             direction={sortDirection}
@@ -164,6 +172,20 @@ export function FileTable({
           >
             Type
           </ColumnHeader>
+          <ColumnHeader
+            field="extension"
+            active={sortField === "extension"}
+            direction={sortDirection}
+            onSort={onSort}
+          >
+            Extension
+          </ColumnHeader>
+          <span
+            className="fo-column-button fo-column-label"
+            role="columnheader"
+          >
+            Perms
+          </span>
         </div>
       ) : null}
       <div
