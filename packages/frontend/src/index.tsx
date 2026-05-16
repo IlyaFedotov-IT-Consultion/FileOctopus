@@ -87,11 +87,12 @@ import { ContextMenu, type ContextMenuState } from "./components/ContextMenu";
 import { PaneStateView } from "./components/PaneStateView";
 import { SettingsDialog } from "./components/SettingsDialog";
 import { ShortcutsDialog } from "./components/ShortcutsDialog";
+import { CommandPalette, type CommandEntry } from "./components/CommandPalette";
 import { ToastStack, type ToastMessage } from "./components/ToastStack";
 import { mergeToast } from "./toastNotifications";
 import { useDialogEscape } from "./hooks/useDialogEscape";
 import { createRequestId } from "./paneTypes";
-import { isEditableTarget } from "./shortcuts";
+import { isEditableTarget, shortcutEntries } from "./shortcuts";
 import type { UserPreferencesDto } from "@fileoctopus/ts-api";
 
 const SKIP_TRASH_CONFIRM_KEY = "fileoctopus.skipTrashConfirm";
@@ -206,6 +207,7 @@ export function FileOctopusShell() {
   const [density, setDensity] = useState<DensityPreference>("comfortable");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [helpOpen, setHelpOpen] = useState(false);
@@ -286,7 +288,6 @@ export function FileOctopusShell() {
     let disposed = false;
     client.fs
       .onDirectoryBatch((event) => {
-         
         console.log("[FO][batch]", {
           sessionId: event.sessionId,
           requestId: event.requestId,
@@ -594,6 +595,78 @@ export function FileOctopusShell() {
     }
   }
 
+  // ── Command Palette entries ──────────────────────────────────────
+  const commandEntries: CommandEntry[] = useMemo(
+    () => [
+      ...shortcutEntries.map((s) => ({
+        id: s.id,
+        label: s.label,
+        shortcutKey: s.windowsLinux,
+        category: s.category,
+      })),
+      {
+        id: "settings",
+        label: "Open Settings",
+        shortcutKey: "Ctrl+,",
+        category: "App",
+      },
+      {
+        id: "shortcuts",
+        label: "Show Keyboard Shortcuts",
+        shortcutKey: "Ctrl+/",
+        category: "App",
+      },
+      { id: "diagnostics", label: "Open Diagnostics", category: "App" },
+      { id: "toggle-sidebar", label: "Toggle Sidebar", category: "View" },
+    ],
+    [],
+  );
+
+  function handleCommandSelect(id: string) {
+    setCommandPaletteOpen(false);
+    const panelId = state.activePanelId;
+    const tab = activeTab(state.panels[panelId]);
+    switch (id) {
+      case "settings":
+        setSettingsOpen(true);
+        break;
+      case "shortcuts":
+        setShortcutsOpen(true);
+        break;
+      case "diagnostics":
+        setDiagnosticsOpen(true);
+        break;
+      case "toggle-sidebar":
+        void updatePreference(
+          "sidebarVisible",
+          String(preferences?.sidebarVisible === false),
+        );
+        break;
+      case "switch-pane":
+        dispatch({
+          type: "setActivePanel",
+          panelId: panelId === "left" ? "right" : "left",
+        });
+        break;
+      case "up": {
+        const upUri = parentUri(tab.uri);
+        if (upUri) void navigatePanel(panelId, upUri);
+        break;
+      }
+      case "refresh":
+        refreshPanel(panelId);
+        break;
+      case "filter":
+        setFilterFocusToken((v) => v + 1);
+        break;
+      case "toggle-hidden":
+        dispatch({ type: "toggleHidden", panelId });
+        break;
+      default:
+        break;
+    }
+  }
+
   async function handleSetAutostart(enabled: boolean) {
     try {
       const status = await client.autostart.set(enabled);
@@ -683,7 +756,6 @@ export function FileOctopusShell() {
   ) {
     const requestId = createRequestId();
 
-     
     console.log("[FO][listStart→]", { panelId, uri, requestId, includeHidden });
 
     try {
@@ -694,7 +766,7 @@ export function FileOctopusShell() {
         batchSize: 256,
         includeHidden,
       });
-       
+
       console.log("[FO][listStart←]", {
         panelId,
         sessionId: response.sessionId,
@@ -1480,6 +1552,11 @@ export function FileOctopusShell() {
 
   function handleShellKeyDown(event: KeyboardEvent<HTMLElement>) {
     if (event.key === "Escape") {
+      if (commandPaletteOpen) {
+        event.preventDefault();
+        setCommandPaletteOpen(false);
+        return;
+      }
       if (dialog) {
         event.preventDefault();
         setDialog(null);
@@ -1519,6 +1596,12 @@ export function FileOctopusShell() {
     if ((event.metaKey || event.ctrlKey) && event.key === "/") {
       event.preventDefault();
       setShortcutsOpen(true);
+      return;
+    }
+
+    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "p") {
+      event.preventDefault();
+      setCommandPaletteOpen(true);
       return;
     }
 
@@ -1772,10 +1855,21 @@ export function FileOctopusShell() {
                 onProperties={(entry) => void handleProperties("left", entry)}
                 onReveal={(entry) => void revealEntry("left", entry)}
                 onCalculateSize={(entry) => void calculateSize("left", entry)}
-                onCompress={() => pushToast({ tone: "info", title: "Compress coming soon" })}
-                onExtract={() => pushToast({ tone: "info", title: "Extract coming soon" })}
-                onOpenTerminal={() => pushToast({ tone: "info", title: "Open Terminal coming soon" })}
-                onChecksum={() => pushToast({ tone: "info", title: "Checksum coming soon" })}
+                onCompress={() =>
+                  pushToast({ tone: "info", title: "Compress coming soon" })
+                }
+                onExtract={() =>
+                  pushToast({ tone: "info", title: "Extract coming soon" })
+                }
+                onOpenTerminal={() =>
+                  pushToast({
+                    tone: "info",
+                    title: "Open Terminal coming soon",
+                  })
+                }
+                onChecksum={() =>
+                  pushToast({ tone: "info", title: "Checksum coming soon" })
+                }
                 onRefresh={() => refreshPanel("left")}
                 onToggleHidden={() => toggleHidden("left")}
                 onSelectAll={() =>
@@ -1853,10 +1947,21 @@ export function FileOctopusShell() {
                 onProperties={(entry) => void handleProperties("right", entry)}
                 onReveal={(entry) => void revealEntry("right", entry)}
                 onCalculateSize={(entry) => void calculateSize("right", entry)}
-                onCompress={() => pushToast({ tone: "info", title: "Compress coming soon" })}
-                onExtract={() => pushToast({ tone: "info", title: "Extract coming soon" })}
-                onOpenTerminal={() => pushToast({ tone: "info", title: "Open Terminal coming soon" })}
-                onChecksum={() => pushToast({ tone: "info", title: "Checksum coming soon" })}
+                onCompress={() =>
+                  pushToast({ tone: "info", title: "Compress coming soon" })
+                }
+                onExtract={() =>
+                  pushToast({ tone: "info", title: "Extract coming soon" })
+                }
+                onOpenTerminal={() =>
+                  pushToast({
+                    tone: "info",
+                    title: "Open Terminal coming soon",
+                  })
+                }
+                onChecksum={() =>
+                  pushToast({ tone: "info", title: "Checksum coming soon" })
+                }
                 onRefresh={() => refreshPanel("right")}
                 onToggleHidden={() => toggleHidden("right")}
                 onSelectAll={() =>
@@ -1931,6 +2036,12 @@ export function FileOctopusShell() {
             open={shortcutsOpen}
             onClose={() => setShortcutsOpen(false)}
           />
+          <CommandPalette
+            open={commandPaletteOpen}
+            commands={commandEntries}
+            onSelect={handleCommandSelect}
+            onClose={() => setCommandPaletteOpen(false)}
+          />
           <DiagnosticsDialog
             open={diagnosticsOpen}
             appInfo={appInfo}
@@ -1983,9 +2094,7 @@ export function FileOctopusShell() {
             onCut={(panelId) => copySelectionToFileClipboard(panelId, "move")}
             onPaste={(panelId) => void pasteClipboard(panelId)}
             onTrash={handleTrash}
-            onToggleStarred={(_, entry) =>
-              void toggleStarredForEntry(entry)
-            }
+            onToggleStarred={(_, entry) => void toggleStarredForEntry(entry)}
             onPermanentDelete={handlePermanentDelete}
             onCopyPath={(panelId) =>
               void copyTextFromSelection(panelId, "path")
@@ -2143,7 +2252,7 @@ function FilePanel({
   onContextMenu,
 }: FilePanelProps) {
   const entries = selectVisibleEntries(tab);
-   
+
   console.log("[FO][FilePanel render]", {
     panelId,
     uri: tab.uri,
