@@ -75,6 +75,8 @@ impl LocalFsProvider {
             symlink_target,
             provider_id: ProviderId::new("local"),
             capabilities,
+            permissions: permissions_string(&metadata),
+            owner: owner_string(&metadata),
         }
     }
 
@@ -212,4 +214,50 @@ fn is_hidden(path: &Path) -> bool {
     path.file_name()
         .map(|value| value.to_string_lossy().starts_with('.'))
         .unwrap_or(false)
+}
+
+#[cfg(unix)]
+fn permissions_string(metadata: &Metadata) -> Option<String> {
+    use std::os::unix::fs::PermissionsExt;
+    let mode = metadata.permissions().mode();
+    // Build rwxrwxrwx string
+    let mut s = String::with_capacity(9);
+    for offset in [6u32, 3, 0] {
+        let bits = (mode >> offset) & 0o7;
+        s.push(if bits & 4 != 0 { 'r' } else { '-' });
+        s.push(if bits & 2 != 0 { 'w' } else { '-' });
+        s.push(if bits & 1 != 0 { 'x' } else { '-' });
+    }
+    Some(s)
+}
+
+#[cfg(not(unix))]
+fn permissions_string(_metadata: &Metadata) -> Option<String> {
+    None
+}
+
+#[cfg(unix)]
+fn owner_string(metadata: &Metadata) -> Option<String> {
+    use std::os::unix::fs::MetadataExt;
+    let uid = metadata.uid();
+    // Try to resolve username, fall back to numeric uid
+    match std::process::Command::new("id")
+        .args(["-nu", &uid.to_string()])
+        .output()
+    {
+        Ok(output) if output.status.success() => {
+            let name = String::from_utf8_lossy(&output.stdout).trim().to_string();
+            if name.is_empty() {
+                Some(uid.to_string())
+            } else {
+                Some(name)
+            }
+        }
+        _ => Some(uid.to_string()),
+    }
+}
+
+#[cfg(not(unix))]
+fn owner_string(_metadata: &Metadata) -> Option<String> {
+    None
 }

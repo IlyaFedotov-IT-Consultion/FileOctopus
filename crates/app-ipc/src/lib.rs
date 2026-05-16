@@ -449,6 +449,8 @@ pub struct FileEntryDto {
     pub can_write: bool,
     pub can_delete: bool,
     pub can_rename: bool,
+    pub permissions: Option<String>,
+    pub owner: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -610,6 +612,8 @@ impl From<FileEntry> for FileEntryDto {
             can_write: entry.capabilities.can_write,
             can_delete: entry.capabilities.can_delete,
             can_rename: entry.capabilities.can_rename,
+            permissions: entry.permissions,
+            owner: entry.owner,
         }
     }
 }

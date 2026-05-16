@@ -7,7 +7,15 @@ import {
 
 export type { PaneLoadState } from "./paneTypes";
 export type PanelId = "left" | "right";
-export type SortField = "name" | "type" | "size" | "modified" | "created" | "extension";
+export type SortField =
+  | "name"
+  | "type"
+  | "size"
+  | "modified"
+  | "created"
+  | "extension"
+  | "permissions"
+  | "owner";
 export type SortDirection = "asc" | "desc";
 export type ViewMode = "details" | "list" | "icons" | "columns";
 
@@ -155,7 +163,6 @@ export function panelReducer(
       });
     case "startSession":
       return updatePanel(state, action.panelId, (tab) => {
-         
         console.log("[FO][startSession reducer]", {
           panelId: action.panelId,
           sessionId: action.sessionId,
@@ -452,7 +459,6 @@ function applyBatch(
   const target = findPanelBySession(state, batch.sessionId);
 
   if (!target) {
-     
     console.log("[FO][batch-drop] no panel for sessionId", {
       batchSessionId: batch.sessionId,
       batchRequestId: batch.requestId,
@@ -467,7 +473,6 @@ function applyBatch(
   const tab = activeTab(state.panels[target]);
 
   if (!shouldApplyBatch(tab.activeRequestId, batch)) {
-     
     console.log("[FO][batch-drop] requestId mismatch", {
       target,
       tabRequestId: tab.activeRequestId,
@@ -497,7 +502,6 @@ function applyBatch(
       entriesById[entry.uri] = entry;
     }
 
-     
     console.log("[FO][applyBatch reducer]", {
       target,
       addedEntries: batch.entries.length,
@@ -691,6 +695,16 @@ function compareField(
         (left.extension ?? "").localeCompare(right.extension ?? "") ||
         left.name.localeCompare(right.name)
       );
+    case "permissions":
+      return (
+        (left.permissions ?? "").localeCompare(right.permissions ?? "") ||
+        left.name.localeCompare(right.name)
+      );
+    case "owner":
+      return (
+        (left.owner ?? "").localeCompare(right.owner ?? "") ||
+        left.name.localeCompare(right.name)
+      );
     case "name":
     default:
       return left.name.localeCompare(right.name, undefined, {
@@ -723,8 +737,13 @@ function storedSort(): SortState {
 
   return {
     field:
-      field === "type" || field === "size" || field === "modified" ||
-      field === "created" || field === "extension"
+      field === "type" ||
+      field === "size" ||
+      field === "modified" ||
+      field === "created" ||
+      field === "extension" ||
+      field === "permissions" ||
+      field === "owner"
         ? field
         : "name",
     direction: direction === "desc" ? "desc" : "asc",

@@ -180,6 +180,22 @@ export function FileTable({
           >
             Extension
           </ColumnHeader>
+          <ColumnHeader
+            field="permissions"
+            active={sortField === "permissions"}
+            direction={sortDirection}
+            onSort={onSort}
+          >
+            Permissions
+          </ColumnHeader>
+          <ColumnHeader
+            field="owner"
+            active={sortField === "owner"}
+            direction={sortDirection}
+            onSort={onSort}
+          >
+            Owner
+          </ColumnHeader>
           <span
             className="fo-column-button fo-column-label"
             role="columnheader"
