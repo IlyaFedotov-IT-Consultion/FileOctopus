@@ -211,7 +211,7 @@ interface SettingsDialogProps {
 
 - Add `autostart` state (`useState<AutostartStatusDto | null>(null)`). Lazy-fetch via `client.autostart.get()` the first time `setSettingsOpen(true)` runs (`useEffect` keyed on settings-open). Don't fetch on app boot.
 - Provide `onSetAutostart` callback; serializes calls via a `useRef<Promise<void> | null>` to ignore mashed toggles.
-- **`confirmOverwrite` consumer**: in the existing Copy/Move plan flow, when the plan reports zero conflicts AND `preferences.confirmOverwrite === true` AND `preferences.defaultConflictPolicy === "overwrite"`, insert a one-step "Confirm overwrite" prompt before calling `start_file_operation`. This is the only behavior change wired in slice B; all other new prefs are render-time only.
+- **`confirmOverwrite` consumer**: in the existing Copy/Move plan flow, when the plan reports one or more name conflicts AND `preferences.confirmOverwrite === true` AND `preferences.defaultConflictPolicy === "overwrite"`, insert a one-step "Confirm overwrite" prompt before calling `start_file_operation`. This is the only behavior change wired in slice B; all other new prefs are render-time only.
 - **`sidebarVisible` consumer**: gate rendering of the sidebar column and `SidebarResizer` on `preferences.sidebarVisible`. When false, collapse the grid column to 0 and don't mount the resizer. No new keyboard shortcut — user reopens via Settings.
 
 ### CSS — settings-internal styles
