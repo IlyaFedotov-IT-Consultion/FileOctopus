@@ -683,6 +683,28 @@ button:disabled {
   min-width: 60px;
 }
 
+.fo-row-hash {
+  font-family: var(--fo-mono, monospace);
+  font-size: 11px;
+  color: var(--fo-text-muted, #888);
+  min-width: 120px;
+  letter-spacing: 0.3px;
+  user-select: text;
+}
+
+.fo-row-hash--computing {
+  color: var(--fo-text-muted, #888);
+  font-style: italic;
+}
+
+.fo-row-hash--error {
+  color: var(--fo-error, #e55);
+}
+
+.fo-col-hash {
+  min-width: 60px;
+}
+
 .fo-row:hover:not(.fo-row-selected) {
   background: var(--fo-workspace-bg);
 }

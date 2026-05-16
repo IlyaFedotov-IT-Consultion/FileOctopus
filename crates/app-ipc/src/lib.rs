@@ -243,6 +243,21 @@ pub struct ReadTextFileResponse {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct ComputeHashRequest {
+    pub uri: String,
+    pub algorithm: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ComputeHashResponse {
+    pub hash: String,
+    pub algorithm: String,
+    pub byte_size: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ListStartRequest {
     pub uri: String,
     pub request_id: String,

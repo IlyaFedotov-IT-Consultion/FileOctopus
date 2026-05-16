@@ -529,6 +529,70 @@ export function FileOctopusShell() {
     };
   }, [client]);
 
+  // ── On-demand hash computation for selected file ──────────────────
+  useEffect(() => {
+    const panelId = state.activePanelId;
+    const tab = activeTab(state.panels[panelId]);
+    const selectedEntry =
+      selectVisibleEntries(tab).find((e) => e.uri === tab.selectedId) ?? null;
+
+    if (
+      !selectedEntry ||
+      selectedEntry.kind === "directory" ||
+      tab.hashMap[selectedEntry.uri] !== undefined
+    ) {
+      return;
+    }
+
+    const uri = selectedEntry.uri;
+    let disposed = false;
+
+    dispatch({
+      type: "setHash",
+      panelId,
+      entryId: uri,
+      hashState: "computing",
+    });
+
+    void client.fs
+      .computeHash({ uri, algorithm: "sha256" })
+      .then((res) => {
+        if (!disposed) {
+          dispatch({
+            type: "setHash",
+            panelId,
+            entryId: uri,
+            hashState: res.hash,
+          });
+        }
+      })
+      .catch(() => {
+        if (!disposed) {
+          dispatch({
+            type: "setHash",
+            panelId,
+            entryId: uri,
+            hashState: "error",
+          });
+        }
+      });
+
+    return () => {
+      disposed = true;
+    };
+  }, [
+    client,
+    state.activePanelId,
+    left.hashMap,
+    right.hashMap,
+    left.selectedId,
+    right.selectedId,
+    left.uri,
+    right.uri,
+    left.orderedEntryIds.length,
+    right.orderedEntryIds.length,
+  ]);
+
   useEffect(() => {
     if (hasInitializedRef.current) {
       return;
@@ -2477,6 +2541,7 @@ function FilePanel({
             sortField={tab.sort.field}
             sortDirection={tab.sort.direction}
             viewMode={tab.viewMode}
+            hashMap={tab.hashMap}
             onSelect={onSelect}
             onEntrySelect={onEntrySelect}
             onMove={onMove}

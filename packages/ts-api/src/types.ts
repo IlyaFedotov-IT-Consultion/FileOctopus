@@ -75,6 +75,17 @@ export interface ReadTextFileResponse {
   byteSize: number;
 }
 
+export interface ComputeHashRequest {
+  uri: string;
+  algorithm: string;
+}
+
+export interface ComputeHashResponse {
+  hash: string;
+  algorithm: string;
+  byteSize: number;
+}
+
 export interface ListStartRequest {
   uri: string;
   requestId: string;

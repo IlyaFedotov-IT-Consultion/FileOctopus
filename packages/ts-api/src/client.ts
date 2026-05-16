@@ -62,6 +62,8 @@ import type {
   StatResponse,
   ReadTextFileRequest,
   ReadTextFileResponse,
+  ComputeHashRequest,
+  ComputeHashResponse,
   StartFileOperationRequest,
   StartFileOperationResponse,
   StandardLocationsResponse,
@@ -443,6 +445,17 @@ export class FsClient {
     try {
       return await this.transport.invoke<ReadTextFileResponse>(
         "fs.read_text_file",
+        { request },
+      );
+    } catch (error) {
+      throw normalizeIpcError(error);
+    }
+  }
+
+  async computeHash(request: ComputeHashRequest): Promise<ComputeHashResponse> {
+    try {
+      return await this.transport.invoke<ComputeHashResponse>(
+        "fs.compute_hash",
         { request },
       );
     } catch (error) {
