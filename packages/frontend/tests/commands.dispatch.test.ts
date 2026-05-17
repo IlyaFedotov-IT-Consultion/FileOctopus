@@ -35,6 +35,7 @@ function baseDeps(overrides: Record<string, unknown> = {}) {
     openExternal: vi.fn(),
     clearClipboard: vi.fn(),
     setCommandPaletteOpen: vi.fn(),
+    handleCopyOrMove: vi.fn(),
     ...overrides,
   };
 }

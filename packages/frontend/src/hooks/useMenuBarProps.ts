@@ -2,14 +2,11 @@ import type { Dispatch } from "react";
 import {
   normalizeIpcError,
   type FileOctopusClient,
-  type FileEntryDto,
   type StandardLocationDto,
   type UserPreferencesDto,
 } from "@fileoctopus/ts-api";
 import {
   activeTab,
-  homeUri,
-  parentUri,
   type FileOctopusState,
   type PanelAction,
   type PanelId,
@@ -31,52 +28,27 @@ export interface UseMenuBarPropsParams {
   client: FileOctopusClient;
   locations: StandardLocationDto[];
   clipboard: FileClipboardState | null;
-  setClipboard: (value: FileClipboardState | null) => void;
   preferences: UserPreferencesDto | null;
   setDensity: (d: DensityPreference) => void;
-  goHistory: (panelId: PanelId, direction: "back" | "forward") => Promise<void>;
   navigatePanel: (panelId: PanelId, uri: string) => void;
-  refreshPanel: (panelId: PanelId) => void;
   refreshNavigation: () => void;
   exportDiagnostics: () => Promise<void>;
-  activateEntry: (panelId: PanelId, entry: FileEntryDto | null) => void;
-  selectedEntries: (panelId: PanelId) => FileEntryDto[];
-  openExternal: (entry: FileEntryDto) => Promise<void>;
-  revealEntry: (panelId: PanelId, entry: FileEntryDto | null) => Promise<void>;
-  handleCreateFolder: (panelId: PanelId) => void;
-  handleCreateFile: (panelId: PanelId) => void;
   handleRename: (panelId: PanelId) => void;
-  handleTrash: (panelId: PanelId) => void;
-  handlePermanentDelete: (panelId: PanelId) => void;
-  handleCopyOrMove: (panelId: PanelId, mode: "copy" | "move") => void;
-  handleProperties: (
-    panelId: PanelId,
-    entry: FileEntryDto | null,
-  ) => Promise<void>;
-  copySelectionToFileClipboard: (
-    panelId: PanelId,
-    mode: "copy" | "move",
-  ) => void;
-  pasteClipboard: (panelId: PanelId) => Promise<void>;
-  copyTextFromSelection: (
-    panelId: PanelId,
-    kind: "path" | "name" | "parentPath" | "uri",
-  ) => Promise<void>;
-  toggleHidden: (panelId: PanelId) => void;
   updatePreference: (key: string, value: string) => Promise<void>;
   pushToast: (toast: Omit<ToastMessage, "id">) => void;
-  setPathFocusToken: (fn: (v: number) => number) => void;
   setFilterFocusToken: (fn: (v: number) => number) => void;
   setRecursiveSearchFocusToken: (fn: (v: number) => number) => void;
-  setSettingsOpen: (v: boolean) => void;
-  setShortcutsOpen: (v: boolean) => void;
   setDiagnosticsOpen: (v: boolean) => void;
-  setAboutOpen: (v: boolean) => void;
-  setGoToLocationOpen: (v: boolean) => void;
-  setManageFavoritesOpen: (v: boolean) => void;
-  setOperationHistoryOpen: (v: boolean) => void;
-  setActivityCollapsed: (v: boolean) => void;
+  runCommand: (commandId: string) => void;
 }
+
+const VIEW_MODE_COMMANDS: Record<string, string> = {
+  details: "view.details",
+  list: "view.list",
+  compact: "view.compact",
+  icons: "view.icons",
+  columns: "view.columns",
+};
 
 export function useMenuBarProps(params: UseMenuBarPropsParams): MenuBarProps {
   const {
@@ -85,41 +57,18 @@ export function useMenuBarProps(params: UseMenuBarPropsParams): MenuBarProps {
     client,
     locations,
     clipboard,
-    setClipboard,
     preferences,
     setDensity,
-    goHistory,
     navigatePanel,
-    refreshPanel,
     refreshNavigation,
     exportDiagnostics,
-    activateEntry,
-    selectedEntries,
-    openExternal,
-    revealEntry,
-    handleCreateFolder,
-    handleCreateFile,
     handleRename,
-    handleTrash,
-    handlePermanentDelete,
-    handleCopyOrMove,
-    handleProperties,
-    copySelectionToFileClipboard,
-    pasteClipboard,
-    copyTextFromSelection,
-    toggleHidden,
     updatePreference,
     pushToast,
     setFilterFocusToken,
     setRecursiveSearchFocusToken,
-    setSettingsOpen,
-    setShortcutsOpen,
     setDiagnosticsOpen,
-    setAboutOpen,
-    setGoToLocationOpen,
-    setManageFavoritesOpen,
-    setOperationHistoryOpen,
-    setActivityCollapsed,
+    runCommand,
   } = params;
 
   const panelId = state.activePanelId;
@@ -127,52 +76,45 @@ export function useMenuBarProps(params: UseMenuBarPropsParams): MenuBarProps {
 
   return {
     activePanelId: panelId,
-    onBack: () => void goHistory(panelId, "back"),
-    onForward: () => void goHistory(panelId, "forward"),
-    onUp: () => {
-      const upUri = parentUri(tab.uri);
-      if (upUri) void navigatePanel(panelId, upUri);
-    },
-    onHome: () => void navigatePanel(panelId, homeUri()),
-    onGoToLocation: () => setGoToLocationOpen(true),
+    onBack: () => runCommand("nav.back"),
+    onForward: () => runCommand("nav.forward"),
+    onUp: () => runCommand("nav.up"),
+    onHome: () => runCommand("nav.home"),
+    onGoToLocation: () => runCommand("nav.goToLocation"),
     goStandardLocation: (loc: string) => {
       const match = locations.find(
         (l) => l.id.toLowerCase() === loc.toLowerCase(),
       );
       if (match) void navigatePanel(panelId, match.uri);
     },
-    onNewFolder: () => handleCreateFolder(panelId),
-    onNewFile: () => handleCreateFile(panelId),
-    onOpenSelected: () => {
-      const entry = selectedEntries(panelId)[0];
-      if (entry) activateEntry(panelId, entry);
-    },
-    onOpenWithDefaultApp: () => {
-      const entry = selectedEntries(panelId)[0];
-      if (entry) void openExternal(entry);
-    },
-    onRevealInFileManager: () => {
-      const entry = selectedEntries(panelId)[0];
-      if (entry) void revealEntry(panelId, entry);
-    },
+    onNewFolder: () => runCommand("create.folder"),
+    onNewFile: () => runCommand("create.file"),
+    onOpenSelected: () => runCommand("op.open"),
+    onOpenWithDefaultApp: () => runCommand("op.openDefault"),
+    onRevealInFileManager: () => runCommand("op.reveal"),
     onRename: () => handleRename(panelId),
-    onCopyTo: () => handleCopyOrMove(panelId, "copy"),
-    onMoveTo: () => handleCopyOrMove(panelId, "move"),
-    onTrash: () => handleTrash(panelId),
-    onDeletePermanently: () => handlePermanentDelete(panelId),
-    onProperties: () => void handleProperties(panelId, null),
-    onCut: () => copySelectionToFileClipboard(panelId, "move"),
-    onCopy: () => copySelectionToFileClipboard(panelId, "copy"),
-    onPaste: () => void pasteClipboard(panelId),
-    onClearClipboard: () => setClipboard(null),
-    onSelectAll: () => dispatch({ type: "selectAll", panelId }),
-    onClearSelection: () => dispatch({ type: "clearSelection", panelId }),
-    onInvertSelection: () => dispatch({ type: "invertSelection", panelId }),
-    onCopyPath: () => void copyTextFromSelection(panelId, "path"),
-    onCopyName: () => void copyTextFromSelection(panelId, "name"),
-    onCopyParentPath: () => void copyTextFromSelection(panelId, "parentPath"),
-    onCopyResourceUri: () => void copyTextFromSelection(panelId, "uri"),
+    onCopyTo: () => runCommand("op.copyTo"),
+    onMoveTo: () => runCommand("op.moveTo"),
+    onTrash: () => runCommand("op.trash"),
+    onDeletePermanently: () => runCommand("op.deletePermanent"),
+    onProperties: () => runCommand("op.properties"),
+    onCut: () => runCommand("op.cut"),
+    onCopy: () => runCommand("op.copy"),
+    onPaste: () => runCommand("op.paste"),
+    onClearClipboard: () => runCommand("clipboard.clear"),
+    onSelectAll: () => runCommand("selection.selectAll"),
+    onClearSelection: () => runCommand("selection.clear"),
+    onInvertSelection: () => runCommand("selection.invert"),
+    onCopyPath: () => runCommand("clipboard.copyPath"),
+    onCopyName: () => runCommand("clipboard.copyName"),
+    onCopyParentPath: () => runCommand("clipboard.copyParent"),
+    onCopyResourceUri: () => runCommand("clipboard.copyUri"),
     onViewMode: (mode: string) => {
+      const commandId = VIEW_MODE_COMMANDS[mode];
+      if (commandId) {
+        runCommand(commandId);
+        return;
+      }
       dispatch({
         type: "setViewMode",
         panelId,
@@ -205,20 +147,12 @@ export function useMenuBarProps(params: UseMenuBarPropsParams): MenuBarProps {
       applyDensityPreference(d);
       void updatePreference("density", density);
     },
-    onToggleSidebar: () => {
-      void updatePreference(
-        "sidebarVisible",
-        String(preferences?.sidebarVisible === false),
-      );
-    },
+    onToggleSidebar: () => runCommand("view.toggleSidebar"),
     onToggleToolbar: () => undefined,
     onToggleStatusBar: () => undefined,
-    onToggleDualPane: () => {
-      const next = preferences?.paneMode === "single" ? "dual" : "single";
-      void updatePreference("paneMode", next);
-    },
-    onToggleHidden: () => toggleHidden(panelId),
-    onRefresh: () => refreshPanel(panelId),
+    onToggleDualPane: () => runCommand("view.toggleDualPane"),
+    onToggleHidden: () => runCommand("view.toggleHidden"),
+    onRefresh: () => runCommand("nav.refresh"),
     onAddFavorite: () => {
       const uri = tab.uri;
       const name = uri.split("/").filter(Boolean).pop() ?? "Untitled";
@@ -229,15 +163,14 @@ export function useMenuBarProps(params: UseMenuBarPropsParams): MenuBarProps {
           pushToast({ tone: "error", title: normalizeIpcError(error).message }),
         );
     },
-    onManageFavorites: () => setManageFavoritesOpen(true),
-    onOperationHistory: () => setOperationHistoryOpen(true),
+    onManageFavorites: () => runCommand("nav.manageFavorites"),
+    onOperationHistory: () => runCommand("app.operationHistory"),
     onFilter: () => setFilterFocusToken((v) => v + 1),
     onSearchRecursive: () => setRecursiveSearchFocusToken((v) => v + 1),
     onJobActivity: () => {
-      setActivityCollapsed(false);
-      void updatePreference("activityPanelVisible", "true");
+      runCommand("view.toggleActivity");
     },
-    onDiagnostics: () => setDiagnosticsOpen(true),
+    onDiagnostics: () => runCommand("app.diagnostics"),
     onExportDiagnostics: () => {
       setDiagnosticsOpen(true);
       void exportDiagnostics();
@@ -252,7 +185,7 @@ export function useMenuBarProps(params: UseMenuBarPropsParams): MenuBarProps {
       applySplitRatio(0.5);
       void updatePreference("splitRatio", "0.5");
     },
-    onShortcuts: () => setShortcutsOpen(true),
+    onShortcuts: () => runCommand("app.shortcuts"),
     onDocumentation: () => {
       void globalThis.open(
         "https://github.com/nous-research/fileoctopus",
@@ -265,8 +198,8 @@ export function useMenuBarProps(params: UseMenuBarPropsParams): MenuBarProps {
         "_blank",
       );
     },
-    onAbout: () => setAboutOpen(true),
-    onSettings: () => setSettingsOpen(true),
+    onAbout: () => runCommand("app.about"),
+    onSettings: () => runCommand("app.settings"),
     onExit: () => globalThis.close(),
     canGoBack: tab.backStack.length > 0,
     canGoForward: tab.forwardStack.length > 0,
