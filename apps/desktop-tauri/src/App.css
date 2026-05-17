@@ -427,6 +427,14 @@ button:disabled {
   min-width: 8px;
 }
 
+.fo-toolbar-separator {
+  width: 1px;
+  height: 18px;
+  margin: 0 2px;
+  background: var(--fo-border);
+  flex-shrink: 0;
+}
+
 @container pane-toolbar (max-width: 760px) {
   .fo-toolbar-priority-low {
     display: none;
