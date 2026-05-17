@@ -387,13 +387,7 @@ fn plan_create_archive_items(
     for source in &request.sources {
         let source_path = source.to_local_path()?;
         let source_path = canonical_existing_path(&source_path, source)?;
-        collect_archive_files(
-            &source_path,
-            &source_path,
-            &destination,
-            &mut items,
-            warnings,
-        )?;
+        collect_archive_files(&source_path, &destination, &mut items, warnings)?;
     }
 
     Ok(items)
@@ -519,7 +513,6 @@ fn detect_conflicts(items: &[FileOperationItem]) -> Vec<FileOperationConflict> {
 
 fn collect_archive_files(
     path: &Path,
-    root: &Path,
     archive_destination: &ResourceUri,
     items: &mut Vec<FileOperationItem>,
     warnings: &mut Vec<FileOperationWarning>,
@@ -546,7 +539,7 @@ fn collect_archive_files(
         children.sort_by_key(|entry| entry.path());
 
         for child in children {
-            collect_archive_files(&child.path(), root, archive_destination, items, warnings)?;
+            collect_archive_files(&child.path(), archive_destination, items, warnings)?;
         }
 
         return Ok(());
