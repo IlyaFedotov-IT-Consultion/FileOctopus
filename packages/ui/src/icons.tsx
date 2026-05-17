@@ -3,6 +3,8 @@ import {
   Activity,
   ArrowRightLeft,
   ArrowUp,
+  Archive,
+  Calculator,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -16,15 +18,20 @@ import {
   Folder,
   FolderPlus,
   HardDrive,
+  Hash,
   Home,
   Image,
+  Info,
+  LogOut,
   Monitor,
   Music,
   Pencil,
   Pin,
   RefreshCw,
   Search,
+  Settings,
   Star,
+  Terminal,
   Trash2,
 } from "lucide-react";
 import type { ReactNode } from "react";
@@ -69,6 +76,13 @@ export const Icons = {
   file: () => renderIcon(File, "fo-ui-icon"),
   search: () => renderIcon(Search, "fo-ui-icon"),
   activity: () => renderIcon(Activity, "fo-ui-icon"),
+  info: () => renderIcon(Info, "fo-ui-icon"),
+  settings: () => renderIcon(Settings, "fo-ui-icon"),
+  logOut: () => renderIcon(LogOut, "fo-ui-icon"),
+  archive: () => renderIcon(Archive, "fo-ui-icon"),
+  calculator: () => renderIcon(Calculator, "fo-ui-icon"),
+  hash: () => renderIcon(Hash, "fo-ui-icon"),
+  terminal: () => renderIcon(Terminal, "fo-ui-icon"),
 };
 
 export function fileEntryIcon(

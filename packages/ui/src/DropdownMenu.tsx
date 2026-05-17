@@ -29,6 +29,7 @@ export interface DropdownMenuProps {
   items: DropdownMenuItem[];
   onOpenChange: (open: boolean) => void;
   triggerClassName?: string;
+  triggerAriaLabel?: string;
   align?: "start" | "end";
   children?: ReactNode;
 }
@@ -154,6 +155,7 @@ export function DropdownMenu({
   items,
   onOpenChange,
   triggerClassName,
+  triggerAriaLabel,
   align = "end",
   children,
 }: DropdownMenuProps) {
@@ -228,6 +230,7 @@ export function DropdownMenu({
         variant="ghost"
         size="sm"
         className={triggerClassName}
+        aria-label={triggerAriaLabel}
         aria-expanded={open}
         aria-haspopup="menu"
         aria-controls={menuId}
@@ -252,6 +255,17 @@ export function DropdownMenu({
               onClick={(event) => event.stopPropagation()}
             >
               {items.map((item) => {
+                const isSeparator =
+                  item.separatorBefore && item.label.trim().length === 0;
+                if (isSeparator) {
+                  return (
+                    <div
+                      key={item.id}
+                      role="separator"
+                      className="fo-ui-dropdown-separator"
+                    />
+                  );
+                }
                 if (item.children && item.children.length > 0) {
                   return (
                     <SubmenuItem

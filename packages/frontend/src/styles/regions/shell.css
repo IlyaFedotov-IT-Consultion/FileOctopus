@@ -138,10 +138,12 @@
 }
 
 .fo-menubar-trigger {
-  padding: 2px 6px;
-  border-radius: 4px;
+  min-height: 24px;
+  padding: 2px 8px;
+  border-radius: 6px;
   cursor: pointer;
   font-size: 13px;
+  font-weight: 650;
   color: var(--fo-text-secondary);
   user-select: none;
 }
@@ -155,7 +157,7 @@
 
 .fo-menubar-trigger:hover,
 .fo-menubar-trigger[data-state="open"] {
-  background: var(--fo-bg-hover);
+  background: var(--fo-accent-soft);
   color: var(--fo-text-primary);
 }
 
@@ -306,6 +308,73 @@
 
 /* ── Status bar ── */
 
+.fo-shell-status-stack {
+  display: grid;
+  min-width: 0;
+  border-top: 1px solid var(--fo-border);
+  background: color-mix(in srgb, var(--fo-strip-bg) 92%, var(--fo-panel-bg));
+}
+
+.fo-commander-bar {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 1px;
+  min-width: 0;
+  padding: 2px 3px;
+  border-bottom: 1px solid var(--fo-border);
+}
+
+.fo-commander-key {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-width: 0;
+  min-height: 22px;
+  padding: 0 6px;
+  border: 1px solid
+    color-mix(in srgb, var(--fo-control-border) 70%, transparent);
+  border-radius: 3px;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--fo-control-bg) 96%, white),
+    color-mix(in srgb, var(--fo-control-bg) 86%, black)
+  );
+  color: var(--fo-text);
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.fo-commander-key:hover:not(:disabled),
+.fo-commander-key:focus-visible {
+  border-color: var(--fo-accent);
+  background: color-mix(
+    in srgb,
+    var(--fo-accent-soft) 55%,
+    var(--fo-control-bg)
+  );
+}
+
+.fo-commander-key:disabled {
+  color: var(--fo-muted-text);
+  opacity: 0.48;
+}
+
+.fo-commander-keycap {
+  color: var(--fo-accent);
+  font-family:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    monospace;
+  font-size: 10px;
+}
+
+.fo-commander-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .fo-status {
   display: flex;
   align-items: center;
@@ -376,6 +445,7 @@
   min-width: 8px;
 }
 
+:root[data-status-bar="hidden"] .fo-shell-status-stack,
 :root[data-status-bar="hidden"] .fo-status {
   display: none;
 }

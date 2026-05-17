@@ -29,26 +29,28 @@ export function OperationToolbar({
       <div className="fo-toolbar-group fo-toolbar-group-nav">
         <ToolbarButton disabled={!canGoBack} onClick={onBack}>
           {Icons.chevronLeft()}
-          <span>Back</span>
+          <span className="fo-toolbar-label">Back</span>
         </ToolbarButton>
         <ToolbarButton disabled={!canGoForward} onClick={onForward}>
           {Icons.chevronRight()}
-          <span>Forward</span>
+          <span className="fo-toolbar-label">Forward</span>
         </ToolbarButton>
         <ToolbarButton disabled={!canGoUp} onClick={onUp}>
           {Icons.arrowUp()}
-          <span>Up</span>
+          <span className="fo-toolbar-label">Up</span>
         </ToolbarButton>
       </div>
       <span className="fo-toolbar-separator" aria-hidden="true" />
       <input
         type="search"
         className="fo-toolbar-search"
-        placeholder="Search…"
-        aria-label="Search files"
+        placeholder="Command or search…"
+        aria-label="Command or search files"
       />
       <span className="fo-toolbar-separator" aria-hidden="true" />
-      <ToolbarButton onClick={onRefresh}>{Icons.refresh()}</ToolbarButton>
+      <ToolbarButton onClick={onRefresh} title="Refresh">
+        {Icons.refresh()}
+      </ToolbarButton>
       <span className="fo-toolbar-separator" aria-hidden="true" />
       <ToolbarDropdowns {...dropdownProps} />
     </div>
