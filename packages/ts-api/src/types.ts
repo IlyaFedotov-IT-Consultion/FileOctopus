@@ -183,6 +183,8 @@ export interface UserPreferencesDto {
   iconScale: string;
   confirmOverwrite: boolean;
   sidebarVisible: boolean;
+  statusBarVisible: boolean;
+  toolbarVisible: boolean;
   paneMode: string;
   jobDrawerBehavior: string;
 }
