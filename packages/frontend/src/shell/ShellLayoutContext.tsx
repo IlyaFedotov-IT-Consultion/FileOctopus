@@ -115,7 +115,11 @@ export interface ShellLayoutContextValue {
   ) => Promise<void>;
   revealEntry: (panelId: PanelId, entry: FileEntryDto | null) => Promise<void>;
   handleSetAutostart: (enabled: boolean) => Promise<void>;
-  handleCommandSelect: (id: string, panelId?: PanelId) => void;
+  handleCommandSelect: (
+    id: string,
+    panelId?: PanelId,
+    entry?: FileEntryDto | null,
+  ) => void;
   toasts: ToastMessage[];
   setToasts: React.Dispatch<React.SetStateAction<ToastMessage[]>>;
   contextMenu: ContextMenuState | null;
@@ -138,10 +142,6 @@ export interface ShellLayoutContextValue {
     panelId: PanelId,
     entry: FileEntryDto | null,
   ) => Promise<void>;
-  openTerminal: (uri: string) => void;
-  handleChecksum: (panelId: PanelId) => Promise<void>;
-  handleCompress: (panelId: PanelId) => Promise<void>;
-  handleExtract: (panelId: PanelId) => Promise<void>;
   handleCreateFolder: (panelId: PanelId) => void;
   handleCreateFile: (panelId: PanelId) => void;
   refreshPanel: (panelId: PanelId) => void;
@@ -150,7 +150,7 @@ export interface ShellLayoutContextValue {
   toggleHidden: (panelId: PanelId) => void;
   navigatePanel: (panelId: PanelId, uri: string) => void;
   navigateOtherPane: (uri: string) => void;
-  addFavorite: (uri: string) => void;
+  addFavorite: (uri: string) => Promise<void>;
   refreshNavigation: () => Promise<void>;
   setOperationError: (error: string | null) => void;
   applySplitRatioFn: (ratio: number) => number;

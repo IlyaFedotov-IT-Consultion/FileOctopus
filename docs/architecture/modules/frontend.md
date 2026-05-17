@@ -120,7 +120,7 @@ User actions are converging on a single **command id** vocabulary (`commands/typ
 
 **Wired through dispatch today:** app modals, navigation, view modes/toggles (hidden files refreshes listing), create folder/file, copy/cut/paste/trash/delete, properties, open/reveal/open-default, clipboard copy variants, selection select/clear/invert, copy-to/move-to, operation history; **pane toolbar**, **context menu** (`runPanelCommand`), and **global keyboard** shortcuts.
 
-**Still direct handlers (not dispatch):** path/recursive-search focus and text preview (Space); compress/extract/checksum/terminal/calculate-size; context-menu properties when a specific entry is passed; sort submenu; sidebar; drag-and-drop; theme/density; favorites add; diagnostics export; menu `onSwitchPane`.
+**Still direct handlers (not dispatch):** path/recursive-search focus and text preview (Space); context-menu open/reveal with explicit `FileEntryDto`; breadcrumb “add favorite” (arbitrary URI); sort submenu; sidebar; drag-and-drop; theme/density; diagnostics export; menu `onSwitchPane`.
 
 When adding a user-visible action, prefer: register in `registry.ts` → implement in `dispatch.ts` → bind in `bindings.ts` / menu / palette / shortcuts.
 

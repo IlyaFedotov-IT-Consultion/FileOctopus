@@ -30,6 +30,14 @@ export const COMMAND_BINDINGS: CommandBinding[] = [
     targets: ["menu", "toolbar", "context", "shortcut"],
   },
   { commandId: "op.trash", targets: ["menu", "toolbar", "context"] },
+  { commandId: "op.compress", targets: ["toolbar", "context"] },
+  { commandId: "op.extract", targets: ["toolbar", "context"] },
+  { commandId: "op.checksum", targets: ["toolbar", "context"] },
+  { commandId: "op.openTerminal", targets: ["toolbar", "context"] },
+  { commandId: "op.calculateSize", targets: ["toolbar"] },
+  { commandId: "op.reveal", targets: ["toolbar", "context"] },
+  { commandId: "nav.addFavorite", targets: ["context"] },
+  { commandId: "op.toggleStarred", targets: ["context"] },
 ];
 
 export function commandTargets(commandId: CommandId): CommandBindingTarget[] {

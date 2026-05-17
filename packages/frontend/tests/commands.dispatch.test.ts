@@ -37,6 +37,13 @@ function baseDeps(overrides: Record<string, unknown> = {}) {
     setCommandPaletteOpen: vi.fn(),
     handleCopyOrMove: vi.fn(),
     toggleHidden: vi.fn(),
+    handleCompress: vi.fn(),
+    handleExtract: vi.fn(),
+    handleChecksum: vi.fn(),
+    openTerminal: vi.fn(),
+    calculateSize: vi.fn(),
+    toggleStarredForEntry: vi.fn(),
+    addFavorite: vi.fn(),
     ...overrides,
   };
 }
@@ -101,5 +108,14 @@ describe("dispatchCommand", () => {
     });
 
     expect(startInlineRename).toHaveBeenCalledWith("right");
+  });
+
+  it("runs compress for op.compress", () => {
+    const handleCompress = vi.fn();
+    dispatchCommand("op.compress", baseDeps({ handleCompress }), {
+      panelId: "right",
+    });
+
+    expect(handleCompress).toHaveBeenCalledWith("right");
   });
 });

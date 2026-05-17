@@ -101,17 +101,11 @@ export function ShellOverlays() {
         starredUriSet={ctx.starredUriSet}
         dispatch={ctx.dispatch}
         onClose={() => ctx.setContextMenu(null)}
-        runPanelCommand={(panelId, commandId) =>
-          ctx.handleCommandSelect(commandId, panelId)
+        runPanelCommand={(panelId, commandId, entry) =>
+          ctx.handleCommandSelect(commandId, panelId, entry)
         }
         activateEntry={ctx.activateEntry}
-        toggleStarredForEntry={ctx.toggleStarredForEntry}
-        handleProperties={ctx.handleProperties}
         revealEntry={ctx.revealEntry}
-        openTerminal={ctx.openTerminal}
-        handleChecksum={ctx.handleChecksum}
-        handleCompress={ctx.handleCompress}
-        handleExtract={ctx.handleExtract}
         openExternal={ctx.openExternal}
         navigatePanel={ctx.navigatePanel}
         navigateOtherPane={ctx.navigateOtherPane}

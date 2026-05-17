@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+import type { FileEntryDto } from "@fileoctopus/ts-api";
 import type { PanelId } from "../panelStore";
 import {
   dispatchCommand,
@@ -7,7 +8,7 @@ import {
 
 export function useCommandDispatch(deps: CommandDispatchDeps) {
   return useCallback(
-    (id: string, panelId?: PanelId) => {
+    (id: string, panelId?: PanelId, entry?: FileEntryDto | null) => {
       deps.setCommandPaletteOpen(false);
       const activePanelId = panelId ?? deps.state.activePanelId;
 
@@ -24,7 +25,10 @@ export function useCommandDispatch(deps: CommandDispatchDeps) {
         return;
       }
 
-      dispatchCommand(id, deps, { panelId: activePanelId });
+      dispatchCommand(id, deps, {
+        panelId: activePanelId,
+        ...(entry !== undefined ? { entry } : {}),
+      });
     },
     [deps],
   );

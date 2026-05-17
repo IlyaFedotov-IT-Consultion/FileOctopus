@@ -63,6 +63,16 @@ export interface CommandDispatchDeps {
   setCommandPaletteOpen: (open: boolean) => void;
   handleCopyOrMove: (panelId: PanelId, mode: "copy" | "move") => void;
   toggleHidden: (panelId: PanelId) => void;
+  handleCompress: (panelId: PanelId) => void;
+  handleExtract: (panelId: PanelId) => void;
+  handleChecksum: (panelId: PanelId) => Promise<void>;
+  openTerminal: (panelId: PanelId) => void;
+  calculateSize: (
+    panelId: PanelId,
+    entry: FileEntryDto | null,
+  ) => Promise<void>;
+  toggleStarredForEntry: (entry: FileEntryDto) => Promise<void>;
+  addFavorite: (panelId: PanelId, uri?: string) => Promise<void>;
 }
 
 function resolveCommandId(id: string): string {
@@ -71,6 +81,7 @@ function resolveCommandId(id: string): string {
 
 export interface DispatchCommandOptions {
   panelId?: PanelId;
+  entry?: FileEntryDto | null;
 }
 
 export function dispatchCommand(
@@ -82,7 +93,8 @@ export function dispatchCommand(
   const panelId = options?.panelId ?? deps.state.activePanelId;
   const tab = activeTab(deps.state.panels[panelId]);
   const selection = deps.selectedEntries(panelId);
-  const selectedEntry = selection[0] ?? null;
+  const selectedEntry =
+    options?.entry !== undefined ? options.entry : (selection[0] ?? null);
 
   switch (commandId) {
     case "app.settings":
@@ -186,6 +198,29 @@ export function dispatchCommand(
       return true;
     case "op.properties":
       void deps.handleProperties(panelId, selectedEntry);
+      return true;
+    case "op.compress":
+      void deps.handleCompress(panelId);
+      return true;
+    case "op.extract":
+      void deps.handleExtract(panelId);
+      return true;
+    case "op.checksum":
+      void deps.handleChecksum(panelId);
+      return true;
+    case "op.openTerminal":
+      deps.openTerminal(panelId);
+      return true;
+    case "op.calculateSize":
+      void deps.calculateSize(panelId, selectedEntry);
+      return true;
+    case "op.toggleStarred":
+      if (selectedEntry) {
+        void deps.toggleStarredForEntry(selectedEntry);
+      }
+      return true;
+    case "nav.addFavorite":
+      void deps.addFavorite(panelId, selectedEntry?.uri ?? tab.uri);
       return true;
     case "op.copyTo":
       deps.handleCopyOrMove(panelId, "copy");
