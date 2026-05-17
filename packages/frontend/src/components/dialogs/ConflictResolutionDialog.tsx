@@ -1,27 +1,205 @@
+import { useState } from "react";
 import { Button } from "@fileoctopus/ui";
+import type {
+  FileOperationConflictDto,
+  FileEntryDto,
+} from "@fileoctopus/ts-api";
+
+type ConflictAction = "overwrite" | "skip" | "renameNew";
+
+interface ConflictResolutionResult {
+  action: ConflictAction;
+  applyToAll: boolean;
+}
 
 interface ConflictResolutionDialogProps {
+  conflicts: FileOperationConflictDto[];
+  entries: FileEntryDto[];
   onBack: () => void;
-  onOverwrite: () => void;
+  onResolve: (result: ConflictResolutionResult) => void;
+}
+
+function fileNameFromUri(uri: string): string {
+  const parts = uri.replace("local://", "").split("/");
+  return parts[parts.length - 1] || uri;
+}
+
+function parentPathFromUri(uri: string): string {
+  const path = uri.replace("local://", "");
+  const idx = path.lastIndexOf("/");
+  return idx > 0 ? path.substring(0, idx) : "/";
+}
+
+function formatSize(bytes: number | null | undefined): string {
+  if (bytes == null) return "—";
+  if (bytes === 0) return "0 B";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  if (bytes < 1024 * 1024 * 1024)
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+}
+
+function formatDate(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  try {
+    const d = new Date(iso);
+    return d.toLocaleDateString(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return "—";
+  }
+}
+
+function findEntryForUri(
+  entries: FileEntryDto[],
+  uri: string,
+): FileEntryDto | undefined {
+  return entries.find((e) => uri.indexOf(e.name) !== -1);
 }
 
 export function ConflictResolutionDialog({
+  conflicts,
+  entries,
   onBack,
-  onOverwrite,
+  onResolve,
 }: ConflictResolutionDialogProps) {
+  const [selectedAction, setSelectedAction] = useState<ConflictAction>("skip");
+  const [applyToAll, setApplyToAll] = useState(false);
+
+  function handleAction(action: ConflictAction) {
+    onResolve({ action, applyToAll });
+  }
+
   return (
     <section className="fo-dialog-section">
-      <h3>Confirm overwrite</h3>
+      <h3>Resolve Conflicts</h3>
       <p>
-        The conflict policy is set to overwrite. Files at the destination with
-        the same name will be replaced. Continue?
+        {conflicts.length} item{conflicts.length !== 1 ? "s" : ""} already exist
+        at the destination.
       </p>
+
+      <div className="fo-conflict-list">
+        {conflicts.map((conflict, i) => {
+          const srcEntry = findEntryForUri(entries, conflict.source);
+          return (
+            <div key={i} className="fo-conflict-item">
+              <div className="fo-conflict-compare">
+                <div className="fo-conflict-side fo-conflict-source">
+                  <div className="fo-conflict-label">Source</div>
+                  <div className="fo-conflict-name">
+                    {fileNameFromUri(conflict.source)}
+                  </div>
+                  <div className="fo-conflict-path">
+                    {parentPathFromUri(conflict.source)}
+                  </div>
+                  <div className="fo-conflict-meta">
+                    <span>{formatSize(srcEntry?.size ?? null)}</span>
+                    <span>{formatDate(srcEntry?.modifiedAt ?? null)}</span>
+                  </div>
+                </div>
+                <div className="fo-conflict-arrow">→</div>
+                <div className="fo-conflict-side fo-conflict-dest">
+                  <div className="fo-conflict-label">Destination</div>
+                  <div className="fo-conflict-name">
+                    {fileNameFromUri(conflict.destination)}
+                  </div>
+                  <div className="fo-conflict-path">
+                    {parentPathFromUri(conflict.destination)}
+                  </div>
+                  <div className="fo-conflict-meta">
+                    <span>—</span>
+                    <span>—</span>
+                  </div>
+                </div>
+              </div>
+              {!applyToAll ? (
+                <div className="fo-conflict-actions-per-item">
+                  <label className="fo-conflict-radio">
+                    <input
+                      type="radio"
+                      name={`conflict-${i}`}
+                      value="skip"
+                      checked={selectedAction === "skip"}
+                      onChange={() => setSelectedAction("skip")}
+                    />
+                    Skip
+                  </label>
+                  <label className="fo-conflict-radio">
+                    <input
+                      type="radio"
+                      name={`conflict-${i}`}
+                      value="overwrite"
+                      checked={selectedAction === "overwrite"}
+                      onChange={() => setSelectedAction("overwrite")}
+                    />
+                    Replace
+                  </label>
+                  <label className="fo-conflict-radio">
+                    <input
+                      type="radio"
+                      name={`conflict-${i}`}
+                      value="renameNew"
+                      checked={selectedAction === "renameNew"}
+                      onChange={() => setSelectedAction("renameNew")}
+                    />
+                    Keep Both
+                  </label>
+                </div>
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
+
+      <label className="fo-checkbox-label fo-conflict-apply-all">
+        <input
+          type="checkbox"
+          role="checkbox"
+          aria-label="Apply to all conflicts"
+          checked={applyToAll}
+          onChange={(e) => setApplyToAll(e.target.checked)}
+        />
+        Apply to all conflicts
+      </label>
+
       <div className="fo-dialog-actions">
-        <Button type="button" variant="ghost" size="sm" onClick={onBack}>
-          Back
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => onBack()}
+        >
+          Cancel Operation
         </Button>
-        <Button type="button" variant="danger" size="sm" onClick={onOverwrite}>
-          Overwrite
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => handleAction("skip")}
+        >
+          Skip
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => handleAction("renameNew")}
+        >
+          Keep Both
+        </Button>
+        <Button
+          type="button"
+          variant="danger"
+          size="sm"
+          onClick={() => handleAction("overwrite")}
+        >
+          Replace
         </Button>
       </div>
     </section>

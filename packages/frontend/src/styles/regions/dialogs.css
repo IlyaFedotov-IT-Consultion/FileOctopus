@@ -604,3 +604,109 @@
   max-height: min(50vh, 480px);
   overflow: auto;
 }
+
+/* Conflict resolution dialog */
+.fo-conflict-list {
+  display: grid;
+  gap: 8px;
+  max-height: min(40vh, 320px);
+  overflow-y: auto;
+  border: 1px solid var(--fo-border);
+  background: var(--fo-control-bg);
+  padding: 8px;
+  border-radius: var(--fo-radius-sm, 6px);
+}
+
+.fo-conflict-item {
+  display: grid;
+  gap: 6px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--fo-border);
+}
+
+.fo-conflict-item:last-child {
+  border-bottom: none;
+}
+
+.fo-conflict-compare {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 8px;
+  align-items: start;
+}
+
+.fo-conflict-side {
+  display: grid;
+  gap: 2px;
+  font-size: 12px;
+}
+
+.fo-conflict-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--fo-muted-text, #888);
+}
+
+.fo-conflict-name {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fo-conflict-path {
+  font-size: 11px;
+  color: var(--fo-muted-text, #888);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fo-conflict-meta {
+  display: flex;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--fo-muted-text, #888);
+}
+
+.fo-conflict-arrow {
+  display: flex;
+  align-items: center;
+  color: var(--fo-muted-text, #888);
+  font-size: 14px;
+}
+
+.fo-conflict-actions-per-item {
+  display: flex;
+  gap: 12px;
+  padding: 2px 0;
+}
+
+.fo-conflict-radio {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.fo-conflict-radio input[type="radio"] {
+  width: auto;
+  min-height: auto;
+  margin: 0;
+}
+
+.fo-conflict-apply-all {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.fo-conflict-apply-all input[type="checkbox"] {
+  width: auto;
+  min-height: auto;
+  margin: 0;
+}

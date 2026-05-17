@@ -233,8 +233,16 @@ export function OperationDialogView({
         {dialog.type === "copyMove" ? (
           dialog.step === "confirm-overwrite" ? (
             <ConflictResolutionDialog
+              conflicts={dialog.plan?.conflicts ?? []}
+              entries={dialog.entries}
               onBack={() => onUpdate({ ...dialog, step: "review" })}
-              onOverwrite={() => void onSubmitCopyMove(dialog)}
+              onResolve={(result) => {
+                if (result.action === "overwrite") {
+                  void onSubmitCopyMove(dialog);
+                } else {
+                  onUpdate({ ...dialog, step: "review" });
+                }
+              }}
             />
           ) : (
             <form
