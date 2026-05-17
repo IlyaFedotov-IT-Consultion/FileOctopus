@@ -145,7 +145,7 @@ Zustand store for UI focus tokens consumed by path bar, filter bar, inline renam
 
 ### Chrome layout (`state/chromeStore.ts`)
 
-Status bar and pane toolbar visibility persist in `localStorage` and mirror to `data-status-bar` / `data-toolbar-hidden` on `<html>` (see `styles/regions/shell.css`). Toggled via `view.toggleStatusBar` / `view.toggleToolbar` — not yet in `UserPreferencesDto` IPC.
+Status bar and pane toolbar visibility persist as `statusBarVisible` / `toolbarVisible` in SQLite preferences (schema v7). `applyLayoutPreferences` sets `data-status-bar` / `data-toolbar-hidden` on `<html>`. Toggled via `view.toggleStatusBar` / `view.toggleToolbar` (menu) or Settings → Layout. One-time import from legacy `localStorage` keys runs in `useAppInit` via `migrateLegacyChromePreferences`.
 
 ### Jobs and modals
 
