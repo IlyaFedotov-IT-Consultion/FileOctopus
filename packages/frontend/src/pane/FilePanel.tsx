@@ -7,7 +7,7 @@ import {
   type PanelTabState,
 } from "../panelStore";
 import { cx } from "@fileoctopus/ui";
-import { type SearchState } from "./PaneFilterBar";
+import { type SearchState, FilterInput } from "./PaneFilterBar";
 import { FileTable } from "./FileTable";
 import { ColumnsView } from "./ColumnsView";
 import { RecursiveSearchPanel } from "./PaneFilterBar";
@@ -66,6 +66,7 @@ export function FilePanel({
   onEntrySelect,
   onMove,
   onSort,
+  onFilter,
   onEntryActivate,
   onCreateFolder,
   onCreateFile,
@@ -75,6 +76,7 @@ export function FilePanel({
   canPaste,
   pathFocusToken,
   renameFocusToken,
+  filterFocusToken,
   rowHeight,
   search,
   onContextMenu,
@@ -109,6 +111,14 @@ export function FilePanel({
         onNavigate={onNavigate}
         onBreadcrumbContextMenu={onBreadcrumbContextMenu}
       />
+      <div className="fo-panel-filter-row">
+        <FilterInput
+          panelId={panelId}
+          value={tab.filter}
+          focusToken={filterFocusToken}
+          onChange={onFilter}
+        />
+      </div>
       <div
         className={cx("fo-panel-body", dragOver && "fo-panel-body-drag-over")}
         {...dragTargetProps}
