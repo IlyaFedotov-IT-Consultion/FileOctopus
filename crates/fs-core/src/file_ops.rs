@@ -1255,6 +1255,59 @@ mod tests {
     }
 
     #[test]
+    fn create_file_creates_empty_file() {
+        let dir = tempdir().unwrap();
+        let target = dir.path().join("new.txt");
+
+        let plan = plan_file_operation(request(
+            FileOperationKind::CreateFile,
+            Vec::new(),
+            Some(uri(&target)),
+        ))
+        .unwrap();
+
+        execute_file_operation(
+            &plan,
+            &JobId::new("job"),
+            &CancellationToken::new(),
+            &|_| {},
+        )
+        .unwrap();
+
+        assert!(target.exists());
+        assert_eq!(fs::metadata(&target).unwrap().len(), 0);
+    }
+
+    #[test]
+    fn delete_permanently_removes_files_and_directories() {
+        let dir = tempdir().unwrap();
+        let file = dir.path().join("delete-me.txt");
+        let folder = dir.path().join("delete-dir");
+
+        fs::write(&file, b"data").unwrap();
+        fs::create_dir(&folder).unwrap();
+        fs::write(folder.join("nested.txt"), b"nested").unwrap();
+
+        let plan = plan_file_operation(request(
+            FileOperationKind::DeletePermanently,
+            vec![uri(&file), uri(&folder)],
+            None,
+        ))
+        .unwrap();
+
+        execute_file_operation(
+            &plan,
+            &JobId::new("job"),
+            &CancellationToken::new(),
+            &|_| {},
+        )
+        .unwrap();
+
+        assert!(!file.exists());
+        assert!(!folder.exists());
+    }
+
+    #[test]
     fn cancellation_stops_large_copy() {
         let dir = tempdir().unwrap();
         let source = dir.path().join("large.bin");
