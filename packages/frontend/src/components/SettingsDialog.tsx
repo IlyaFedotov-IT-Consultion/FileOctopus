@@ -12,7 +12,7 @@ type SettingsSection =
   | "appearance"
   | "files"
   | "layout"
-  | "behavior"
+  | "operations"
   | "diagnostics"
   | "shortcuts";
 
@@ -107,13 +107,13 @@ export function SettingsDialog({
             <button
               type="button"
               className={
-                activeSection === "behavior"
+                activeSection === "operations"
                   ? "fo-settings-nav-active"
                   : undefined
               }
-              onClick={() => setActiveSection("behavior")}
+              onClick={() => setActiveSection("operations")}
             >
-              Behavior
+              Operations
             </button>
             <button
               type="button"
@@ -469,14 +469,14 @@ export function SettingsDialog({
                 </label>
               </section>
             )}
-            {activeSection === "behavior" && (
+            {activeSection === "operations" && (
               <section
                 className="fo-settings-section"
                 role="region"
-                aria-label="Behavior settings"
+                aria-label="Operations settings"
               >
-                <h3>Behavior</h3>
-                <label className="fo-settings-field">
+                <h3>Operations</h3>
+                <label className="fo-settings-switch">
                   <input
                     type="checkbox"
                     checked={preferences.confirmDelete}
@@ -489,7 +489,7 @@ export function SettingsDialog({
                   />
                   <span>Confirm move to trash</span>
                 </label>
-                <label className="fo-settings-field">
+                <label className="fo-settings-switch">
                   <input
                     type="checkbox"
                     checked={preferences.confirmPermanentDelete}
@@ -502,7 +502,20 @@ export function SettingsDialog({
                   />
                   <span>Confirm permanent delete</span>
                 </label>
-                <label className="fo-settings-field">
+                <label className="fo-settings-switch">
+                  <input
+                    type="checkbox"
+                    checked={preferences.confirmOverwrite}
+                    onChange={(event) =>
+                      onChange(
+                        "confirmOverwrite",
+                        event.target.checked ? "true" : "false",
+                      )
+                    }
+                  />
+                  <span>Confirm before overwriting files</span>
+                </label>
+                <label className="fo-settings-switch">
                   <input
                     type="checkbox"
                     checked={preferences.useTrashByDefault}
@@ -514,6 +527,20 @@ export function SettingsDialog({
                     }
                   />
                   <span>Use trash by default</span>
+                </label>
+                <label className="fo-settings-field">
+                  <span>Default conflict policy</span>
+                  <select
+                    value={preferences.defaultConflictPolicy}
+                    onChange={(event) =>
+                      onChange("defaultConflictPolicy", event.target.value)
+                    }
+                  >
+                    <option value="ask">Ask every time</option>
+                    <option value="overwrite">Overwrite</option>
+                    <option value="skip">Skip</option>
+                    <option value="keepBoth">Keep both</option>
+                  </select>
                 </label>
               </section>
             )}
