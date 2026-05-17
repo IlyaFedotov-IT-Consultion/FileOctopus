@@ -119,7 +119,7 @@ User actions are converging on a single **command id** vocabulary (`commands/typ
 
 **Wired through dispatch today:** app modals, navigation, view modes/toggles, create folder/file, copy/cut/paste/trash/delete, properties, open/reveal/open-default, clipboard copy variants, selection select/clear/invert, copy-to/move-to, operation history.
 
-**Still direct handlers (not dispatch):** keyboard shortcuts (`useKeyboardShortcuts.ts`), many context-menu actions (via `ContextMenuOverlay` props), toolbar buttons, sidebar, drag-and-drop, sort/theme/density menu paths, favorites add, diagnostics export bundle, pane switch via menu `onSwitchPane`.
+**Still direct handlers (not dispatch):** path/recursive-search focus tokens and text preview (Space) in `useKeyboardShortcuts.ts`; many context-menu actions (via `ContextMenuOverlay` props); toolbar buttons; sidebar; drag-and-drop; sort/theme/density menu paths; favorites add; diagnostics export bundle; menu `onSwitchPane`.
 
 When adding a user-visible action, prefer: register in `registry.ts` → implement in `dispatch.ts` → bind in `bindings.ts` / menu / palette / shortcuts.
 
