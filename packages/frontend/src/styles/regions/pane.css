@@ -10,9 +10,7 @@
 .fo-panel[data-active="true"],
 .fo-panel-active {
   border-color: var(--fo-accent);
-  box-shadow:
-    inset 3px 0 0 0 var(--fo-accent),
-    0 0 0 1px color-mix(in srgb, var(--fo-accent) 35%, transparent);
+  box-shadow: inset 3px 0 0 0 var(--fo-accent);
 }
 
 .fo-panel[data-active="false"] {
@@ -433,12 +431,11 @@
 
 .fo-row-selected {
   background: var(--fo-accent-soft);
-  box-shadow: inset 0 0 0 1px var(--fo-accent);
 }
 
 .fo-row-focused {
-  outline: 2px solid var(--fo-accent);
-  outline-offset: -2px;
+  outline: 1px solid var(--fo-accent);
+  outline-offset: -1px;
   z-index: 1;
 }
 
