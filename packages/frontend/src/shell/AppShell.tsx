@@ -10,7 +10,12 @@ function getH(sel: string) {
   return `${parseFloat(cs.height).toFixed(0)}px`;
 }
 
+const isDevBuild = Boolean(
+  (import.meta as ImportMeta & { env?: { DEV?: boolean } }).env?.DEV,
+);
+
 const showDebug =
+  isDevBuild &&
   typeof globalThis.localStorage === "object" &&
   globalThis.localStorage.getItem("fo-debug") === "1";
 

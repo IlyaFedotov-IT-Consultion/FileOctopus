@@ -2,7 +2,13 @@ import type {
   JobSnapshot,
   OperationHistoryRecordDto,
 } from "@fileoctopus/ts-api";
-import { Badge, Button, IconButton, SegmentedControl } from "@fileoctopus/ui";
+import {
+  Badge,
+  Button,
+  IconButton,
+  Icons,
+  SegmentedControl,
+} from "@fileoctopus/ui";
 import { useMemo, useState } from "react";
 import { JobCard } from "./JobCard";
 import { OperationHistoryList } from "./OperationHistoryList";
@@ -63,10 +69,16 @@ export function ActivityPanel({
           type="button"
           variant="ghost"
           size="sm"
-          aria-label="Expand Jobs and Activity panel"
+          className="fo-activity-collapsed-btn"
+          aria-label={
+            activeJobs.length > 0
+              ? `Expand Jobs and Activity panel (${activeJobs.length} active)`
+              : "Expand Jobs and Activity panel"
+          }
+          title="Jobs & Activity"
           onClick={onToggleCollapsed}
         >
-          Activity
+          {Icons.activity()}
           {activeJobs.length > 0 ? (
             <Badge tone="accent">{activeJobs.length}</Badge>
           ) : null}

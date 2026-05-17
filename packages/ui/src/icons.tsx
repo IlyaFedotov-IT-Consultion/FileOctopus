@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
+  Activity,
   ArrowRightLeft,
   ArrowUp,
   ChevronDown,
@@ -67,6 +68,7 @@ export const Icons = {
   folder: () => renderIcon(Folder, "fo-ui-icon"),
   file: () => renderIcon(File, "fo-ui-icon"),
   search: () => renderIcon(Search, "fo-ui-icon"),
+  activity: () => renderIcon(Activity, "fo-ui-icon"),
 };
 
 export function fileEntryIcon(
