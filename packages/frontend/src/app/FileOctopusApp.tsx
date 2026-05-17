@@ -12,7 +12,7 @@ import type { CommandEntry } from "../components/CommandPalette";
 import { isTextPreviewable } from "../components/PreviewPanel";
 import type { FilePanelProps } from "../pane/FilePanel";
 import { ShellLayout } from "../shell/ShellLayout";
-import { shortcutEntries } from "../shortcuts";
+import { buildPaletteEntries } from "../commands/paletteEntries";
 import {
   AppProviders,
   useJobs,
@@ -209,28 +209,7 @@ function FileOctopusAppInner() {
   });
 
   const commandEntries: CommandEntry[] = useMemo(
-    () => [
-      ...shortcutEntries.map((s) => ({
-        id: s.id,
-        label: s.label,
-        shortcutKey: s.windowsLinux,
-        category: s.category,
-      })),
-      {
-        id: "settings",
-        label: "Open Settings",
-        shortcutKey: "Ctrl+,",
-        category: "App",
-      },
-      {
-        id: "shortcuts",
-        label: "Show Keyboard Shortcuts",
-        shortcutKey: "Ctrl+/",
-        category: "App",
-      },
-      { id: "diagnostics", label: "Open Diagnostics", category: "App" },
-      { id: "toggle-sidebar", label: "Toggle Sidebar", category: "View" },
-    ],
+    () => buildPaletteEntries(),
     [],
   );
 
@@ -322,6 +301,10 @@ function FileOctopusAppInner() {
     pasteClipboard,
     selectedEntries,
     activateEntry,
+    copyTextFromSelection,
+    revealEntry,
+    openExternal,
+    clearClipboard: () => setClipboard(null),
     setCommandPaletteOpen,
   });
 

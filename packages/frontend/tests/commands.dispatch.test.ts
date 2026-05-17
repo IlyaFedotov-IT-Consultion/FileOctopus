@@ -30,6 +30,11 @@ function baseDeps(overrides: Record<string, unknown> = {}) {
     pasteClipboard: vi.fn(),
     selectedEntries: () => [],
     activateEntry: vi.fn(),
+    copyTextFromSelection: vi.fn(),
+    revealEntry: vi.fn(),
+    openExternal: vi.fn(),
+    clearClipboard: vi.fn(),
+    setCommandPaletteOpen: vi.fn(),
     ...overrides,
   };
 }
@@ -68,5 +73,22 @@ describe("dispatchCommand", () => {
     dispatchCommand("op.rename", baseDeps({ startInlineRename }));
 
     expect(startInlineRename).toHaveBeenCalledWith("left");
+  });
+
+  it("opens command palette for app.commandPalette", () => {
+    const setCommandPaletteOpen = vi.fn();
+    dispatchCommand("app.commandPalette", baseDeps({ setCommandPaletteOpen }));
+
+    expect(setCommandPaletteOpen).toHaveBeenCalledWith(true);
+  });
+
+  it("inverts selection for selection.invert", () => {
+    const dispatch = vi.fn();
+    dispatchCommand("selection.invert", baseDeps({ dispatch }));
+
+    expect(dispatch).toHaveBeenCalledWith({
+      type: "invertSelection",
+      panelId: "left",
+    });
   });
 });
