@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import { DropdownMenu, type DropdownMenuItem } from "@fileoctopus/ui";
+import { DropdownMenu, Icons, type DropdownMenuItem } from "@fileoctopus/ui";
 
 export interface MenuBarProps {
   activePanelId: "left" | "right";
@@ -231,6 +231,7 @@ export function MenuBar(props: MenuBarProps) {
     {
       id: "properties",
       label: "Properties…",
+      icon: Icons.info(),
       shortcut: "Ctrl+I",
       disabled: !props.hasSelection,
       onSelect: wrap(props.onProperties),
@@ -239,12 +240,14 @@ export function MenuBar(props: MenuBarProps) {
     {
       id: "settings",
       label: "Settings…",
+      icon: Icons.settings(),
       shortcut: "Ctrl+,",
       onSelect: wrap(props.onSettings),
     },
     {
       id: "exit",
       label: "Exit",
+      icon: Icons.logOut(),
       shortcut: "Ctrl+Q",
       onSelect: wrap(props.onExit),
     },

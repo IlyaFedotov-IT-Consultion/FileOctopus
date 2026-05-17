@@ -65,6 +65,7 @@ export function ToolbarDropdowns(props: ToolbarDropdownsProps) {
   } = props;
   const [overflowOpen, setOverflowOpen] = useState(false);
   const [newOpen, setNewOpen] = useState(false);
+  const [toolsOpen, setToolsOpen] = useState(false);
   const [viewOpen, setViewOpen] = useState(false);
 
   return (
@@ -72,6 +73,7 @@ export function ToolbarDropdowns(props: ToolbarDropdownsProps) {
       <div className="fo-toolbar-group fo-toolbar-group-create">
         <DropdownMenu
           label="New"
+          triggerAriaLabel="New"
           open={newOpen}
           onOpenChange={setNewOpen}
           items={[
@@ -92,33 +94,140 @@ export function ToolbarDropdowns(props: ToolbarDropdownsProps) {
           ]}
         >
           {Icons.folderPlus()}
-          <span>New</span>
+          <span className="fo-toolbar-label">New</span>
           {Icons.chevronDown()}
         </DropdownMenu>
       </div>
       <span className="fo-toolbar-separator" aria-hidden="true" />
-      <div className="fo-toolbar-group fo-toolbar-group-operations">
-        <ToolbarButton disabled={selectedCount === 0} onClick={onCopyOperation}>
+      <div className="fo-toolbar-group fo-toolbar-group-clipboard">
+        <ToolbarButton
+          aria-label="Copy"
+          disabled={selectedCount === 0}
+          onClick={onCopy}
+        >
           {Icons.copy()}
-          <span>Copy To…</span>
-        </ToolbarButton>
-        <ToolbarButton disabled={selectedCount === 0} onClick={onMove}>
-          {Icons.move()}
-          <span>Move To…</span>
+          <span className="fo-toolbar-label">Copy</span>
         </ToolbarButton>
         <ToolbarButton
+          aria-label="Cut"
+          disabled={selectedCount === 0}
+          onClick={onCut}
+        >
+          {Icons.move()}
+          <span className="fo-toolbar-label">Cut</span>
+        </ToolbarButton>
+        <ToolbarButton
+          aria-label="Paste"
+          disabled={!canPaste}
+          onClick={onPaste}
+        >
+          {Icons.copy()}
+          <span className="fo-toolbar-label">Paste</span>
+        </ToolbarButton>
+      </div>
+      <span className="fo-toolbar-separator" aria-hidden="true" />
+      <div className="fo-toolbar-group fo-toolbar-group-operations">
+        <ToolbarButton
+          aria-label="Copy To"
+          disabled={selectedCount === 0}
+          onClick={onCopyOperation}
+        >
+          {Icons.copy()}
+          <span className="fo-toolbar-label">Copy To…</span>
+        </ToolbarButton>
+        <ToolbarButton
+          aria-label="Move To"
+          disabled={selectedCount === 0}
+          onClick={onMove}
+        >
+          {Icons.move()}
+          <span className="fo-toolbar-label">Move To…</span>
+        </ToolbarButton>
+        <ToolbarButton
+          aria-label="Rename"
+          disabled={!canRename}
+          onClick={onRename}
+        >
+          {Icons.pencil()}
+          <span className="fo-toolbar-label">Rename</span>
+        </ToolbarButton>
+        <ToolbarButton aria-label="Info" onClick={onProperties}>
+          {Icons.info()}
+          <span className="fo-toolbar-label">Info</span>
+        </ToolbarButton>
+        <ToolbarButton
+          aria-label="Trash"
           className="fo-toolbar-danger"
           disabled={selectedCount === 0}
           onClick={onTrash}
         >
           {Icons.trash()}
-          <span>Trash</span>
+          <span className="fo-toolbar-label">Trash</span>
         </ToolbarButton>
+      </div>
+      <span className="fo-toolbar-separator" aria-hidden="true" />
+      <div className="fo-toolbar-group fo-toolbar-group-tools">
+        <DropdownMenu
+          label="Tools"
+          triggerAriaLabel="Tools"
+          open={toolsOpen}
+          onOpenChange={setToolsOpen}
+          items={[
+            {
+              id: "reveal-in-fm",
+              label: "Reveal in File Manager",
+              icon: Icons.folder(),
+              disabled: selectedCount === 0,
+              onSelect: onRevealInFileManager,
+            },
+            {
+              id: "calculate-size",
+              label: "Calculate Size",
+              icon: Icons.calculator(),
+              disabled: selectedCount === 0,
+              onSelect: onCalculateSize,
+            },
+            {
+              id: "compress",
+              label: "Compress…",
+              icon: Icons.archive(),
+              separatorBefore: true,
+              disabled: selectedCount === 0,
+              onSelect: onCompress,
+            },
+            {
+              id: "extract",
+              label: "Extract…",
+              icon: Icons.archive(),
+              disabled: selectedCount === 0,
+              onSelect: onExtract,
+            },
+            {
+              id: "open-terminal",
+              label: "Open Terminal",
+              icon: Icons.terminal(),
+              separatorBefore: true,
+              onSelect: onOpenTerminal,
+            },
+            {
+              id: "checksum",
+              label: "Checksum…",
+              icon: Icons.hash(),
+              disabled: selectedCount === 0,
+              onSelect: onChecksum,
+            },
+          ]}
+        >
+          {Icons.terminal()}
+          <span className="fo-toolbar-label">Tools</span>
+          {Icons.chevronDown()}
+        </DropdownMenu>
       </div>
       <span className="fo-toolbar-separator" aria-hidden="true" />
       <div className="fo-toolbar-group fo-toolbar-group-view">
         <DropdownMenu
           label="View"
+          triggerAriaLabel="View"
           open={viewOpen}
           onOpenChange={setViewOpen}
           items={[
@@ -169,13 +278,14 @@ export function ToolbarDropdowns(props: ToolbarDropdownsProps) {
           ]}
         >
           {Icons.pictures()}
-          <span>View</span>
+          <span className="fo-toolbar-label">View</span>
           {Icons.chevronDown()}
         </DropdownMenu>
       </div>
       <span className="fo-toolbar-spacer" aria-hidden="true" />
       <DropdownMenu
         label="More"
+        triggerAriaLabel="More"
         open={overflowOpen}
         onOpenChange={setOverflowOpen}
         align="end"
@@ -283,14 +393,14 @@ export function ToolbarDropdowns(props: ToolbarDropdownsProps) {
           {
             id: "calculate-size",
             label: "Calculate Size",
-            icon: Icons.file(),
+            icon: Icons.calculator(),
             disabled: selectedCount === 0,
             onSelect: onCalculateSize,
           },
           {
             id: "compress",
             label: "Compress…",
-            icon: Icons.file(),
+            icon: Icons.archive(),
             separatorBefore: true,
             disabled: selectedCount === 0,
             onSelect: onCompress,
@@ -298,20 +408,20 @@ export function ToolbarDropdowns(props: ToolbarDropdownsProps) {
           {
             id: "extract",
             label: "Extract…",
-            icon: Icons.file(),
+            icon: Icons.archive(),
             disabled: selectedCount === 0,
             onSelect: onExtract,
           },
           {
             id: "open-terminal",
             label: "Open Terminal",
-            icon: Icons.file(),
+            icon: Icons.terminal(),
             onSelect: onOpenTerminal,
           },
           {
             id: "checksum",
             label: "Checksum…",
-            icon: Icons.file(),
+            icon: Icons.hash(),
             disabled: selectedCount === 0,
             onSelect: onChecksum,
           },
@@ -370,7 +480,7 @@ export function ToolbarDropdowns(props: ToolbarDropdownsProps) {
         ]}
       >
         {Icons.more()}
-        <span>More</span>
+        <span className="fo-toolbar-label">More</span>
         {Icons.chevronDown()}
       </DropdownMenu>
     </>

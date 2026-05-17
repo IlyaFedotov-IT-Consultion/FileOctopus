@@ -3,7 +3,7 @@ import type {
   AutostartStatusDto,
   UserPreferencesDto,
 } from "@fileoctopus/ts-api";
-import { Button } from "@fileoctopus/ui";
+import { Button, Icons } from "@fileoctopus/ui";
 import { useDialogEscape } from "../hooks/useDialogEscape";
 import { formatShortcut, shortcutGroups } from "../shortcuts";
 
@@ -52,9 +52,14 @@ export function SettingsDialog({
         onClick={(event) => event.stopPropagation()}
       >
         <header className="fo-dialog-header">
-          <div>
-            <h2 id="settings-title">Settings</h2>
-            <p>Preferences for appearance, file lists, and layout.</p>
+          <div className="fo-dialog-titleblock">
+            <span className="fo-dialog-icon" aria-hidden="true">
+              {Icons.settings()}
+            </span>
+            <div>
+              <h2 id="settings-title">Settings</h2>
+              <p>Preferences for appearance, file lists, and layout.</p>
+            </div>
           </div>
           <Button type="button" variant="ghost" size="sm" onClick={onClose}>
             Close
