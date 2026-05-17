@@ -61,6 +61,7 @@ export interface CommandDispatchDeps {
   openExternal: (entry: FileEntryDto) => Promise<void>;
   clearClipboard: () => void;
   setCommandPaletteOpen: (open: boolean) => void;
+  handleCopyOrMove: (panelId: PanelId, mode: "copy" | "move") => void;
 }
 
 function resolveCommandId(id: string): string {
@@ -180,6 +181,12 @@ export function dispatchCommand(
     case "op.properties":
       void deps.handleProperties(panelId, selectedEntry);
       return true;
+    case "op.copyTo":
+      deps.handleCopyOrMove(panelId, "copy");
+      return true;
+    case "op.moveTo":
+      deps.handleCopyOrMove(panelId, "move");
+      return true;
     case "op.open":
       deps.activateEntry(panelId, selectedEntry);
       return true;
@@ -213,7 +220,7 @@ export function dispatchCommand(
       deps.dispatch({ type: "selectAll", panelId });
       return true;
     case "selection.clear":
-      deps.dispatch({ type: "setSelection", panelId, entryId: null });
+      deps.dispatch({ type: "clearSelection", panelId });
       return true;
     default:
       return false;
