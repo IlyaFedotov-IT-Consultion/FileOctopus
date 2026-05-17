@@ -1,104 +1,64 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import type {
+  FileOctopusClient,
+  UserPreferencesDto,
+} from "@fileoctopus/ts-api";
 
 const STATUS_BAR_KEY = "fileoctopus.statusBarVisible";
 const TOOLBAR_KEY = "fileoctopus.toolbarVisible";
 
-function readStoredBoolean(key: string, defaultValue: boolean): boolean {
+function readLegacyChromePreference(key: string): boolean | null {
   try {
     const value = localStorage.getItem(key);
     if (value === null) {
-      return defaultValue;
+      return null;
     }
     return value === "true";
   } catch {
-    return defaultValue;
+    return null;
   }
 }
 
-function writeStoredBoolean(key: string, value: boolean) {
+function clearLegacyChromePreferences() {
   try {
-    localStorage.setItem(key, String(value));
+    localStorage.removeItem(STATUS_BAR_KEY);
+    localStorage.removeItem(TOOLBAR_KEY);
   } catch {
     /* ignore */
   }
 }
 
-export function applyChromeLayout(
-  statusBarVisible: boolean,
-  toolbarVisible: boolean,
-) {
-  const root = document.documentElement;
-  root.dataset.statusBar = statusBarVisible ? "visible" : "hidden";
-  if (toolbarVisible) {
-    delete root.dataset.toolbarHidden;
-  } else {
-    root.dataset.toolbarHidden = "true";
+export async function migrateLegacyChromePreferences(
+  client: FileOctopusClient,
+  preferences: UserPreferencesDto,
+): Promise<UserPreferencesDto> {
+  const statusLegacy = readLegacyChromePreference(STATUS_BAR_KEY);
+  const toolbarLegacy = readLegacyChromePreference(TOOLBAR_KEY);
+  if (statusLegacy === null && toolbarLegacy === null) {
+    return preferences;
   }
-}
 
-export interface ChromeLayoutState {
-  statusBarVisible: boolean;
-  toolbarVisible: boolean;
-  setStatusBarVisible: (visible: boolean) => void;
-  setToolbarVisible: (visible: boolean) => void;
-  toggleStatusBar: () => void;
-  toggleToolbar: () => void;
-}
-
-export function useChromeLayoutStore(): ChromeLayoutState {
-  const [statusBarVisible, setStatusBarVisibleState] = useState(() =>
-    readStoredBoolean(STATUS_BAR_KEY, true),
-  );
-  const [toolbarVisible, setToolbarVisibleState] = useState(() =>
-    readStoredBoolean(TOOLBAR_KEY, true),
-  );
-
-  useEffect(() => {
-    applyChromeLayout(statusBarVisible, toolbarVisible);
-  }, [statusBarVisible, toolbarVisible]);
-
-  const setStatusBarVisible = useCallback((visible: boolean) => {
-    setStatusBarVisibleState(visible);
-    writeStoredBoolean(STATUS_BAR_KEY, visible);
-  }, []);
-
-  const setToolbarVisible = useCallback((visible: boolean) => {
-    setToolbarVisibleState(visible);
-    writeStoredBoolean(TOOLBAR_KEY, visible);
-  }, []);
-
-  const toggleStatusBar = useCallback(() => {
-    setStatusBarVisibleState((current) => {
-      const next = !current;
-      writeStoredBoolean(STATUS_BAR_KEY, next);
-      return next;
+  let next = preferences;
+  if (
+    statusLegacy !== null &&
+    statusLegacy !== (preferences.statusBarVisible !== false)
+  ) {
+    const response = await client.preferences.set({
+      key: "statusBarVisible",
+      value: String(statusLegacy),
     });
-  }, []);
-
-  const toggleToolbar = useCallback(() => {
-    setToolbarVisibleState((current) => {
-      const next = !current;
-      writeStoredBoolean(TOOLBAR_KEY, next);
-      return next;
+    next = response.preferences;
+  }
+  if (
+    toolbarLegacy !== null &&
+    toolbarLegacy !== (next.toolbarVisible !== false)
+  ) {
+    const response = await client.preferences.set({
+      key: "toolbarVisible",
+      value: String(toolbarLegacy),
     });
-  }, []);
+    next = response.preferences;
+  }
 
-  return useMemo(
-    () => ({
-      statusBarVisible,
-      toolbarVisible,
-      setStatusBarVisible,
-      setToolbarVisible,
-      toggleStatusBar,
-      toggleToolbar,
-    }),
-    [
-      statusBarVisible,
-      toolbarVisible,
-      setStatusBarVisible,
-      setToolbarVisible,
-      toggleStatusBar,
-      toggleToolbar,
-    ],
-  );
+  clearLegacyChromePreferences();
+  return next;
 }
