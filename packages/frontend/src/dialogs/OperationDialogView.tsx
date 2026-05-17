@@ -104,6 +104,64 @@ export interface OperationDialogViewProps {
   onReveal: (panelId: PanelId, entry: FileEntryDto | null) => void;
 }
 
+function operationDialogHeading(dialog: OperationDialog): {
+  title: string;
+  subtitle: string;
+  titleId?: string;
+} {
+  switch (dialog.type) {
+    case "createFolder":
+      return {
+        title: "Create Folder",
+        subtitle: "Add a new folder in the current directory",
+      };
+    case "createFile":
+      return {
+        title: "Create File",
+        subtitle: "Add a new empty file in the current directory",
+      };
+    case "rename":
+      return {
+        title: "Rename",
+        subtitle: dialog.entry.name,
+      };
+    case "copyMove":
+      return {
+        title: dialog.kind === "copy" ? "Copy" : "Move",
+        subtitle: `${dialog.entries.length} selected item(s)`,
+      };
+    case "trash":
+      return {
+        title: "Move to Trash",
+        subtitle: `${dialog.entries.length} selected item(s)`,
+      };
+    case "permanentDelete":
+      return {
+        title: "Delete Permanently",
+        subtitle: "This action cannot be undone",
+      };
+    case "properties":
+      return {
+        title: "Properties",
+        subtitle:
+          dialog.properties?.name ??
+          dialog.entry?.name ??
+          (dialog.loading ? "Loading metadata…" : "Item metadata"),
+        titleId: "properties-dialog-title",
+      };
+  }
+}
+
+function OperationItemList({ entries }: { entries: FileEntryDto[] }) {
+  return (
+    <ul className="fo-dialog-item-list">
+      {entries.map((entry) => (
+        <li key={entry.uri}>{entry.name}</li>
+      ))}
+    </ul>
+  );
+}
+
 export function OperationDialogView({
   dialog,
   onClose,
@@ -124,46 +182,37 @@ export function OperationDialogView({
     return null;
   }
 
-  const title =
-    dialog.type === "createFolder"
-      ? "Create Folder"
-      : dialog.type === "createFile"
-        ? "Create File"
-        : dialog.type === "rename"
-          ? "Rename"
-          : dialog.type === "properties"
-            ? "Properties"
-            : dialog.type === "permanentDelete"
-              ? "Delete Permanently"
-              : dialog.type === "trash"
-                ? "Move to Trash"
-                : dialog.kind === "copy"
-                  ? "Copy"
-                  : "Move";
+  const heading = operationDialogHeading(dialog);
+  const isProperties = dialog.type === "properties";
 
   return (
     <div className="fo-dialog-backdrop" role="presentation">
       <section
-        className="fo-dialog"
+        className={`fo-dialog fo-operation-dialog${isProperties ? " fo-properties-dialog" : ""}`}
         role="dialog"
         aria-modal="true"
-        aria-label={title}
+        aria-labelledby={heading.titleId}
+        aria-label={heading.titleId ? undefined : heading.title}
       >
-        <header>
-          <strong>{title}</strong>
+        <header className="fo-dialog-header">
+          <div>
+            <h2 id={heading.titleId}>{heading.title}</h2>
+            <p>{heading.subtitle}</p>
+          </div>
           <Button type="button" variant="ghost" size="sm" onClick={onClose}>
             Close
           </Button>
         </header>
         {dialog.type === "createFolder" ? (
           <form
+            className="fo-dialog-form"
             onSubmit={(event) => {
               event.preventDefault();
               onSubmitCreateFolder(dialog);
             }}
           >
-            <label>
-              Folder name
+            <label className="fo-dialog-field">
+              <span>Folder name</span>
               <input
                 aria-label="Folder name"
                 value={dialog.name}
@@ -175,20 +224,26 @@ export function OperationDialogView({
             {dialog.error ? (
               <div className="fo-operation-error">{dialog.error}</div>
             ) : null}
-            <Button type="submit" variant="primary" size="sm">
-              Create
-            </Button>
+            <div className="fo-dialog-footer">
+              <Button type="button" variant="ghost" size="sm" onClick={onClose}>
+                Cancel
+              </Button>
+              <Button type="submit" variant="primary" size="sm">
+                Create
+              </Button>
+            </div>
           </form>
         ) : null}
         {dialog.type === "createFile" ? (
           <form
+            className="fo-dialog-form"
             onSubmit={(event) => {
               event.preventDefault();
               onSubmitCreateFile(dialog);
             }}
           >
-            <label>
-              File name
+            <label className="fo-dialog-field">
+              <span>File name</span>
               <input
                 aria-label="File name"
                 value={dialog.name}
@@ -200,20 +255,26 @@ export function OperationDialogView({
             {dialog.error ? (
               <div className="fo-operation-error">{dialog.error}</div>
             ) : null}
-            <Button type="submit" variant="primary" size="sm">
-              Create
-            </Button>
+            <div className="fo-dialog-footer">
+              <Button type="button" variant="ghost" size="sm" onClick={onClose}>
+                Cancel
+              </Button>
+              <Button type="submit" variant="primary" size="sm">
+                Create
+              </Button>
+            </div>
           </form>
         ) : null}
         {dialog.type === "rename" ? (
           <form
+            className="fo-dialog-form"
             onSubmit={(event) => {
               event.preventDefault();
               onSubmitRename(dialog);
             }}
           >
-            <label>
-              New name
+            <label className="fo-dialog-field">
+              <span>New name</span>
               <input
                 aria-label="New name"
                 value={dialog.name}
@@ -225,9 +286,14 @@ export function OperationDialogView({
             {dialog.error ? (
               <div className="fo-operation-error">{dialog.error}</div>
             ) : null}
-            <Button type="submit" variant="primary" size="sm">
-              Rename
-            </Button>
+            <div className="fo-dialog-footer">
+              <Button type="button" variant="ghost" size="sm" onClick={onClose}>
+                Cancel
+              </Button>
+              <Button type="submit" variant="primary" size="sm">
+                Rename
+              </Button>
+            </div>
           </form>
         ) : null}
         {dialog.type === "copyMove" ? (
@@ -246,13 +312,14 @@ export function OperationDialogView({
             />
           ) : (
             <form
+              className="fo-dialog-form"
               onSubmit={(event) => {
                 event.preventDefault();
                 onSubmitCopyMove(dialog);
               }}
             >
-              <label>
-                Destination local URI
+              <label className="fo-dialog-field">
+                <span>Destination</span>
                 <input
                   aria-label="Destination local URI"
                   value={dialog.destination}
@@ -266,8 +333,8 @@ export function OperationDialogView({
                   }
                 />
               </label>
-              <label>
-                Conflict policy
+              <label className="fo-dialog-field">
+                <span>Conflict policy</span>
                 <select
                   aria-label="Conflict policy"
                   value={dialog.conflictPolicy}
@@ -289,15 +356,16 @@ export function OperationDialogView({
                   <option value="renameExisting">Rename existing items</option>
                 </select>
               </label>
-              <div className="fo-dialog-summary">
-                {dialog.entries.length} item(s) selected
+              <div className="fo-dialog-callout">
+                <strong>{dialog.entries.length} item(s) selected</strong>
+                <OperationItemList entries={dialog.entries.slice(0, 5)} />
               </div>
               {dialog.plan ? (
-                <div className="fo-dialog-summary">
-                  <span>
+                <div className="fo-dialog-callout">
+                  <strong>
                     {dialog.plan.totalItems} planned item(s),{" "}
                     {dialog.plan.conflicts.length} conflict(s)
-                  </span>
+                  </strong>
                   {dialog.plan.conflicts.slice(0, 3).map((conflict) => (
                     <span key={`${conflict.source}-${conflict.destination}`}>
                       {conflict.destination}
@@ -313,7 +381,7 @@ export function OperationDialogView({
               {dialog.error ? (
                 <div className="fo-operation-error">{dialog.error}</div>
               ) : null}
-              <div className="fo-dialog-actions">
+              <div className="fo-dialog-footer">
                 <Button
                   type="button"
                   variant="ghost"
@@ -337,21 +405,20 @@ export function OperationDialogView({
         ) : null}
         {dialog.type === "trash" ? (
           <form
+            className="fo-dialog-form"
             onSubmit={(event) => {
               event.preventDefault();
               onSubmitTrash(dialog);
             }}
           >
-            <div className="fo-dialog-summary">
-              <span>Move {dialog.entries.length} item(s) to Trash</span>
-              {dialog.entries.slice(0, 3).map((entry) => (
-                <span key={entry.uri}>{entry.name}</span>
-              ))}
+            <div className="fo-dialog-callout">
+              <strong>Move {dialog.entries.length} item(s) to Trash</strong>
+              <OperationItemList entries={dialog.entries.slice(0, 5)} />
             </div>
             {dialog.error ? (
               <div className="fo-operation-error">{dialog.error}</div>
             ) : null}
-            <label className="fo-checkbox-label">
+            <label className="fo-dialog-checkbox">
               <input
                 type="checkbox"
                 checked={dialog.dontAskAgain}
@@ -364,30 +431,41 @@ export function OperationDialogView({
               />
               Don&apos;t ask again this session
             </label>
-            <Button type="submit" variant="primary" size="sm">
-              Move to Trash
-            </Button>
+            <div className="fo-dialog-footer">
+              <Button type="button" variant="ghost" size="sm" onClick={onClose}>
+                Cancel
+              </Button>
+              <Button type="submit" variant="primary" size="sm">
+                Move to Trash
+              </Button>
+            </div>
           </form>
         ) : null}
         {dialog.type === "permanentDelete" ? (
           <form
+            className="fo-dialog-form"
             onSubmit={(event) => {
               event.preventDefault();
               onSubmitPermanentDelete(dialog);
             }}
           >
-            <div className="fo-dialog-summary">
-              <span>Permanently delete {dialog.entries.length} item(s)</span>
-              {dialog.entries.slice(0, 5).map((entry) => (
-                <span key={entry.uri}>{entry.name}</span>
-              ))}
+            <div className="fo-dialog-callout fo-dialog-callout--danger">
+              <strong>
+                Permanently delete {dialog.entries.length} item(s)
+              </strong>
+              <OperationItemList entries={dialog.entries.slice(0, 5)} />
             </div>
             {dialog.error ? (
               <div className="fo-operation-error">{dialog.error}</div>
             ) : null}
-            <Button type="submit" variant="danger" size="sm">
-              Delete Permanently
-            </Button>
+            <div className="fo-dialog-footer">
+              <Button type="button" variant="ghost" size="sm" onClick={onClose}>
+                Cancel
+              </Button>
+              <Button type="submit" variant="danger" size="sm">
+                Delete Permanently
+              </Button>
+            </div>
           </form>
         ) : null}
         {dialog.type === "properties" ? (

@@ -24,29 +24,34 @@ export function ShortcutsDialog({ open, onClose }: ShortcutsDialogProps) {
         onClick={(event) => event.stopPropagation()}
       >
         <header className="fo-dialog-header">
-          <h2 id="shortcuts-title">Keyboard shortcuts</h2>
+          <div>
+            <h2 id="shortcuts-title">Keyboard shortcuts</h2>
+            <p>Quick reference for navigation and file actions.</p>
+          </div>
           <Button type="button" variant="ghost" size="sm" onClick={onClose}>
             Close
           </Button>
         </header>
-        <div className="fo-shortcuts-groups">
-          {shortcutGroups.map((group) => (
-            <section key={group.title} className="fo-shortcuts-group">
-              <h3>{group.title}</h3>
-              <table className="fo-shortcuts-table">
-                <tbody>
-                  {group.entries.map((entry) => (
-                    <tr key={entry.id}>
-                      <td>{entry.label}</td>
-                      <td>
-                        <kbd>{formatShortcut(entry)}</kbd>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </section>
-          ))}
+        <div className="fo-dialog-body">
+          <div className="fo-shortcuts-groups">
+            {shortcutGroups.map((group) => (
+              <section key={group.title} className="fo-shortcuts-group">
+                <h3 className="fo-dialog-section-title">{group.title}</h3>
+                <table className="fo-shortcuts-table">
+                  <tbody>
+                    {group.entries.map((entry) => (
+                      <tr key={entry.id}>
+                        <td>{entry.label}</td>
+                        <td>
+                          <kbd>{formatShortcut(entry)}</kbd>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </section>
+            ))}
+          </div>
         </div>
       </dialog>
     </div>

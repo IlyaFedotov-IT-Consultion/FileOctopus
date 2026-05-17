@@ -82,7 +82,7 @@ export function GoToLocationDialog({
             />
           </label>
           {error ? <div className="fo-operation-error">{error}</div> : null}
-          <div className="fo-dialog-actions">
+          <div className="fo-dialog-footer">
             <Button type="button" variant="ghost" size="sm" onClick={onClose}>
               Cancel
             </Button>
