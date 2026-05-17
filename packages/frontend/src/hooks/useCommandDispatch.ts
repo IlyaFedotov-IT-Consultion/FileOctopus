@@ -4,11 +4,7 @@ import {
   type CommandDispatchDeps,
 } from "../commands/dispatch";
 
-export function useCommandDispatch(
-  deps: CommandDispatchDeps & {
-    setCommandPaletteOpen: (open: boolean) => void;
-  },
-) {
+export function useCommandDispatch(deps: CommandDispatchDeps) {
   return useCallback(
     (id: string) => {
       deps.setCommandPaletteOpen(false);

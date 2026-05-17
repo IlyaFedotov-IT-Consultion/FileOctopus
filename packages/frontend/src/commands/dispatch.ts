@@ -53,6 +53,14 @@ export interface CommandDispatchDeps {
   pasteClipboard: (panelId: PanelId) => Promise<void>;
   selectedEntries: (panelId: PanelId) => FileEntryDto[];
   activateEntry: (panelId: PanelId, entry: FileEntryDto | null) => void;
+  copyTextFromSelection: (
+    panelId: PanelId,
+    kind: "path" | "name" | "parentPath" | "uri",
+  ) => Promise<void>;
+  revealEntry: (panelId: PanelId, entry: FileEntryDto | null) => Promise<void>;
+  openExternal: (entry: FileEntryDto) => Promise<void>;
+  clearClipboard: () => void;
+  setCommandPaletteOpen: (open: boolean) => void;
 }
 
 function resolveCommandId(id: string): string {
@@ -84,6 +92,9 @@ export function dispatchCommand(
       return true;
     case "app.operationHistory":
       deps.setOperationHistoryOpen(true);
+      return true;
+    case "app.commandPalette":
+      deps.setCommandPaletteOpen(true);
       return true;
     case "view.toggleSidebar":
       void deps.updatePreference(
@@ -171,6 +182,32 @@ export function dispatchCommand(
       return true;
     case "op.open":
       deps.activateEntry(panelId, selectedEntry);
+      return true;
+    case "op.openDefault":
+      if (selectedEntry) {
+        void deps.openExternal(selectedEntry);
+      }
+      return true;
+    case "op.reveal":
+      void deps.revealEntry(panelId, selectedEntry);
+      return true;
+    case "clipboard.copyPath":
+      void deps.copyTextFromSelection(panelId, "path");
+      return true;
+    case "clipboard.copyName":
+      void deps.copyTextFromSelection(panelId, "name");
+      return true;
+    case "clipboard.copyParent":
+      void deps.copyTextFromSelection(panelId, "parentPath");
+      return true;
+    case "clipboard.copyUri":
+      void deps.copyTextFromSelection(panelId, "uri");
+      return true;
+    case "clipboard.clear":
+      deps.clearClipboard();
+      return true;
+    case "selection.invert":
+      deps.dispatch({ type: "invertSelection", panelId });
       return true;
     case "selection.selectAll":
       deps.dispatch({ type: "selectAll", panelId });
