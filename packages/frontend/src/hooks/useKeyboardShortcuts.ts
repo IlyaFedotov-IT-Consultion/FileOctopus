@@ -3,16 +3,14 @@ import type { FileEntryDto } from "@fileoctopus/ts-api";
 import {
   type PanelId,
   type PanelState,
-  type PanelAction,
   activeTab,
   selectVisibleEntries,
-  parentUri,
 } from "../panelStore";
 import { isEditableTarget } from "../shortcuts";
 
 export interface UseKeyboardShortcutsDeps {
   state: { activePanelId: PanelId; panels: Record<PanelId, PanelState> };
-  dispatch: (action: PanelAction) => void;
+  runCommand: (commandId: string) => void;
   commandPaletteOpen: boolean;
   setCommandPaletteOpen: (open: boolean) => void;
   previewOpen: boolean;
@@ -23,44 +21,8 @@ export interface UseKeyboardShortcutsDeps {
   setContextMenu: (menu: null) => void;
   helpOpen: boolean;
   setHelpOpen: (open: boolean) => void;
-  setSettingsOpen: (open: boolean) => void;
-  setShortcutsOpen: (open: boolean) => void;
   setPathFocusToken: (updater: (v: number) => number) => void;
-  setFilterFocusToken: (updater: (v: number) => number) => void;
   setRecursiveSearchFocusToken: (updater: (v: number) => number) => void;
-  activateEntry: (panelId: PanelId, entry: FileEntryDto | null) => void;
-  navigatePanel: (
-    panelId: PanelId,
-    uri: string,
-    options?: {
-      replace?: boolean;
-      includeHidden?: boolean;
-      softRefresh?: boolean;
-    },
-  ) => Promise<void>;
-  goHistory: (panelId: PanelId, direction: "back" | "forward") => Promise<void>;
-  refreshPanel: (
-    panelId: PanelId,
-    options?: {
-      replace?: boolean;
-      includeHidden?: boolean;
-      softRefresh?: boolean;
-    },
-  ) => void;
-  toggleHidden: (panelId: PanelId) => void;
-  handleProperties: (
-    panelId: PanelId,
-    entry: FileEntryDto | null,
-  ) => Promise<void>;
-  handleCreateFolder: (panelId: PanelId) => void;
-  startInlineRename: (panelId: PanelId) => void;
-  handleTrash: (panelId: PanelId) => void;
-  handlePermanentDelete: (panelId: PanelId) => void;
-  copySelectionToFileClipboard: (
-    panelId: PanelId,
-    kind: "copy" | "move",
-  ) => void;
-  pasteClipboard: (panelId: PanelId) => Promise<void>;
   isTextPreviewable: (entry: FileEntryDto | null) => boolean;
 }
 
@@ -70,7 +32,7 @@ export function createKeyboardShortcutsHandler(
   return function handleShellKeyDown(event: KeyboardEvent<HTMLElement>) {
     const {
       state,
-      dispatch,
+      runCommand,
       commandPaletteOpen,
       setCommandPaletteOpen,
       previewOpen,
@@ -81,23 +43,8 @@ export function createKeyboardShortcutsHandler(
       setContextMenu,
       helpOpen,
       setHelpOpen,
-      setSettingsOpen,
-      setShortcutsOpen,
       setPathFocusToken,
-      setFilterFocusToken,
       setRecursiveSearchFocusToken,
-      activateEntry,
-      navigatePanel,
-      goHistory,
-      refreshPanel,
-      toggleHidden,
-      handleProperties,
-      handleCreateFolder,
-      startInlineRename,
-      handleTrash,
-      handlePermanentDelete,
-      copySelectionToFileClipboard,
-      pasteClipboard,
       isTextPreviewable,
     } = deps;
 
@@ -135,38 +82,36 @@ export function createKeyboardShortcutsHandler(
 
     if (event.key === "Tab") {
       event.preventDefault();
-      dispatch({
-        type: "setActivePanel",
-        panelId: state.activePanelId === "left" ? "right" : "left",
-      });
+      runCommand("switch-pane");
       return;
     }
 
-    if ((event.metaKey || event.ctrlKey) && event.key === ",") {
-      event.preventDefault();
-      setSettingsOpen(true);
-      return;
-    }
-
-    if ((event.metaKey || event.ctrlKey) && event.key === "/") {
-      event.preventDefault();
-      setShortcutsOpen(true);
-      return;
-    }
-
-    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "p") {
-      event.preventDefault();
-      setCommandPaletteOpen(true);
-      return;
-    }
-
+    const mod = event.metaKey || event.ctrlKey;
     const panelId = state.activePanelId;
     const tab = activeTab(state.panels[panelId]);
     const selectedEntry =
       selectVisibleEntries(tab).find((entry) => entry.uri === tab.selectedId) ??
       null;
 
-    if (event.key === " " && !event.metaKey && !event.ctrlKey) {
+    if (mod && event.key === ",") {
+      event.preventDefault();
+      runCommand("app.settings");
+      return;
+    }
+
+    if (mod && event.key === "/") {
+      event.preventDefault();
+      runCommand("app.shortcuts");
+      return;
+    }
+
+    if (mod && event.key.toLowerCase() === "p") {
+      event.preventDefault();
+      runCommand("app.commandPalette");
+      return;
+    }
+
+    if (event.key === " " && !mod) {
       if (!previewOpen && selectedEntry && isTextPreviewable(selectedEntry)) {
         event.preventDefault();
         setPreviewOpen(true);
@@ -185,92 +130,85 @@ export function createKeyboardShortcutsHandler(
 
     if (event.key === "Enter") {
       event.preventDefault();
-      activateEntry(panelId, selectedEntry);
+      runCommand("op.open");
       return;
     }
 
-    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "l") {
+    if (mod && event.key.toLowerCase() === "l") {
       event.preventDefault();
       setPathFocusToken((value) => value + 1);
       return;
     }
 
-    if (
-      (event.metaKey || event.ctrlKey) &&
-      event.shiftKey &&
-      event.key.toLowerCase() === "f"
-    ) {
+    if (mod && event.shiftKey && event.key.toLowerCase() === "f") {
       event.preventDefault();
       setRecursiveSearchFocusToken((value) => value + 1);
       return;
     }
 
-    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "f") {
+    if (mod && event.key.toLowerCase() === "f") {
       event.preventDefault();
-      setFilterFocusToken((value) => value + 1);
+      runCommand("filter");
       return;
     }
 
-    if (
-      (event.metaKey || event.ctrlKey) &&
-      (event.code === "Period" || event.key.toLowerCase() === "h")
-    ) {
+    if (mod && (event.code === "Period" || event.key.toLowerCase() === "h")) {
       event.preventDefault();
-      toggleHidden(panelId);
+      runCommand("view.toggleHidden");
       return;
     }
 
-    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "i") {
+    if (mod && event.key.toLowerCase() === "i") {
       event.preventDefault();
-      void handleProperties(panelId, null);
+      runCommand("op.properties");
       return;
     }
 
-    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "n") {
+    if (mod && event.key.toLowerCase() === "n") {
       event.preventDefault();
-      handleCreateFolder(panelId);
+      runCommand("create.folder");
       return;
     }
 
-    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "a") {
+    if (mod && event.key.toLowerCase() === "a") {
       event.preventDefault();
-      dispatch({ type: "selectAll", panelId });
+      runCommand("selection.selectAll");
       return;
     }
 
-    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "c") {
+    if (mod && event.key.toLowerCase() === "c") {
       event.preventDefault();
-      copySelectionToFileClipboard(panelId, "copy");
+      runCommand("op.copy");
       return;
     }
 
-    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "x") {
+    if (mod && event.key.toLowerCase() === "x") {
       event.preventDefault();
-      copySelectionToFileClipboard(panelId, "move");
+      runCommand("op.cut");
       return;
     }
 
-    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "v") {
+    if (mod && event.key.toLowerCase() === "v") {
       event.preventDefault();
-      void pasteClipboard(panelId);
+      runCommand("op.paste");
       return;
     }
 
     if (event.key === "F2") {
       event.preventDefault();
-      startInlineRename(panelId);
+      runCommand("op.rename");
       return;
     }
 
     if (event.altKey && event.key === "ArrowLeft") {
       event.preventDefault();
-      void goHistory(panelId, "back");
+      runCommand("nav.back");
       return;
     }
 
     if (event.altKey && event.key === "ArrowRight") {
       event.preventDefault();
-      void goHistory(panelId, "forward");
+      runCommand("nav.forward");
       return;
     }
 
@@ -278,32 +216,20 @@ export function createKeyboardShortcutsHandler(
       event.key === "Backspace" ||
       (event.altKey && event.key === "ArrowUp")
     ) {
-      const upUri = parentUri(tab.uri);
-
-      if (upUri) {
-        event.preventDefault();
-        void navigatePanel(panelId, upUri);
-      }
-
+      event.preventDefault();
+      runCommand("nav.up");
       return;
     }
 
-    if (
-      event.key === "F5" ||
-      ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "r")
-    ) {
+    if (event.key === "F5" || (mod && event.key.toLowerCase() === "r")) {
       event.preventDefault();
-      refreshPanel(panelId);
+      runCommand("nav.refresh");
       return;
     }
 
     if (event.key === "Delete") {
       event.preventDefault();
-      if (event.shiftKey) {
-        handlePermanentDelete(panelId);
-      } else {
-        handleTrash(panelId);
-      }
+      runCommand(event.shiftKey ? "op.deletePermanent" : "op.trash");
     }
   };
 }
