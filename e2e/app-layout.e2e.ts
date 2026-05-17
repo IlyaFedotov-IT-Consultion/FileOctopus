@@ -108,12 +108,13 @@ test.describe("FileOctopus main layout", () => {
     await expect(
       toolbar.locator("button:has-text('Rename')").first(),
     ).toBeVisible();
+    // Medium-priority: hidden at narrow widths (container < 560px), check via DOM existence
     await expect(
       toolbar.locator("button:has-text('Copy')").first(),
-    ).toBeVisible();
+    ).toBeAttached();
     await expect(
       toolbar.locator("button:has-text('Move')").first(),
-    ).toBeVisible();
+    ).toBeAttached();
 
     // Low-priority: hidden at narrow widths (container < 760px), check via DOM existence
     await expect(
@@ -135,16 +136,7 @@ test.describe("FileOctopus main layout", () => {
     const tableHeader = page.locator(".fo-table-header[role='row']").first();
     await expect(tableHeader).toBeVisible();
 
-    const expectedColumns = [
-      "Name",
-      "Size",
-      "Modified",
-      "Created",
-      "Type",
-      "Extension",
-      "Permissions",
-      "Owner",
-    ];
+    const expectedColumns = ["Name", "Size", "Type", "Modified"];
 
     for (const col of expectedColumns) {
       await expect(

@@ -516,7 +516,9 @@ test.describe("Context Menu", () => {
 
     const backdrop = page.locator(BACKDROP_SELECTOR);
     await expect(backdrop).toBeVisible();
-    await backdrop.click();
+    // Click top-left corner of backdrop to avoid hitting the context menu itself
+    // (the menu's onClick stopPropagation prevents dismissal if click lands on menu)
+    await backdrop.click({ position: { x: 5, y: 5 } });
 
     await expect(page.locator(MENU_SELECTOR)).not.toBeVisible();
   });
