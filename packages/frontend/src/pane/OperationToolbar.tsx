@@ -69,6 +69,7 @@ export function OperationToolbar({
   return (
     <div className="fo-operation-toolbar" aria-label="File operations">
       <div className="fo-toolbar-actions">
+        {/* Creation group */}
         <ToolbarButton
           primary
           className="fo-toolbar-priority-high"
@@ -84,6 +85,8 @@ export function OperationToolbar({
           {Icons.filePlus()}
           <span>New File</span>
         </ToolbarButton>
+        <span className="fo-toolbar-separator" aria-hidden="true" />
+        {/* Operation group */}
         <ToolbarButton
           className="fo-toolbar-priority-high"
           disabled={!canRename}
