@@ -655,7 +655,8 @@ describe("FileOctopusShell", () => {
       });
     });
 
-    fireEvent.click(screen.getByText("Activity"));
+    const activityBtn = screen.getByTitle("Open Jobs & Activity panel");
+    fireEvent.click(activityBtn);
     expect(screen.getByText(/copying/i)).toBeTruthy();
     fireEvent.click(screen.getAllByText("Cancel")[0]);
     expect(cancelJob).toHaveBeenCalledWith({ jobId: "job-live" });

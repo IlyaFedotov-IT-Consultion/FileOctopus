@@ -302,6 +302,16 @@ exports[`visual regression snapshots > matches the shell chrome structure in dar
     class="fo-status"
   >
     <span
+      class="fo-status-segment fo-status-pane"
+      title="/Users/ilya/Documents"
+    >
+      Left pane - /Users/ilya/Documents
+    </span>
+    <span
+      aria-hidden="true"
+      class="fo-status-separator"
+    />
+    <span
       class="fo-status-segment"
     >
       Selected: 
@@ -320,6 +330,13 @@ exports[`visual regression snapshots > matches the shell chrome structure in dar
     <span
       class="fo-status-spacer"
     />
+    <button
+      class="fo-status-segment fo-status-button"
+      title="Open Jobs & Activity panel"
+      type="button"
+    >
+      0 active jobs - No errors
+    </button>
   </footer>
 </div>
 `;
@@ -626,6 +643,16 @@ exports[`visual regression snapshots > matches the shell chrome structure in lig
     class="fo-status"
   >
     <span
+      class="fo-status-segment fo-status-pane"
+      title="/Users/ilya/Documents"
+    >
+      Left pane - /Users/ilya/Documents
+    </span>
+    <span
+      aria-hidden="true"
+      class="fo-status-separator"
+    />
+    <span
       class="fo-status-segment"
     >
       Selected: 
@@ -644,6 +671,13 @@ exports[`visual regression snapshots > matches the shell chrome structure in lig
     <span
       class="fo-status-spacer"
     />
+    <button
+      class="fo-status-segment fo-status-button"
+      title="Open Jobs & Activity panel"
+      type="button"
+    >
+      0 active jobs - No errors
+    </button>
   </footer>
 </div>
 `;
