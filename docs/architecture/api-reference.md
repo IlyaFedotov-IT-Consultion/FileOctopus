@@ -153,7 +153,7 @@ Errors arrive on the event stream as `DirectoryBatchEventDto.error` when listing
 
 ### `get_preferences` / `set_preference`
 
-Preferences persist in SQLite (`preferences.sqlite` under the app data directory). Keys: `theme` (`system` \| `light` \| `dark`), `density` (`compact` \| `comfortable` \| `spacious`), `defaultViewMode` (`details` \| `list` \| `icons`), `showHiddenFiles` (boolean string), `sidebarWidth`, `splitRatio`.
+Preferences persist in SQLite (`preferences.sqlite` under the app data directory). Keys include `theme` (`system` \| `light` \| `dark`), `density` (`compact` \| `comfortable` \| `spacious`), `defaultViewMode`, `showHiddenFiles` (boolean string), `sidebarWidth`, `splitRatio`, `sidebarVisible`, `statusBarVisible`, `toolbarVisible`, `activityPanelVisible`, `paneMode`, and other fields on `UserPreferencesDto` in `packages/ts-api/src/types.ts`.
 
 ```ts
 const { preferences } = await client.preferences.get();
