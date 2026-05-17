@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type {
   AppDataHealthResponse,
   AppInfoResponse,
@@ -17,6 +18,16 @@ interface DiagnosticsDialogProps {
   onDestinationChange: (value: string) => void;
   onRefresh: () => void;
   onExport: () => void;
+}
+
+function DetailRow({ label, value }: { label: string; value: ReactNode }) {
+  const mono = typeof value === "string";
+  return (
+    <>
+      <dt>{label}</dt>
+      <dd className={mono ? "fo-detail-mono" : undefined}>{value}</dd>
+    </>
+  );
 }
 
 export function DiagnosticsDialog({
@@ -47,57 +58,98 @@ export function DiagnosticsDialog({
         onClick={(event) => event.stopPropagation()}
       >
         <header className="fo-dialog-header">
-          <h2 id="diagnostics-title">Diagnostics</h2>
+          <div>
+            <h2 id="diagnostics-title">Diagnostics</h2>
+            <p>Runtime information and support bundle export.</p>
+          </div>
           <Button type="button" variant="ghost" size="sm" onClick={onClose}>
             Close
           </Button>
         </header>
-        <div className="fo-diagnostics-grid">
-          <span>Version</span>
-          <span>{appInfo?.version ?? "unknown"}</span>
-          <span>Build</span>
-          <span>{appInfo?.buildProfile ?? "unknown"}</span>
-          <span>Commit</span>
-          <span>{appInfo?.commitSha ?? "n/a"}</span>
-          <span>Schema</span>
-          <span>{appHealth?.schemaVersion ?? 0}</span>
-          <span>Recovered jobs</span>
-          <span>{appHealth?.startupRecoveryCount ?? 0}</span>
+        <div className="fo-dialog-body">
+          <section className="fo-dialog-section" aria-label="Application">
+            <h3 className="fo-dialog-section-title">Application</h3>
+            <dl className="fo-detail-grid">
+              <DetailRow
+                label="Version"
+                value={appInfo?.version ?? "unknown"}
+              />
+              <DetailRow
+                label="Build"
+                value={appInfo?.buildProfile ?? "unknown"}
+              />
+              <DetailRow label="Commit" value={appInfo?.commitSha ?? "n/a"} />
+            </dl>
+          </section>
+
+          <section className="fo-dialog-section" aria-label="Runtime">
+            <h3 className="fo-dialog-section-title">Runtime</h3>
+            <dl className="fo-detail-grid">
+              <DetailRow
+                label="Schema"
+                value={String(appHealth?.schemaVersion ?? 0)}
+              />
+              <DetailRow
+                label="Recovered jobs"
+                value={String(appHealth?.startupRecoveryCount ?? 0)}
+              />
+            </dl>
+          </section>
+
           {showDeveloperFields ? (
-            <>
-              <span>Config dir</span>
-              <span>{appHealth?.configDir ?? ""}</span>
-              <span>Data dir</span>
-              <span>{appHealth?.dataDir ?? ""}</span>
-              <span>Log dir</span>
-              <span>{appHealth?.logDir ?? ""}</span>
-              <span>Database</span>
-              <span>{appHealth?.databasePath ?? ""}</span>
-            </>
+            <section className="fo-dialog-section" aria-label="Paths">
+              <h3 className="fo-dialog-section-title">Paths</h3>
+              <dl className="fo-detail-grid">
+                <DetailRow
+                  label="Config dir"
+                  value={appHealth?.configDir ?? "—"}
+                />
+                <DetailRow label="Data dir" value={appHealth?.dataDir ?? "—"} />
+                <DetailRow label="Log dir" value={appHealth?.logDir ?? "—"} />
+                <DetailRow
+                  label="Database"
+                  value={appHealth?.databasePath ?? "—"}
+                />
+              </dl>
+            </section>
           ) : null}
+
+          <section className="fo-dialog-section" aria-label="Export">
+            <h3 className="fo-dialog-section-title">Export bundle</h3>
+            <p>
+              Save a zip archive of logs and configuration for troubleshooting.
+            </p>
+            <label className="fo-dialog-field">
+              <span>Destination</span>
+              <input
+                value={destination}
+                onChange={(event) => onDestinationChange(event.target.value)}
+              />
+            </label>
+          </section>
+
+          {message ? (
+            <div className="fo-dialog-callout" role="status">
+              <strong>Status</strong>
+              <span>{message}</span>
+            </div>
+          ) : null}
+
+          <div className="fo-dialog-footer">
+            <Button type="button" variant="ghost" size="sm" onClick={onRefresh}>
+              Refresh
+            </Button>
+            <Button
+              type="button"
+              variant="primary"
+              size="sm"
+              disabled={exporting}
+              onClick={onExport}
+            >
+              {exporting ? "Exporting…" : "Export bundle"}
+            </Button>
+          </div>
         </div>
-        <label className="fo-diagnostics-export">
-          Export destination
-          <input
-            value={destination}
-            onChange={(event) => onDestinationChange(event.target.value)}
-          />
-        </label>
-        <div className="fo-pane-state-actions">
-          <Button type="button" variant="ghost" size="sm" onClick={onRefresh}>
-            Refresh
-          </Button>
-          <Button
-            type="button"
-            variant="primary"
-            size="sm"
-            disabled={exporting}
-            onClick={onExport}
-          >
-            {exporting ? "Exporting…" : "Export bundle"}
-          </Button>
-        </div>
-        {message ? <div className="fo-empty-inline">{message}</div> : null}
       </dialog>
     </div>
   );

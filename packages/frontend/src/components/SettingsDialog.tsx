@@ -147,7 +147,7 @@ export function SettingsDialog({
             {activeSection === "general" && (
               <section className="fo-settings-section">
                 <h3>General</h3>
-                <label className="fo-settings-switch">
+                <label className="fo-settings-checkbox">
                   <input
                     type="checkbox"
                     checked={autostart?.enabled === true}
@@ -310,7 +310,7 @@ export function SettingsDialog({
                     <option value="columns">Columns</option>
                   </select>
                 </label>
-                <label className="fo-settings-switch">
+                <label className="fo-settings-checkbox">
                   <input
                     type="checkbox"
                     checked={preferences.showHiddenFiles}
@@ -323,7 +323,7 @@ export function SettingsDialog({
                   />
                   <span>Show hidden files by default</span>
                 </label>
-                <label className="fo-settings-switch">
+                <label className="fo-settings-checkbox">
                   <input
                     type="checkbox"
                     checked={preferences.confirmDelete}
@@ -336,7 +336,7 @@ export function SettingsDialog({
                   />
                   <span>Confirm before delete</span>
                 </label>
-                <label className="fo-settings-switch">
+                <label className="fo-settings-checkbox">
                   <input
                     type="checkbox"
                     checked={preferences.confirmPermanentDelete}
@@ -349,7 +349,7 @@ export function SettingsDialog({
                   />
                   <span>Confirm before permanent delete</span>
                 </label>
-                <label className="fo-settings-switch">
+                <label className="fo-settings-checkbox">
                   <input
                     type="checkbox"
                     checked={preferences.useTrashByDefault}
@@ -362,7 +362,7 @@ export function SettingsDialog({
                   />
                   <span>Use trash by default</span>
                 </label>
-                <label className="fo-settings-switch">
+                <label className="fo-settings-checkbox">
                   <input
                     type="checkbox"
                     checked={preferences.confirmOverwrite}
@@ -395,7 +395,7 @@ export function SettingsDialog({
             {activeSection === "layout" && (
               <section className="fo-settings-section">
                 <h3>Layout</h3>
-                <label className="fo-settings-switch">
+                <label className="fo-settings-checkbox">
                   <input
                     type="checkbox"
                     checked={preferences.sidebarVisible}
@@ -408,7 +408,7 @@ export function SettingsDialog({
                   />
                   <span>Show sidebar</span>
                 </label>
-                <label className="fo-settings-switch">
+                <label className="fo-settings-checkbox">
                   <input
                     type="checkbox"
                     checked={preferences.activityPanelVisible}
@@ -421,7 +421,7 @@ export function SettingsDialog({
                   />
                   <span>Show activity panel</span>
                 </label>
-                <label className="fo-settings-switch">
+                <label className="fo-settings-checkbox">
                   <input
                     type="checkbox"
                     checked={preferences.statusBarVisible !== false}
@@ -434,7 +434,7 @@ export function SettingsDialog({
                   />
                   <span>Show status bar</span>
                 </label>
-                <label className="fo-settings-switch">
+                <label className="fo-settings-checkbox">
                   <input
                     type="checkbox"
                     checked={preferences.toolbarVisible !== false}
@@ -481,7 +481,7 @@ export function SettingsDialog({
                 aria-label="Operations settings"
               >
                 <h3>Operations</h3>
-                <label className="fo-settings-switch">
+                <label className="fo-settings-checkbox">
                   <input
                     type="checkbox"
                     checked={preferences.confirmDelete}
@@ -494,7 +494,7 @@ export function SettingsDialog({
                   />
                   <span>Confirm move to trash</span>
                 </label>
-                <label className="fo-settings-switch">
+                <label className="fo-settings-checkbox">
                   <input
                     type="checkbox"
                     checked={preferences.confirmPermanentDelete}
@@ -507,7 +507,7 @@ export function SettingsDialog({
                   />
                   <span>Confirm permanent delete</span>
                 </label>
-                <label className="fo-settings-switch">
+                <label className="fo-settings-checkbox">
                   <input
                     type="checkbox"
                     checked={preferences.confirmOverwrite}
@@ -520,7 +520,7 @@ export function SettingsDialog({
                   />
                   <span>Confirm before overwriting files</span>
                 </label>
-                <label className="fo-settings-switch">
+                <label className="fo-settings-checkbox">
                   <input
                     type="checkbox"
                     checked={preferences.useTrashByDefault}

@@ -33,12 +33,20 @@ export function AboutDialog({ open, appInfo, onClose }: AboutDialogProps) {
             Close
           </Button>
         </header>
-        <dl className="fo-properties">
-          <dt>Version</dt>
-          <dd>{appInfo?.version ?? "—"}</dd>
-          <dt>Build</dt>
-          <dd>{appInfo?.buildProfile ?? "—"}</dd>
-        </dl>
+        <div className="fo-dialog-body">
+          <dl className="fo-detail-grid">
+            <dt>Version</dt>
+            <dd>{appInfo?.version ?? "—"}</dd>
+            <dt>Build</dt>
+            <dd>{appInfo?.buildProfile ?? "—"}</dd>
+            {appInfo?.commitSha ? (
+              <>
+                <dt>Commit</dt>
+                <dd className="fo-detail-mono">{appInfo.commitSha}</dd>
+              </>
+            ) : null}
+          </dl>
+        </div>
       </dialog>
     </div>
   );

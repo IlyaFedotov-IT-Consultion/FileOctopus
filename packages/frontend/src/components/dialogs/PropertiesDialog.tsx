@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { FileEntryDto, PathPropertiesDto } from "@fileoctopus/ts-api";
 import { Button, fileEntryIcon } from "@fileoctopus/ui";
 import type { PanelId } from "../../panelStore";
@@ -19,6 +20,82 @@ interface PropertiesDialogProps {
   onReveal: () => void;
 }
 
+function PropertiesSection({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="fo-properties-section" aria-label={title}>
+      <h3 className="fo-properties-section-title">{title}</h3>
+      {children}
+    </section>
+  );
+}
+
+function PropertiesRow({ label, value }: { label: string; value: ReactNode }) {
+  return (
+    <>
+      <dt>{label}</dt>
+      <dd>{value}</dd>
+    </>
+  );
+}
+
+function formatContains(properties: PathPropertiesDto): string {
+  if (properties.kind !== "directory") {
+    return "—";
+  }
+
+  if (
+    properties.itemCount == null &&
+    properties.directoryCount == null &&
+    properties.fileCount == null
+  ) {
+    return "Not available";
+  }
+
+  return [
+    properties.itemCount != null && `${properties.itemCount} item(s)`,
+    properties.directoryCount != null &&
+      `${properties.directoryCount} folder(s)`,
+    properties.fileCount != null && `${properties.fileCount} file(s)`,
+  ]
+    .filter(Boolean)
+    .join(", ");
+}
+
+function formatFlags(properties: PathPropertiesDto): ReactNode {
+  const flags: string[] = [];
+  if (properties.isHidden) {
+    flags.push("Hidden");
+  }
+  if (properties.readonly) {
+    flags.push("Read-only");
+  }
+  if (properties.isSymlink) {
+    flags.push(
+      `Symlink${properties.symlinkTarget ? ` → ${properties.symlinkTarget}` : ""}`,
+    );
+  }
+
+  if (flags.length === 0) {
+    return <span className="fo-properties-muted">None</span>;
+  }
+
+  return (
+    <div className="fo-properties-badges">
+      {flags.map((flag) => (
+        <span key={flag} className="fo-properties-badge">
+          {flag}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 export function PropertiesDialog({
   open,
   state,
@@ -36,9 +113,23 @@ export function PropertiesDialog({
       ? { kind: properties.kind, name: properties.name, extension: null }
       : null);
 
+  const sizeValue = properties
+    ? formatSize(properties.size ?? properties.totalSize)
+    : null;
+  const sizeLabel =
+    loading && properties?.kind === "directory" ? (
+      <span className="fo-properties-calculating">Calculating size…</span>
+    ) : (
+      sizeValue
+    );
+
   return (
     <div className="fo-properties">
-      {loading ? <div className="fo-properties-state">Loading</div> : null}
+      {loading && !properties ? (
+        <div className="fo-properties-state" role="status">
+          Loading properties…
+        </div>
+      ) : null}
       {error ? <div className="fo-operation-error">{error}</div> : null}
       {properties ? (
         <>
@@ -47,68 +138,82 @@ export function PropertiesDialog({
               {entryForIcon ? fileEntryIcon(entryForIcon) : null}
             </span>
             <div className="fo-properties-heading">
-              <strong>{properties.name}</strong>
+              <strong title={properties.name}>{properties.name}</strong>
               <span>{propertyType(properties)}</span>
             </div>
-            <span className="fo-properties-size">
-              {formatSize(properties.size ?? properties.totalSize)}
-            </span>
+            <span className="fo-properties-size">{sizeLabel}</span>
           </div>
-          <dl className="fo-properties-grid">
-            <dt>Name</dt>
-            <dd>{properties.name}</dd>
-            <dt>Type</dt>
-            <dd>{propertyType(properties)}</dd>
-            <dt>Full path</dt>
-            <dd>{localPathFromUri(properties.uri)}</dd>
-            <dt>Resource URI</dt>
-            <dd>{properties.uri}</dd>
-            <dt>Size</dt>
-            <dd>{formatSize(properties.size ?? properties.totalSize)}</dd>
-            <dt>Contains</dt>
-            <dd>
-              {properties.itemCount != null
-                ? [
-                    properties.itemCount != null &&
-                      `${properties.itemCount} item(s)`,
-                    properties.directoryCount != null &&
-                      `${properties.directoryCount} folder(s)`,
-                    properties.fileCount != null &&
-                      `${properties.fileCount} file(s)`,
-                  ]
-                    .filter(Boolean)
-                    .join(", ")
-                : "Not available"}
-            </dd>
-            <dt>Created</dt>
-            <dd>{formatDate(properties.createdAt)}</dd>
-            <dt>Modified</dt>
-            <dd>{formatDate(properties.modifiedAt)}</dd>
-            <dt>Accessed</dt>
-            <dd>{formatDate(properties.accessedAt)}</dd>
-            <dt>Flags</dt>
-            <dd>
-              {[
-                properties.isHidden && "Hidden",
-                properties.readonly && "Read-only",
-                properties.isSymlink &&
-                  `Symlink${properties.symlinkTarget ? ` → ${properties.symlinkTarget}` : ""}`,
-              ]
-                .filter(Boolean)
-                .join(", ") || "None"}
-            </dd>
-          </dl>
+
+          <PropertiesSection title="General">
+            <dl className="fo-properties-grid">
+              <PropertiesRow label="Name" value={properties.name} />
+              <PropertiesRow label="Type" value={propertyType(properties)} />
+              <PropertiesRow label="Size" value={sizeLabel} />
+              {properties.kind === "directory" ? (
+                <PropertiesRow
+                  label="Contains"
+                  value={formatContains(properties)}
+                />
+              ) : null}
+            </dl>
+          </PropertiesSection>
+
+          <PropertiesSection title="Location">
+            <dl className="fo-properties-grid">
+              <PropertiesRow
+                label="Full path"
+                value={
+                  <span className="fo-properties-value fo-properties-value--mono">
+                    {localPathFromUri(properties.uri)}
+                  </span>
+                }
+              />
+              <PropertiesRow
+                label="Resource URI"
+                value={
+                  <span className="fo-properties-value fo-properties-value--mono">
+                    {properties.uri}
+                  </span>
+                }
+              />
+            </dl>
+          </PropertiesSection>
+
+          <PropertiesSection title="Dates">
+            <dl className="fo-properties-grid">
+              <PropertiesRow
+                label="Created"
+                value={formatDate(properties.createdAt)}
+              />
+              <PropertiesRow
+                label="Modified"
+                value={formatDate(properties.modifiedAt)}
+              />
+              <PropertiesRow
+                label="Accessed"
+                value={formatDate(properties.accessedAt)}
+              />
+            </dl>
+          </PropertiesSection>
+
+          <PropertiesSection title="Attributes">
+            <dl className="fo-properties-grid">
+              <PropertiesRow label="Flags" value={formatFlags(properties)} />
+            </dl>
+          </PropertiesSection>
+
           {properties.warnings.length > 0 ? (
-            <div className="fo-dialog-summary">
+            <div className="fo-properties-warnings" role="note">
               {properties.warnings.slice(0, 3).map((warning) => (
-                <span key={warning}>{warning}</span>
+                <p key={warning}>{warning}</p>
               ))}
             </div>
           ) : null}
-          <div className="fo-dialog-actions">
+
+          <div className="fo-properties-actions">
             <Button
               type="button"
-              variant="ghost"
+              variant="primary"
               size="sm"
               onClick={onCopyPath}
             >
@@ -120,7 +225,7 @@ export function PropertiesDialog({
               size="sm"
               onClick={() => void navigator.clipboard.writeText(properties.uri)}
             >
-              Copy Resource URI
+              Copy URI
             </Button>
             <Button type="button" variant="ghost" size="sm" onClick={onReveal}>
               Reveal

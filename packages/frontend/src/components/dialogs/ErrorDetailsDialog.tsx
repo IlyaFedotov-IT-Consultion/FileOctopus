@@ -38,27 +38,29 @@ export function ErrorDetailsDialog({
             Close
           </Button>
         </header>
-        <pre className="fo-error-details-body">{message}</pre>
-        <div className="fo-dialog-actions">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => void navigator.clipboard.writeText(message)}
-          >
-            Copy
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              onClear();
-              onClose();
-            }}
-          >
-            Dismiss
-          </Button>
+        <div className="fo-dialog-body">
+          <pre className="fo-error-details-body">{message}</pre>
+          <div className="fo-dialog-footer">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => void navigator.clipboard.writeText(message)}
+            >
+              Copy
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                onClear();
+                onClose();
+              }}
+            >
+              Dismiss
+            </Button>
+          </div>
         </div>
       </dialog>
     </div>
