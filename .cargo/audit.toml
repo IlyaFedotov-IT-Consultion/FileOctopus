@@ -1,0 +1,9 @@
+# cargo-audit configuration.
+#
+# RUSTSEC-2021-0046 is a false positive: our workspace ships a local
+# `telemetry` crate at crates/telemetry/ that collides on name + version
+# with the crates.io `telemetry` crate flagged by that advisory. We do
+# not depend on the crates.io version.
+
+[advisories]
+ignore = ["RUSTSEC-2021-0046"]
