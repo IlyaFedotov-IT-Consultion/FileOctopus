@@ -26,4 +26,13 @@ describe("commands/registry", () => {
       COMMAND_DEFINITIONS.some((command) => command.id === "view.compact"),
     ).toBe(true);
   });
+
+  it("includes toolbar metadata commands", () => {
+    expect(
+      COMMAND_DEFINITIONS.some((command) => command.id === "op.compress"),
+    ).toBe(true);
+    expect(
+      COMMAND_DEFINITIONS.some((command) => command.id === "op.checksum"),
+    ).toBe(true);
+  });
 });

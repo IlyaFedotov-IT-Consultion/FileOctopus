@@ -47,6 +47,11 @@ export const COMMAND_DEFINITIONS: CommandDefinition[] = [
     group: "navigation",
   },
   {
+    id: "nav.addFavorite",
+    label: "Add to Favorites",
+    group: "navigation",
+  },
+  {
     id: "create.folder",
     label: "New Folder",
     group: "creation",
@@ -133,6 +138,36 @@ export const COMMAND_DEFINITIONS: CommandDefinition[] = [
   {
     id: "op.openDefault",
     label: "Open With Default App",
+    group: "operation",
+  },
+  {
+    id: "op.compress",
+    label: "Compress…",
+    group: "operation",
+  },
+  {
+    id: "op.extract",
+    label: "Extract…",
+    group: "operation",
+  },
+  {
+    id: "op.checksum",
+    label: "Checksum…",
+    group: "operation",
+  },
+  {
+    id: "op.openTerminal",
+    label: "Open Terminal",
+    group: "operation",
+  },
+  {
+    id: "op.calculateSize",
+    label: "Calculate Size",
+    group: "operation",
+  },
+  {
+    id: "op.toggleStarred",
+    label: "Toggle Star",
     group: "operation",
   },
   {

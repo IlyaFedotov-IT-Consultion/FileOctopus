@@ -309,6 +309,22 @@ function FileOctopusAppInner() {
     setCommandPaletteOpen,
     handleCopyOrMove,
     toggleHidden,
+    handleCompress,
+    handleExtract,
+    handleChecksum,
+    openTerminal: (panelId) =>
+      openTerminal(activeTab(state.panels[panelId]).uri),
+    calculateSize,
+    toggleStarredForEntry,
+    addFavorite: async (panelId, uri) => {
+      const target = uri ?? activeTab(state.panels[panelId]).uri;
+      try {
+        const label = target.split("/").pop() || target;
+        await client.navigation.addFavorite({ uri: target, label });
+      } catch {
+        /* ignore */
+      }
+    },
   });
 
   const handleShellKeyDown = useMemo(
@@ -398,13 +414,14 @@ function FileOctopusAppInner() {
       onPermanentDelete: () => runPanel("op.deletePermanent"),
       onCopyPath: () => runPanel("clipboard.copyPath"),
       onCopyName: () => runPanel("clipboard.copyName"),
-      onProperties: (entry) => void handleProperties(pid, entry),
+      onProperties: (entry) => handleCommandSelect("op.properties", pid, entry),
       onReveal: (entry) => void revealEntry(pid, entry),
-      onCalculateSize: (entry) => void calculateSize(pid, entry),
-      onCompress: () => void handleCompress(pid),
-      onExtract: () => void handleExtract(pid),
-      onOpenTerminal: () => openTerminal(tab.uri),
-      onChecksum: () => void handleChecksum(pid),
+      onCalculateSize: (entry) =>
+        void handleCommandSelect("op.calculateSize", pid, entry ?? null),
+      onCompress: () => runPanel("op.compress"),
+      onExtract: () => runPanel("op.extract"),
+      onOpenTerminal: () => runPanel("op.openTerminal"),
+      onChecksum: () => void runPanel("op.checksum"),
       onRefresh: () => runPanel("nav.refresh"),
       onToggleHidden: () => runPanel("view.toggleHidden"),
       onSelectAll: () => runPanel("selection.selectAll"),
@@ -538,10 +555,6 @@ function FileOctopusAppInner() {
       toggleStarredForEntry={toggleStarredForEntry}
       handlePermanentDelete={handlePermanentDelete}
       handleProperties={handleProperties}
-      openTerminal={openTerminal}
-      handleChecksum={handleChecksum}
-      handleCompress={handleCompress}
-      handleExtract={handleExtract}
       handleCreateFolder={handleCreateFolder}
       handleCreateFile={handleCreateFile}
       refreshPanel={refreshPanel}

@@ -18,22 +18,17 @@ export interface ContextMenuOverlayProps {
   starredUriSet: Set<string>;
   dispatch: React.Dispatch<PanelAction>;
   onClose: () => void;
-  runPanelCommand: (panelId: PanelId, commandId: string) => void;
-  activateEntry: (panelId: PanelId, entry: FileEntryDto | null) => void;
-  toggleStarredForEntry: (entry: FileEntryDto) => Promise<void>;
-  handleProperties: (
+  runPanelCommand: (
     panelId: PanelId,
-    entry: FileEntryDto | null,
-  ) => Promise<void>;
-  handleCompress: (panelId: PanelId) => void;
-  handleExtract: (panelId: PanelId) => void;
-  openTerminal: (uri: string) => void;
-  handleChecksum: (panelId: PanelId) => Promise<void>;
+    commandId: string,
+    entry?: FileEntryDto | null,
+  ) => void;
+  activateEntry: (panelId: PanelId, entry: FileEntryDto | null) => void;
   revealEntry: (panelId: PanelId, entry: FileEntryDto | null) => Promise<void>;
   openExternal: (entry: FileEntryDto) => Promise<void>;
   navigatePanel: (panelId: PanelId, uri: string) => void;
   navigateOtherPane: (uri: string) => void;
-  addFavorite: (uri: string) => void;
+  addFavorite: (uri: string) => Promise<void>;
 }
 
 export function ContextMenuOverlay({
@@ -45,12 +40,6 @@ export function ContextMenuOverlay({
   onClose,
   runPanelCommand,
   activateEntry,
-  toggleStarredForEntry,
-  handleProperties,
-  handleCompress,
-  handleExtract,
-  openTerminal,
-  handleChecksum,
   revealEntry,
   openExternal,
   navigatePanel,
@@ -58,7 +47,9 @@ export function ContextMenuOverlay({
   addFavorite,
 }: ContextMenuOverlayProps) {
   const panelId = menu?.panelId ?? "left";
-  const run = (commandId: string) => runPanelCommand(panelId, commandId);
+  const contextEntry = menu?.entry ?? undefined;
+  const run = (commandId: string, entry?: FileEntryDto | null) =>
+    runPanelCommand(panelId, commandId, entry ?? contextEntry);
 
   return (
     <ContextMenu
@@ -76,16 +67,18 @@ export function ContextMenuOverlay({
       onCut={() => run("op.cut")}
       onPaste={() => run("op.paste")}
       onTrash={() => run("op.trash")}
-      onToggleStarred={(_, entry) => void toggleStarredForEntry(entry)}
+      onToggleStarred={() => run("op.toggleStarred")}
       onPermanentDelete={() => run("op.deletePermanent")}
       onCopyPath={() => run("clipboard.copyPath")}
       onCopyName={() => run("clipboard.copyName")}
-      onProperties={(pid, entry) => void handleProperties(pid, entry)}
+      onProperties={(pid, entry) =>
+        runPanelCommand(pid, "op.properties", entry ?? contextEntry ?? null)
+      }
       onReveal={(pid, entry) => void revealEntry(pid, entry)}
-      onCompress={(pid) => void handleCompress(pid)}
-      onExtract={(pid) => void handleExtract(pid)}
-      onOpenTerminal={(pid) => openTerminal(activeTab(state.panels[pid]).uri)}
-      onChecksum={(pid) => void handleChecksum(pid)}
+      onCompress={() => run("op.compress")}
+      onExtract={() => run("op.extract")}
+      onOpenTerminal={() => run("op.openTerminal")}
+      onChecksum={() => void run("op.checksum")}
       onCreateFolder={() => run("create.folder")}
       onCreateFile={() => run("create.file")}
       onRefresh={() => run("nav.refresh")}
@@ -121,7 +114,13 @@ export function ContextMenuOverlay({
         void navigator.clipboard.writeText(path);
       }}
       onRevealBreadcrumb={() => undefined}
-      onAddFavorite={(uri) => addFavorite(uri)}
+      onAddFavorite={(uri) => {
+        if (menu?.entry) {
+          runPanelCommand(panelId, "nav.addFavorite", menu.entry);
+          return;
+        }
+        void addFavorite(uri);
+      }}
     />
   );
 }
