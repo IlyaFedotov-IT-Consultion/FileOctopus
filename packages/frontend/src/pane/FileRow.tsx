@@ -76,9 +76,19 @@ export function FileRow({
   const showMetadata =
     viewMode === "details" || viewMode === "list" || viewMode === "compact";
 
+  const ariaLabel = [
+    entry.name,
+    typeLabel,
+    entry.kind === "directory" ? "" : formatSize(entry.size),
+    entry.modifiedAt ? formatDate(entry.modifiedAt) : "",
+  ]
+    .filter(Boolean)
+    .join(", ");
+
   return (
     <div
       role="row"
+      aria-label={ariaLabel}
       aria-selected={selected || multiSelected}
       className={cx(
         "fo-row",
