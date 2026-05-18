@@ -1,63 +1,55 @@
 # CRON Status — FileOctopus CI/CD Agent
 
-> Last run: 2026-05-18 17:10 UTC
+> Last run: 2026-05-18 19:35 UTC
 
 ## Health Gate
 
 | Check                       | Result                              |
 | --------------------------- | ----------------------------------- |
 | TypeScript (`tsc --noEmit`) | ✅ 0 errors                         |
-| Vitest (frontend)           | ✅ 271/271 tests passing (39 files) |
+| Vitest (frontend)           | ✅ 292/292 tests passing (40 files) |
 | Rust (`cargo check`)        | ✅ clean                            |
 | Clippy                      | ✅ clean (no warnings)              |
 
 ## Work Completed This Run
 
-### P2-2: Add Reusable Focus-Trap for Modal Dialogs
+### P2-6: Add User-Selectable Visible Columns with Persistence
 
-**Commit:** `4d80006`
-
-**What was done:**
-
-- Created `useFocusTrap` hook in `src/hooks/useFocusTrap.ts` — traps Tab/Shift+Tab within a container element, auto-focuses first focusable element on open, restores focus to previously active element on close
-- Wired into all 10 dialog components alongside `useDialogEscape`:
-  - ShortcutsDialog, SettingsDialog, DiagnosticsDialog, CommandPalette
-  - AboutDialog, GoToLocationDialog, ManageFavoritesDialog, ErrorDetailsDialog
-  - OperationHistoryDialog, OperationDialogView (uses `<section>` instead of `<dialog>`)
-- Handles edge cases: no focusable elements, disabled elements skipped, cleanup on unmount
-
-**Tests (5 new):**
-
-- `tests/focusTrap.test.tsx` — 5 tests:
-  - Auto-focuses first focusable element when opened
-  - Traps Tab within the container (wraps from last to first)
-  - Traps Shift+Tab within the container (wraps from first to last)
-  - Restores focus to previously active element on close
-  - Handles container with no focusable elements gracefully
-
-### P2-4: Wire Session Path Persistence on Navigation
-
-**Commit:** `d08d97d`
+**Commit:** `e902fb0`
 
 **What was done:**
 
-- Added `useEffect` in `ShellProvider` that calls `persistSessionPaths()` whenever left/right panel tab URIs change
-- The `persistSessionPaths` utility and `restoreSessionPaths` already existed but persistence was never called — only restore was wired on startup
-- Paths are now saved to localStorage on every navigation and restored on app restart
-- Fixed `appShell.test.tsx` — added `localStorage.clear()` in beforeEach to prevent cross-test state pollution
+- Extended `columnWidths.ts` with `VisibleColumns` type, `DEFAULT_VISIBLE_COLUMNS`, localStorage persistence (`fileoctopus.visibleColumns`), and `buildVisibleGridTemplate`/`buildVisibleHeaderGridTemplate` functions that filter grid columns by visibility
+- `FileTable.tsx`: accepts `visibleColumns` prop, renders only visible column headers with proper resize handles, right-click on header opens column visibility context menu with checkboxes
+- `FileRow.tsx`: conditionally renders only visible column cells in details view mode
+- `FilePanel.tsx`: state management for `visibleColumns` (initialized from localStorage), `handleToggleColumn` callback with persistence
+- CSS: column visibility menu styles (`.fo-colvis-menu`, `.fo-colvis-item`, `.fo-colvis-check`) in `pane.css`
+- "name" column is always visible and cannot be hidden
 
-**Tests (2 new):**
+**Tests (21 new):**
 
-- `tests/sessionPaths.test.tsx` — 2 new tests (6 total):
-  - persistSessionPaths overwrites previous paths
-  - persistSessionPaths handles localStorage quota error silently
+- `tests/visibleColumns.test.ts` — 21 tests:
+  - DEFAULT_VISIBLE_COLUMNS includes all 5 columns
+  - COLUMN_ORDER lists all available column ids
+  - storedVisibleColumns returns defaults when nothing stored
+  - storedVisibleColumns returns stored columns from localStorage
+  - storedVisibleColumns always includes name even if missing from stored data
+  - storedVisibleColumns ignores corrupted localStorage data
+  - storedVisibleColumns ignores invalid column ids
+  - persistVisibleColumns writes to localStorage
+  - persistVisibleColumns ignores write errors gracefully
+  - isValidVisibleColumns accepts/rejects various inputs
+  - buildVisibleGridTemplate includes only visible columns
+  - buildVisibleHeaderGridTemplate includes resize handles between visible columns
+  - No resize handle when only one column visible
+  - Includes all columns and handles when all visible
 
 ## Summary
 
 | Metric      | Value |
 | ----------- | ----- |
-| Tasks done  | 2     |
-| Commits     | 4     |
-| New tests   | 7     |
-| Total tests | 271   |
-| Test files  | 39    |
+| Tasks done  | 1     |
+| Commits     | 2     |
+| New tests   | 21    |
+| Total tests | 292   |
+| Test files  | 40    |
