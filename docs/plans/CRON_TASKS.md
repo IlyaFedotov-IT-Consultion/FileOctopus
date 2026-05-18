@@ -33,7 +33,7 @@
 | P2-1  | P2  | pending | -     | -       | -           | -                | UI spec §9.5; M5                      | Replace `Tooltip.tsx` title-attribute stub with real popover tooltip. Wire into disabled buttons and menu items.   | None     | 2026-05-18    |
 | P2-7  | P2  | pending | -     | -       | -           | -                | UI spec §18.2                         | Create VolumePickerDialog with discoverVolumes IPC + VolumeDto. Add to Go menu.                                    | None     | 2026-05-18    |
 | P2-9  | P2  | pending | -     | -       | -           | -                | UI spec §18.2                         | Create SelectionPropertiesDialog for multi-file aggregate (count, total size, type breakdown).                     | None     | 2026-05-18    |
-| P2-11 | P2  | pending | -     | -       | -           | -                | UI spec §12.2                         | Add offline/unmounted pane state to PaneLoadState + PaneStateView + error code mapping.                            | None     | 2026-05-18    |
+| P2-11 | P2  | done    | cron  | 84867c3 | 2026-05-18  | -                | UI spec §12.2                         | Add offline/unmounted pane state to PaneLoadState + PaneStateView + error code mapping.                            | None     | 2026-05-18    |
 
 ---
 
