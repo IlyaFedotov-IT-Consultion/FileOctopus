@@ -13,10 +13,13 @@ import { isPaneLoading, type PaneLoadState } from "../paneTypes";
 import type { SortField, ViewMode } from "../panelStore";
 import { FileRow } from "./FileRow";
 import {
-  buildGridTemplate,
-  buildHeaderGridTemplate,
+  buildVisibleGridTemplate,
+  buildVisibleHeaderGridTemplate,
+  DEFAULT_VISIBLE_COLUMNS,
+  COLUMN_ORDER,
   type ColumnWidths,
   type ColumnId,
+  type VisibleColumns,
 } from "./columnWidths";
 
 const overscan = 8;
@@ -35,6 +38,7 @@ export interface FileTableProps {
   inlineRenameUri?: string | null;
   panelId?: string;
   columnWidths?: ColumnWidths;
+  visibleColumns?: VisibleColumns;
   onSubmitInlineRename?: (entryUri: string, newName: string) => void;
   onCancelInlineRename?: () => void;
   onCreateFolder?: () => void;
@@ -50,6 +54,7 @@ export interface FileTableProps {
     event: MouseEvent<HTMLElement>,
     entry: FileEntryDto | null,
   ) => void;
+  onToggleColumn?: (columnId: ColumnId) => void;
 }
 
 export function FileTable({
@@ -66,6 +71,7 @@ export function FileTable({
   inlineRenameUri,
   panelId,
   columnWidths,
+  visibleColumns = DEFAULT_VISIBLE_COLUMNS,
   onSubmitInlineRename,
   onCancelInlineRename,
   onCreateFolder,
@@ -78,9 +84,14 @@ export function FileTable({
   onActivate,
   onEntryActivate,
   onContextMenu,
+  onToggleColumn,
 }: FileTableProps) {
   const [scrollTop, setScrollTop] = useState(0);
   const [resizingColumn, setResizingColumn] = useState<ColumnId | null>(null);
+  const [colVisMenu, setColVisMenu] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
   const [resizeStartX, setResizeStartX] = useState(0);
   const [resizeStartWidth, setResizeStartWidth] = useState(0);
   const viewportRef = useRef<HTMLDivElement | null>(null);
@@ -98,8 +109,11 @@ export function FileTable({
   const totalHeight = virtualize ? entries.length * rowHeight : undefined;
   const loading = isPaneLoading(loadState);
   const widths = columnWidths ?? DEFAULT_WIDTHS;
-  const rowGridColumns = buildGridTemplate(widths);
-  const headerGridColumns = buildHeaderGridTemplate(widths);
+  const rowGridColumns = buildVisibleGridTemplate(widths, visibleColumns);
+  const headerGridColumns = buildVisibleHeaderGridTemplate(
+    widths,
+    visibleColumns,
+  );
 
   const handleResizeStart = useCallback(
     (columnId: ColumnId, clientX: number) => {
@@ -204,67 +218,45 @@ export function FileTable({
           className="fo-table-header"
           role="row"
           style={{ gridTemplateColumns: headerGridColumns }}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setColVisMenu({ x: e.clientX, y: e.clientY });
+          }}
         >
-          <ColumnHeader
-            field="name"
-            active={sortField === "name"}
-            direction={sortDirection}
-            onSort={onSort}
-          >
-            Name
-          </ColumnHeader>
-          <ResizeHandle
-            columnId="name"
-            onResizeStart={handleResizeStart}
-            active={resizingColumn === "name"}
-          />
-          <ColumnHeader
-            field="type"
-            active={sortField === "type"}
-            direction={sortDirection}
-            onSort={onSort}
-          >
-            ext
-          </ColumnHeader>
-          <ResizeHandle
-            columnId="extension"
-            onResizeStart={handleResizeStart}
-            active={resizingColumn === "extension"}
-          />
-          <ColumnHeader
-            field="size"
-            active={sortField === "size"}
-            direction={sortDirection}
-            onSort={onSort}
-          >
-            size
-          </ColumnHeader>
-          <ResizeHandle
-            columnId="size"
-            onResizeStart={handleResizeStart}
-            active={resizingColumn === "size"}
-          />
-          <ColumnHeader
-            field="modified"
-            active={sortField === "modified"}
-            direction={sortDirection}
-            onSort={onSort}
-          >
-            modified
-          </ColumnHeader>
-          <ResizeHandle
-            columnId="modified"
-            onResizeStart={handleResizeStart}
-            active={resizingColumn === "modified"}
-          />
-          <ColumnHeader
-            field="type"
-            active={sortField === "type"}
-            direction={sortDirection}
-            onSort={onSort}
-          >
-            kind
-          </ColumnHeader>
+          {(() => {
+            const orderedVisible = COLUMN_ORDER.filter(
+              (id) => visibleColumns.indexOf(id) !== -1,
+            );
+            return orderedVisible.map((colId, i) => {
+              const header = columnHeaderDef(colId);
+              const nodes: ReactNode[] = [];
+              if (header) {
+                nodes.push(
+                  <ColumnHeader
+                    key={colId}
+                    field={header.sortField}
+                    active={sortField === header.sortField}
+                    direction={sortDirection}
+                    onSort={onSort}
+                  >
+                    {header.label}
+                  </ColumnHeader>,
+                );
+              }
+              if (i < orderedVisible.length - 1) {
+                nodes.push(
+                  <ResizeHandle
+                    key={`resize-${colId}`}
+                    columnId={colId}
+                    onResizeStart={handleResizeStart}
+                    active={resizingColumn === colId}
+                  />,
+                );
+              }
+              return nodes;
+            });
+          })()}
         </div>
       ) : null}
       <div
@@ -326,6 +318,9 @@ export function FileTable({
                 gridColumns={
                   viewMode === "details" ? rowGridColumns : undefined
                 }
+                visibleColumns={
+                  viewMode === "details" ? visibleColumns : undefined
+                }
                 renaming={entry.uri === inlineRenameUri}
                 onSubmitRename={(newName) =>
                   onSubmitInlineRename?.(entry.uri, newName)
@@ -345,6 +340,53 @@ export function FileTable({
           </div>
         )}
       </div>
+      {colVisMenu && onToggleColumn && (
+        <div
+          className="fo-colvis-backdrop"
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 50,
+          }}
+          onClick={() => setColVisMenu(null)}
+        >
+          <ul
+            className="fo-colvis-menu"
+            role="menu"
+            style={{
+              position: "fixed",
+              left: colVisMenu.x,
+              top: colVisMenu.y,
+              zIndex: 51,
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {COLUMN_ORDER.filter((id) => id !== "name").map((colId) => {
+              const header = columnHeaderDef(colId);
+              const isVisible = visibleColumns.indexOf(colId) !== -1;
+              return (
+                <li
+                  key={colId}
+                  role="menuitemcheckbox"
+                  aria-checked={isVisible}
+                  className={
+                    "fo-colvis-item" +
+                    (isVisible ? " fo-colvis-item--active" : "")
+                  }
+                  onClick={() => {
+                    onToggleColumn(colId);
+                  }}
+                >
+                  <span className="fo-colvis-check">
+                    {isVisible ? "✓" : ""}
+                  </span>
+                  {header?.label ?? colId}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }
@@ -435,6 +477,26 @@ const DEFAULT_WIDTHS: ColumnWidths = {
   modified: 126,
   kind: 110,
 };
+
+function columnHeaderDef(id: ColumnId): {
+  label: string;
+  sortField: SortField;
+} | null {
+  switch (id) {
+    case "name":
+      return { label: "Name", sortField: "name" };
+    case "extension":
+      return { label: "ext", sortField: "type" };
+    case "size":
+      return { label: "size", sortField: "size" };
+    case "modified":
+      return { label: "modified", sortField: "modified" };
+    case "kind":
+      return { label: "kind", sortField: "type" };
+    default:
+      return null;
+  }
+}
 
 interface ResizeHandleProps {
   columnId: ColumnId;

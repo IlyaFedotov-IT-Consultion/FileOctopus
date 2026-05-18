@@ -25,8 +25,11 @@ import { fileIconGlyph } from "./fileTableUtils";
 import {
   storedColumnWidths,
   persistColumnWidths,
+  storedVisibleColumns,
+  persistVisibleColumns,
   type ColumnWidths,
   type ColumnId,
+  type VisibleColumns,
 } from "./columnWidths";
 import type { FileEntryDto } from "@fileoctopus/ts-api";
 import type { ContextMenuState } from "../components/ContextMenu";
@@ -117,6 +120,20 @@ export function FilePanel({
   const [inlineRenameUri, setInlineRenameUri] = useState<string | null>(null);
   const [columnWidths, setColumnWidths] =
     useState<ColumnWidths>(storedColumnWidths);
+  const [visibleColumns, setVisibleColumns] =
+    useState<VisibleColumns>(storedVisibleColumns);
+
+  const handleToggleColumn = useCallback((columnId: ColumnId) => {
+    if (columnId === "name") return;
+    setVisibleColumns((prev) => {
+      const next =
+        prev.indexOf(columnId) !== -1
+          ? (prev.filter((id) => id !== columnId) as VisibleColumns)
+          : ([...prev, columnId] as VisibleColumns);
+      persistVisibleColumns(next);
+      return next;
+    });
+  }, []);
   const { dragOver, reset, dragTargetProps } = useFileOctopusDragTarget();
 
   const handleColumnResize = useCallback(
@@ -234,6 +251,8 @@ export function FilePanel({
             inlineRenameUri={inlineRenameUri}
             panelId={panelId}
             columnWidths={columnWidths}
+            visibleColumns={visibleColumns}
+            onToggleColumn={handleToggleColumn}
             onColumnResize={handleColumnResize}
             onCancelInlineRename={() => setInlineRenameUri(null)}
             onSubmitInlineRename={(entryUri, newName) => {

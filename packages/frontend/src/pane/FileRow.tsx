@@ -18,6 +18,7 @@ export interface FileRowProps {
   rowHeight: number;
   viewMode: ViewMode;
   gridColumns?: string;
+  visibleColumns?: readonly import("./columnWidths").ColumnId[];
   selected: boolean;
   multiSelected: boolean;
   focused: boolean;
@@ -41,6 +42,7 @@ export function FileRow({
   rowHeight,
   viewMode,
   gridColumns,
+  visibleColumns,
   selected,
   multiSelected,
   focused,
@@ -172,14 +174,23 @@ export function FileRow({
       {showMetadata ? (
         viewMode === "details" ? (
           <>
-            <span>{extensionLabel}</span>
-            <span>
-              {entry.kind === "directory" ? "DIR" : formatSize(entry.size)}
-            </span>
-            <span title={entry.modifiedAt ?? undefined}>
-              {formatDate(entry.modifiedAt)}
-            </span>
-            <span>{entry.kind === "directory" ? "folder" : typeLabel}</span>
+            {(!visibleColumns ||
+              visibleColumns.indexOf("extension") !== -1) && (
+              <span>{extensionLabel}</span>
+            )}
+            {(!visibleColumns || visibleColumns.indexOf("size") !== -1) && (
+              <span>
+                {entry.kind === "directory" ? "DIR" : formatSize(entry.size)}
+              </span>
+            )}
+            {(!visibleColumns || visibleColumns.indexOf("modified") !== -1) && (
+              <span title={entry.modifiedAt ?? undefined}>
+                {formatDate(entry.modifiedAt)}
+              </span>
+            )}
+            {(!visibleColumns || visibleColumns.indexOf("kind") !== -1) && (
+              <span>{entry.kind === "directory" ? "folder" : typeLabel}</span>
+            )}
           </>
         ) : (
           <>
