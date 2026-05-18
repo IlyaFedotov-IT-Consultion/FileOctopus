@@ -1,59 +1,54 @@
-# FileOctopus — Cron Status
+# CRON Status — FileOctopus CI/CD Agent
 
-> Rewrite this file on every automated or manual cycle.
-> Use UTC timestamps and fill every section.
-> Current file status: migrated legacy entry, not full current gate evidence.
-
-## Run Metadata
-
-- Timestamp (UTC): `2026-05-18` (legacy entry migrated to the new template; exact time was not captured in the old format)
-- Agent: `CI/CD (GLM-5.1)`
-- Duration: `~25 minutes`
-- Branch: `main`
-- Selected task ID: `P1-1`
-- Selected task: `Tab System UI — TabBar component`
-- Acceptance refs: `MVP-UI-001`, UI inventory tabs-per-panel row, M5 hardening
-- RC scope: `true`
-- Run type: `feature`
-- Run ID: `legacy-not-recorded`
-- Dirty worktree policy: `legacy-not-recorded`
+> Last run: 2026-05-18 06:37 UTC
 
 ## Health Gate
 
-| Check                | Result   | Notes                                                                                                                                |
-| -------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| TypeScript           | ✅ Clean | Legacy entry recorded package-level frontend typecheck only. Future runs must use `bash scripts/health-check.sh` / `pnpm typecheck`. |
-| Workspace tests      | ✅ Clean | Legacy entry recorded frontend Vitest only. Future runs must use `bash scripts/health-check.sh` / `pnpm test`.                       |
-| Rust (`cargo check`) | ✅ Clean | —                                                                                                                                    |
-| Clippy               | ✅ Clean | —                                                                                                                                    |
+| Check                       | Result                              |
+| --------------------------- | ----------------------------------- |
+| TypeScript (`tsc --noEmit`) | ✅ 0 errors                         |
+| Vitest (frontend)           | ✅ 222/222 tests passing (32 files) |
+| Clippy                      | ✅ clean (no warnings)              |
+| Typecheck (all packages)    | ✅ clean                            |
 
-## Work Completed
+## Work Completed This Run
 
-- Commit: `8f7e762`
-- Added `openTab`, `closeTab`, and `switchTab` actions to the pane state flow.
-- Added `TabBar.tsx` and wired it into `FilePanel.tsx`.
-- Updated `FileOctopusApp.tsx`, `paneReducer.ts`, `panelStore.ts`, `pane.css`, and `@fileoctopus/ui` icons to support tab UI.
-- Updated drag-and-drop tests for the new required file-panel props.
+### P1-2: Resizable Details Columns in FileTable
+
+**Commit:** `3a066d6`
+
+**What was done:**
+
+- Created `columnWidths.ts` — ColumnWidths type, default widths, `buildGridTemplate`, `buildHeaderGridTemplate`, `storedColumnWidths`, `persistColumnWidths` utilities
+- Added resize handles between column headers in details view (4 handles between 5 columns)
+- Header uses separate `buildHeaderGridTemplate` with 5px handle columns between data columns
+- FileRow applies `grid-template-columns` via inline style in details mode
+- Column widths persist to `localStorage` key `fileoctopus.columnWidths`
+- Resize handles show accent color indicator on hover/active state
+- Minimum column width enforced (30px for all, 80px for name)
+- Values clamped on load to prevent impossibly narrow columns
+
+**Tests (17 new):**
+
+- `tests/columnWidths.test.ts` — 13 unit tests (defaults, buildGridTemplate, buildHeaderGridTemplate, localStorage roundtrip, corruption handling, clamping)
+- `tests/columnResize.test.tsx` — 4 FileTable integration tests (resize handles rendered in details mode, not in list mode, inline grid-template-columns applied, onColumnResize callback on drag)
+
+**Files changed (7):**
+
+- `packages/frontend/src/pane/columnWidths.ts` (NEW)
+- `packages/frontend/src/pane/FileTable.tsx` (resize handles, inline grid styles)
+- `packages/frontend/src/pane/FileRow.tsx` (gridColumns prop)
+- `packages/frontend/src/pane/FilePanel.tsx` (columnWidths state + persistence)
+- `packages/frontend/src/styles/regions/pane.css` (resize handle CSS)
+- `packages/frontend/tests/columnWidths.test.ts` (NEW)
+- `packages/frontend/tests/columnResize.test.tsx` (NEW)
 
 ## TDD Evidence
 
-- Tests added: `packages/frontend/tests/tabsSlice.test.ts` (9), `packages/frontend/tests/tabBar.test.tsx` (8)
-- RED verified: not recorded in the legacy status format
-- GREEN verified: yes; related tests passed and the legacy run recorded clean typecheck / Vitest / cargo check / clippy
-- Net frontend test count after the run: `205`
+- RED: Tests written first, failed with `Cannot find module '../src/pane/columnWidths'`
+- GREEN: Implementation created, all 222 tests passing
+- REFACTOR: Extracted `buildHeaderGridTemplate`, fixed `#4a9eff` hex to `var(--fo-accent)` semantic token
 
-## Current Micro-Spec
+## Next Priority
 
-Legacy run did not record the micro-spec. Future feature runs must write the selected task's micro-spec here before Phase 3.
-
-## Spec / Docs Updated
-
-- Legacy run updated `CRON_STATUS.md` only.
-- Acceptance mapping and doc-sync details were not recorded in the legacy format.
-- Future runs must record any updates to `api-reference.md`, `PROJECT_STATUS_AND_DOC_ALIGNMENT.md`, and `CRON_TASKS.md`.
-
-## Deferred / Next Queue
-
-- Next eligible queue items: `P1-2`, `P1-3`, `P1-4`, `P1-5`
-- Known non-RC work is tracked in `CRON_TASKS.md` under `Deferred / Post-RC`
-- Blocking issues recorded for this run: none
+P1-3: Replace simple Copy To/Move To destination input with richer chooser dialog
