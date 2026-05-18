@@ -366,3 +366,27 @@
   min-width: 200px;
   box-shadow: var(--fo-shadow-popover);
 }
+
+.fo-tooltip {
+  padding: 4px 8px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--fo-tooltip-text, var(--fo-text));
+  background: var(--fo-tooltip-bg, var(--fo-surface));
+  border: 1px solid var(--fo-border);
+  border-radius: var(--fo-radius-sm, 4px);
+  box-shadow: 0 2px 8px var(--fo-shadow-popover, rgba(0, 0, 0, 15%));
+  white-space: nowrap;
+  animation: fo-tooltip-in 120ms ease-out;
+}
+
+@keyframes fo-tooltip-in {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
