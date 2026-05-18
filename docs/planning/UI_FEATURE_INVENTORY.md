@@ -403,13 +403,13 @@ Example: `Ready · 2 selected · 8 items · 82.3 MB selected · No errors`
 - **Git branch + file badges** — MVP-GIT-001/002 (requires `git-intel` crate)
 - **Remember last panes / last-path restore** — no boot restore
 - **First-run overlay** — stretch, not built
-- **Tabs per panel** — `PanelTabState` exists; single tab per pane only
 - **Videos sidebar entry, network locations, "This Week" recent group** — partial (API has `thisWeek` bucket; UI grouping may vary)
 - **Title bar sync/health indicator** — optional, not built
 
 ### Previously listed as not implemented, now done (2026-05-17)
 
 - **Application menu bar** (File/Edit/View/Go/…) — ✅ implemented (MenuBar component with full dropdown menus)
+- **Tabs per panel** — ✅ implemented (`TabBar` plus `openTab` / `closeTab` / `switchTab`; session restore remains pending)
 - **Compress / Extract** — ✅ wired with real IPC (`useArchiveHandlers.ts` → `planOperation("createArchive"/"extractArchive")` → job system)
 - **Checksum toolbar** — ✅ wired with real IPC (`handleChecksum` → `client.fs.computeHash` → SHA-256 toast + hash column update)
 - **Conflict resolution dialog** — ✅ enhanced with per-item actions, metadata comparison, apply-to-all (§14.8)

@@ -4,19 +4,19 @@
 
 This document describes the **Release Candidate (RC)** engineering scope for FileOctopus v0.1.0: what ships in RC, known gaps versus the original MVP vision, as-built crate boundaries, IPC contracts, persistence, testing expectations, and acceptance criteria. It is the RC counterpart to the historical MVP build plan—not a greenfield implementation guide.
 
-The RC is a high-performance local dual-pane file manager with safe job-based file operations. Post-RC capabilities (Git decorations, embedded terminal, multi-tab panes, tar archives, full job SQLite schema) are tracked explicitly in §3.2 and §17. Broader product vision items (cloud, plugins, AI) remain in §3.3.
+The RC is a high-performance local dual-pane file manager with safe job-based file operations. Post-RC capabilities (Git decorations, embedded terminal, tar archives, full job SQLite schema) are tracked explicitly in §3.2 and §17. Broader product vision items (cloud, plugins, AI) remain in §3.3.
 
-### RC delivery matrix (2026-05-17)
+### RC delivery matrix (2026-05-18)
 
-| Area                       | RC status     | Shipped                                                                                                                                           | Not in RC                                                                       |
-| -------------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| Core navigation & file ops | **Delivered** | Dual pane, streamed listing, virtualization, plan/start jobs, operation history; `fs-core` / `app-core` / Tauri `commands/*` / ts-api `clients/*` | Multi-tab per panel                                                             |
-| Zip archives               | **Delivered** | `CreateArchive` / `ExtractArchive` in `fs-core/file_ops`, zip-slip tests, toolbar + context menu                                                  | Tar and other formats                                                           |
-| Jobs & persistence         | **Partial**   | In-memory jobs, progress events, cancel; SQLite `operation_history`                                                                               | Full `job` / `job_item_result` schema (§9.2)                                    |
-| Git                        | **Deferred**  | —                                                                                                                                                 | `git-intel`, branch/badges (MVP-GIT-\*)                                         |
-| Terminal                   | **Partial**   | `fs_open_terminal` (external emulator in active folder)                                                                                           | Embedded xterm panel, `terminal-core`                                           |
-| UI                         | **Partial**   | Command palette (registry-driven), context menus, activity rail, preview, theme prefs, `MenuBar` on dispatch                                      | Keyboard/toolbar on registry; native menu; Menu spec parity                     |
-| Platform & release         | **Partial**   | Windows/macOS/Linux CI builds                                                                                                                     | Formal RC sign-off (§16, [mvp-rc-checklist.md](../release/mvp-rc-checklist.md)) |
+| Area                       | RC status     | Shipped                                                                                                                                                      | Not in RC                                                                       |
+| -------------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------- |
+| Core navigation & file ops | **Delivered** | Dual pane, pane tabs, streamed listing, virtualization, plan/start jobs, operation history; `fs-core` / `app-core` / Tauri `commands/*` / ts-api `clients/*` | Advanced session restore / tab persistence                                      |
+| Zip archives               | **Delivered** | `CreateArchive` / `ExtractArchive` in `fs-core/file_ops`, zip-slip tests, toolbar + context menu                                                             | Tar and other formats                                                           |
+| Jobs & persistence         | **Partial**   | In-memory jobs, progress events, cancel; SQLite `operation_history`                                                                                          | Full `job` / `job_item_result` schema (§9.2)                                    |
+| Git                        | **Deferred**  | —                                                                                                                                                            | `git-intel`, branch/badges (MVP-GIT-\*)                                         |
+| Terminal                   | **Partial**   | `fs_open_terminal` (external emulator in active folder)                                                                                                      | Embedded xterm panel, `terminal-core`                                           |
+| UI                         | **Partial**   | Command palette (registry-driven), context menus, activity rail, preview, theme prefs, `MenuBar` on dispatch                                                 | Keyboard/toolbar on registry; native menu; Menu spec parity                     |
+| Platform & release         | **Partial**   | Windows/macOS/Linux CI builds                                                                                                                                | Formal RC sign-off (§16, [mvp-rc-checklist.md](../release/mvp-rc-checklist.md)) |
 
 **Authoritative references:**
 
@@ -30,7 +30,7 @@ The RC is a high-performance local dual-pane file manager with safe job-based fi
 
 ## 2.1 RC Goal
 
-Deliver a fast, reliable, cross-platform dual-pane file manager suitable for daily local file work in the RC validation window: safe file operations with job progress and history, virtualized large-directory rendering, keyboard-first navigation, zip archive create/extract, and external-terminal integration. Git awareness, embedded terminal, and multi-tab panes are **post-RC** (§3.2).
+Deliver a fast, reliable, cross-platform dual-pane file manager suitable for daily local file work in the RC validation window: safe file operations with job progress and history, virtualized large-directory rendering, keyboard-first navigation, zip archive create/extract, and external-terminal integration. Git awareness and the embedded terminal are **post-RC** (§3.2).
 
 ## 2.2 User Persona
 
@@ -58,7 +58,7 @@ FileOctopus RC should prove three things:
 
 ### Core Navigation
 
-- Dual-pane file browsing (single tab per pane; tab model ready for post-RC).
+- Dual-pane file browsing with per-pane tabs.
 - Breadcrumb navigation and editable path bar.
 - Back/forward history; sidebar (favorites, devices, pinned, recent, starred).
 - Keyboard navigation, shortcuts dialog, command palette (Ctrl/Cmd+P).
@@ -129,9 +129,8 @@ Items from the original MVP §3.1 that are **not** required for RC sign-off but 
 
 - Git repository detection, branch display, and file status badges (`git-intel`, MVP-GIT-\*).
 - Embedded terminal panel (xterm.js + PTY); RC uses external emulator only.
-- Multi-tab per panel (model exists; UI uses one tab per pane).
 - Tar and non-zip archive formats (RC ships zip create/extract only).
-- Full application menu bar per [Menu & Modal Spec](../plans/FileOctopus_Menu_and_Modal_Specification.md) (shell present; Copy To…, diagnostics export from menu, etc. still stubbed).
+- Native OS menu integration and remaining [Menu & Modal Spec](../plans/FileOctopus_Menu_and_Modal_Specification.md) parity work (the in-app `MenuBar` shell is present).
 - Full `job` / `job_item_result` SQLite schema and per-item recovery.
 - Formal performance and RC checklist sign-off (MVP-PERF-\*, §16).
 
@@ -1852,11 +1851,11 @@ Ordered backlog after RC (see also [PROJECT_STATUS_AND_DOC_ALIGNMENT.md](../plan
 1. Complete menu bar wiring per [Menu & Modal Spec](../plans/FileOctopus_Menu_and_Modal_Specification.md).
 2. `git-intel` — branch display and file badges (MVP-GIT-\*).
 3. Embedded terminal (`terminal-core` + xterm panel).
-4. Multi-tab per pane.
-5. Tar and additional archive formats; optional `archive-core` extraction.
-6. Durable `job` / `job_item_result` SQLite schema and recovery.
-7. Formal MVP-PERF-\* sign-off per `docs/testing/`.
-8. 1.0 packaging, signing, and platform QA matrix.
+4. Tar and additional archive formats; optional `archive-core` extraction.
+5. Durable `job` / `job_item_result` SQLite schema and recovery.
+6. Formal MVP-PERF-\* sign-off per `docs/testing/`.
+7. 1.0 packaging, signing, and platform QA matrix.
+8. Advanced session restore and tab persistence polish.
 
 ---
 
@@ -1868,4 +1867,4 @@ FileOctopus v0.1.0 RC is done when:
 2. RC packages build on target platforms and the [mvp-rc-checklist.md](../release/mvp-rc-checklist.md) is signed off.
 3. The architecture remains safe (typed IPC, planned mutations, path normalization) and extensible for post-RC workflow features.
 
-RC is **not** gated on Git decorations, embedded terminal, multi-tab panes, tar archives, or the full job SQLite schema in §9.2—those are explicit post-RC goals in §3.2 and §17.
+RC is **not** gated on Git decorations, the embedded terminal, tar archives, or the full job SQLite schema in §9.2—those are explicit post-RC goals in §3.2 and §17.

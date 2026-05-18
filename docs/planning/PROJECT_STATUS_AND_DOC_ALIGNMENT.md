@@ -1,6 +1,6 @@
 # FileOctopus — Project Status & Documentation Alignment
 
-**As of:** 2026-05-17  
+**As of:** 2026-05-18
 **Purpose:** Single source of truth for how specification documents relate to the running codebase. Use this page before trusting older audit notes, sprint release notes, or inventory “not implemented” lists.
 
 ## Document roles
@@ -9,7 +9,7 @@
 | ------------------------------------------------------------------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
 | [API reference](../architecture/api-reference.md)                         | Runtime IPC contract (commands, events, DTOs) | **Highest** — update with every boundary change                                                                          |
 | [RC engineering spec](../architecture/rc-engineering-spec.md)             | RC scope, milestones, crate design            | Scope & acceptance criteria; see §1 delivery matrix in spec                                                              |
-| [UI Design Spec](../FileOctopus_UI_Design_Spec.md)                        | Visual/layout/UX direction post–Sprint 5      | Target UX; partial delivery                                                                                              |
+| [UI Design Spec](../FileOctopus_UI_Design_and_Layout_Specification-1.md)  | Visual/layout/UX direction post–Sprint 5      | Target UX; partial delivery                                                                                              |
 | [Menu & Modal Spec](../plans/FileOctopus_Menu_and_Modal_Specification.md) | Full desktop menu bar + modal catalog         | **Target** — `MenuBar` wired via `dispatchCommand`; some items still direct (sort, theme, favorites add, external links) |
 | [UI Feature Inventory](./UI_FEATURE_INVENTORY.md)                         | Checklist of specified UI elements            | Good for coverage matrix; §13 updated from this page                                                                     |
 | [E2E audit](../qa/e2e-audit-report.md)                                    | Manual QA snapshot (2026-05-16)               | **Partially stale** — many “missing” items fixed same day                                                                |
@@ -65,7 +65,6 @@ Performance targets (MVP-PERF-\*) and release checklist (§16) remain **not form
 | Item                                                  | Spec source                 | Notes                                                                                                           |
 | ----------------------------------------------------- | --------------------------- | --------------------------------------------------------------------------------------------------------------- |
 | Application menu bar (full wiring)                    | Menu & Modal Spec §4        | Core File/Edit/View/Go/Tools items on dispatch; sort/theme/density/favorites-add still local; no native OS menu |
-| Status bar toggle                                     | view.toggleStatusBar        | No preference backing; menu item stub                                                                           |
 | Operations / Shortcuts / Advanced settings tabs       | UI Design Spec §Preferences | Merged into existing tabs or separate dialogs                                                                   |
 | Remember last used panes (setting + restore)          | UI Design Spec              | No preference or boot restore                                                                                   |
 | Diagnostics export location preference                | UI Design Spec              | Export path chosen at export time                                                                               |
@@ -77,7 +76,7 @@ Performance targets (MVP-PERF-\*) and release checklist (§16) remain **not form
 | Sidebar: Videos shortcut, network locations           | UI §2 / Sprint 4            | Not in sidebar model                                                                                            |
 | First-run overlay                                     | Sprint 5 stretch            | Not built                                                                                                       |
 | Last-path restore on startup                          | Sprint 5 FO-0243            | Not built                                                                                                       |
-| Tabs per panel (multiple tabs)                        | MVP §3.1                    | `PanelTabState` ready; single tab per pane                                                                      |
+| Tabs per panel (multiple tabs)                        | MVP §3.1                    | Basic tab UI shipped (`openTab` / `closeTab` / `switchTab` + `TabBar`); session restore is still pending        |
 | Full conflict dialog (Compare metadata, Apply to all) | UI Design Spec              | Plan/start conflict policy in copy/move dialog; not full spec matrix                                            |
 | Pause on jobs                                         | UI §6                       | Cancel only                                                                                                     |
 
@@ -150,12 +149,11 @@ Legend: **Current** = matches codebase; **Target** = spec/backlog; **Stale** = o
 
 ### Product & UI specs
 
-| Document                                                                        | Status                                                                                                      |
-| ------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| [FileOctopus_UI_Design_Spec.md](../FileOctopus_UI_Design_Spec.md)               | Target + status banner                                                                                      |
-| [FileOctopus_UI_Elements_Inventory.md](../FileOctopus_UI_Elements_Inventory.md) | Target only — duplicate of UI Design Spec; use [UI_FEATURE_INVENTORY](./UI_FEATURE_INVENTORY.md) for status |
-| [Menu & Modal Spec](../plans/FileOctopus_Menu_and_Modal_Specification.md)       | Target; in-app `MenuBar` built; native menu (Tauri `menu.rs`) not built                                     |
-| [UI_FEATURE_INVENTORY](./UI_FEATURE_INVENTORY.md)                               | Current §13                                                                                                 |
+| Document                                                                                                      | Status                                                                  |
+| ------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| [FileOctopus_UI_Design_and_Layout_Specification-1.md](../FileOctopus_UI_Design_and_Layout_Specification-1.md) | Target + status banner                                                  |
+| [Menu & Modal Spec](../plans/FileOctopus_Menu_and_Modal_Specification.md)                                     | Target; in-app `MenuBar` built; native menu (Tauri `menu.rs`) not built |
+| [UI_FEATURE_INVENTORY](./UI_FEATURE_INVENTORY.md)                                                             | Current §13                                                             |
 
 ### Planning & sprint backlogs
 
@@ -205,5 +203,5 @@ Legend: **Current** = matches codebase; **Target** = spec/backlog; **Stale** = o
 
 ## Test signal (2026-05-16)
 
-- `pnpm --filter @fileoctopus/frontend test` — 90 tests pass (`vitest run tests --environment jsdom`)
+- `pnpm --filter @fileoctopus/frontend test` — 205 tests pass (`vitest run tests --environment jsdom`)
 - Rust workspace tests — pass (`pnpm rust:test`)
