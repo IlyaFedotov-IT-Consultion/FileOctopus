@@ -1,54 +1,52 @@
 # CRON Status — FileOctopus CI/CD Agent
 
-> Last run: 2026-05-18 06:37 UTC
+> Last run: 2026-05-18 07:22 UTC
 
 ## Health Gate
 
 | Check                       | Result                              |
 | --------------------------- | ----------------------------------- |
 | TypeScript (`tsc --noEmit`) | ✅ 0 errors                         |
-| Vitest (frontend)           | ✅ 222/222 tests passing (32 files) |
+| Vitest (frontend)           | ✅ 230/230 tests passing (33 files) |
 | Clippy                      | ✅ clean (no warnings)              |
 | Typecheck (all packages)    | ✅ clean                            |
 
 ## Work Completed This Run
 
-### P1-2: Resizable Details Columns in FileTable
+### P1-3: Destination Chooser for Copy To / Move To Dialog
 
-**Commit:** `3a066d6`
+**Commit:** `d97a7ed`
 
 **What was done:**
 
-- Created `columnWidths.ts` — ColumnWidths type, default widths, `buildGridTemplate`, `buildHeaderGridTemplate`, `storedColumnWidths`, `persistColumnWidths` utilities
-- Added resize handles between column headers in details view (4 handles between 5 columns)
-- Header uses separate `buildHeaderGridTemplate` with 5px handle columns between data columns
-- FileRow applies `grid-template-columns` via inline style in details mode
-- Column widths persist to `localStorage` key `fileoctopus.columnWidths`
-- Resize handles show accent color indicator on hover/active state
-- Minimum column width enforced (30px for all, 80px for name)
-- Values clamped on load to prevent impossibly narrow columns
+- Created `DestinationChooser.tsx` — reusable component with three sections: Locations, Favorites, Recent
+- Each section shows quick-access buttons that set the destination URI when clicked
+- Integrated into `OperationDialogView.tsx` copyMove form with a two-column layout (main form + sidebar)
+- Only renders the sidebar when locations/favorites/recent data is available
+- Props threaded: `ShellLayoutContext` → `ShellOverlays` → `DialogOverlayGroup` → `OperationDialogView` → `DestinationChooser`
+- CSS for destination layout: grid two-column layout, sidebar panel with scroll, hover-active items
+- Recent destinations combine `recentToday` + `recentWeek` from app state
 
-**Tests (17 new):**
+**Tests (8 new):**
 
-- `tests/columnWidths.test.ts` — 13 unit tests (defaults, buildGridTemplate, buildHeaderGridTemplate, localStorage roundtrip, corruption handling, clamping)
-- `tests/columnResize.test.tsx` — 4 FileTable integration tests (resize handles rendered in details mode, not in list mode, inline grid-template-columns applied, onColumnResize callback on drag)
+- `tests/destinationChooser.test.tsx` — 8 unit tests (renders sections, filters empty sections, click calls onSelect, shows section headers)
 
 **Files changed (7):**
 
-- `packages/frontend/src/pane/columnWidths.ts` (NEW)
-- `packages/frontend/src/pane/FileTable.tsx` (resize handles, inline grid styles)
-- `packages/frontend/src/pane/FileRow.tsx` (gridColumns prop)
-- `packages/frontend/src/pane/FilePanel.tsx` (columnWidths state + persistence)
-- `packages/frontend/src/styles/regions/pane.css` (resize handle CSS)
-- `packages/frontend/tests/columnWidths.test.ts` (NEW)
-- `packages/frontend/tests/columnResize.test.tsx` (NEW)
+- `packages/frontend/src/dialogs/DestinationChooser.tsx` (NEW)
+- `packages/frontend/src/dialogs/OperationDialogView.tsx` (two-column layout + DestinationChooser integration)
+- `packages/frontend/src/components/DialogOverlayGroup.tsx` (new locations/recentDestinations props)
+- `packages/frontend/src/shell/ShellOverlays.tsx` (pass locations + recent from context)
+- `packages/frontend/src/styles/regions/dialogs.css` (66 lines: destination layout CSS)
+- `packages/frontend/tests/destinationChooser.test.tsx` (NEW)
+- `docs/plans/CRON_TASKS.md` (P1-3 status: pending → done)
 
 ## TDD Evidence
 
-- RED: Tests written first, failed with `Cannot find module '../src/pane/columnWidths'`
-- GREEN: Implementation created, all 222 tests passing
-- REFACTOR: Extracted `buildHeaderGridTemplate`, fixed `#4a9eff` hex to `var(--fo-accent)` semantic token
+- RED: Tests written first, failed with `Cannot find module '../src/dialogs/DestinationChooser'`
+- GREEN: Implementation created, all 230 tests passing
+- REFACTOR: Added `localPathFromUri` re-export, cleaned up conditional sidebar rendering
 
 ## Next Priority
 
-P1-3: Replace simple Copy To/Move To destination input with richer chooser dialog
+P1-4: Extend PreviewPanel from text-only to include image preview
