@@ -18,18 +18,18 @@
 
 ## Active RC Queue
 
-| ID    | Pri | Status  | Owner | Run ID | Started UTC | Lock Expires UTC | Acceptance refs                       | Task                                                                                                               | Blockers | Last verified |
-| ----- | --- | ------- | ----- | ------ | ----------- | ---------------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | -------- | ------------- |
-| P1-2  | P1  | pending | -     | -      | -           | -                | UI spec file table sizing; MVP-UI-001 | Add resizable details columns in `FileTable` and persist widths.                                                   | None     | 2026-05-18    |
-| P1-3  | P1  | pending | -     | -      | -           | -                | Menu spec §5.2; UI spec §18.3         | Replace the simple Copy To / Move To destination input with a richer chooser dialog.                               | None     | 2026-05-18    |
-| P1-4  | P1  | pending | -     | -      | -           | -                | UI preview behavior; MVP-UI-001       | Extend `PreviewPanel` from text-only to include image preview.                                                     | None     | 2026-05-18    |
-| P1-5  | P1  | pending | -     | -      | -           | -                | UI spec §10.4; MVP-UI-001             | Collapse long breadcrumbs into an overflow menu instead of truncating silently.                                    | None     | 2026-05-18    |
-| P2-2  | P2  | pending | -     | -      | -           | -                | UI spec §18.1, §21.2; M5              | Add reusable focus-trap behavior to modal dialogs and restore focus on close.                                      | None     | 2026-05-18    |
-| P2-4  | P2  | pending | -     | -      | -           | -                | UI spec §19.5; M5                     | Restore last pane paths and tab state on startup.                                                                  | None     | 2026-05-18    |
-| P2-5  | P2  | pending | -     | -      | -           | -                | UI spec §18.2; MVP-REL-001/002        | Confirm before app close when file-operation jobs are still running.                                               | None     | 2026-05-18    |
-| P2-6  | P2  | pending | -     | -      | -           | -                | UI spec §19.4; MVP-UI-001             | Add user-selectable visible columns and persist the choice.                                                        | None     | 2026-05-18    |
-| P2-8  | P2  | pending | -     | -      | -           | -                | Menu spec §8.2, §14.19-14.20          | Add Recent Locations management UI. Tracking already exists; missing pieces are the dialog and clear/remove flows. | None     | 2026-05-18    |
-| P2-10 | P2  | pending | -     | -      | -           | -                | UI spec §21.2; M5                     | Add accessible row names for file entries.                                                                         | None     | 2026-05-18    |
+| ID    | Pri | Status  | Owner | Run ID  | Started UTC | Lock Expires UTC | Acceptance refs                       | Task                                                                                                               | Blockers | Last verified |
+| ----- | --- | ------- | ----- | ------- | ----------- | ---------------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | -------- | ------------- |
+| P1-2  | P1  | done    | cron  | 3a066d6 | 2026-05-18  | -                | UI spec file table sizing; MVP-UI-001 | Add resizable details columns in `FileTable` and persist widths.                                                   | None     | 2026-05-18    |
+| P1-3  | P1  | pending | -     | -       | -           | -                | Menu spec §5.2; UI spec §18.3         | Replace the simple Copy To / Move To destination input with a richer chooser dialog.                               | None     | 2026-05-18    |
+| P1-4  | P1  | pending | -     | -       | -           | -                | UI preview behavior; MVP-UI-001       | Extend `PreviewPanel` from text-only to include image preview.                                                     | None     | 2026-05-18    |
+| P1-5  | P1  | pending | -     | -       | -           | -                | UI spec §10.4; MVP-UI-001             | Collapse long breadcrumbs into an overflow menu instead of truncating silently.                                    | None     | 2026-05-18    |
+| P2-2  | P2  | pending | -     | -       | -           | -                | UI spec §18.1, §21.2; M5              | Add reusable focus-trap behavior to modal dialogs and restore focus on close.                                      | None     | 2026-05-18    |
+| P2-4  | P2  | pending | -     | -       | -           | -                | UI spec §19.5; M5                     | Restore last pane paths and tab state on startup.                                                                  | None     | 2026-05-18    |
+| P2-5  | P2  | pending | -     | -       | -           | -                | UI spec §18.2; MVP-REL-001/002        | Confirm before app close when file-operation jobs are still running.                                               | None     | 2026-05-18    |
+| P2-6  | P2  | pending | -     | -       | -           | -                | UI spec §19.4; MVP-UI-001             | Add user-selectable visible columns and persist the choice.                                                        | None     | 2026-05-18    |
+| P2-8  | P2  | pending | -     | -       | -           | -                | Menu spec §8.2, §14.19-14.20          | Add Recent Locations management UI. Tracking already exists; missing pieces are the dialog and clear/remove flows. | None     | 2026-05-18    |
+| P2-10 | P2  | pending | -     | -       | -           | -                | UI spec §21.2; M5                     | Add accessible row names for file entries.                                                                         | None     | 2026-05-18    |
 
 ---
 
@@ -52,11 +52,12 @@
 
 ## Recently Completed
 
-| ID   | Result                                                | Commit    |
-| ---- | ----------------------------------------------------- | --------- |
-| P1-1 | TabBar UI shipped with open/close/switch tab actions. | `8f7e762` |
-| P2-3 | Context menus are keyboard navigable.                 | `c59a5e2` |
-| P0-5 | Swap Panes command shipped.                           | `fb55230` |
-| P0-4 | Toolbar and status-bar menu toggles shipped.          | `dffbf11` |
-| P0-3 | Drag-and-drop file operations shipped.                | `c869970` |
-| P0-1 | Filter input is rendered and wired.                   | `25c77c5` |
+| ID   | Result                                                           | Commit    |
+| ---- | ---------------------------------------------------------------- | --------- |
+| P1-2 | Resizable details columns with localStorage persistence shipped. | `3a066d6` |
+| P1-1 | TabBar UI shipped with open/close/switch tab actions.            | `8f7e762` |
+| P2-3 | Context menus are keyboard navigable.                            | `c59a5e2` |
+| P0-5 | Swap Panes command shipped.                                      | `fb55230` |
+| P0-4 | Toolbar and status-bar menu toggles shipped.                     | `dffbf11` |
+| P0-3 | Drag-and-drop file operations shipped.                           | `c869970` |
+| P0-1 | Filter input is rendered and wired.                              | `25c77c5` |
