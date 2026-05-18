@@ -49,8 +49,17 @@ export function OperationToolbar({
         placeholder="Command, path, or action..."
         aria-label="Open command palette"
         readOnly
-        onClick={onCommandSearch}
-        onFocus={onCommandSearch}
+        onClick={(event) => {
+          event.currentTarget.blur();
+          onCommandSearch();
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            event.currentTarget.blur();
+            onCommandSearch();
+          }
+        }}
       />
       <span className="fo-toolbar-separator" aria-hidden="true" />
       <ToolbarButton onClick={onRefresh} title="Refresh">
