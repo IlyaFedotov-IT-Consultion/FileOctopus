@@ -473,6 +473,41 @@
   background: var(--fo-surface);
 }
 
+.fo-colvis-menu {
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+  min-width: 140px;
+  background: var(--fo-surface);
+  border: 1px solid var(--fo-border);
+  border-radius: var(--fo-radius-sm, 6px);
+  box-shadow: 0 8px 24px var(--fo-menu-shadow, rgba(0, 0, 0, 18%));
+  z-index: 51;
+}
+
+.fo-colvis-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 12px;
+  user-select: none;
+}
+
+.fo-colvis-item:hover {
+  background: var(--fo-accent);
+  color: var(--fo-accent-text, var(--fo-text));
+}
+
+.fo-colvis-check {
+  display: inline-block;
+  width: 14px;
+  text-align: center;
+  font-size: 11px;
+}
+
 .fo-column-button {
   display: inline-flex;
   align-items: center;
