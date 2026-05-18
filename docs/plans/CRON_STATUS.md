@@ -1,52 +1,59 @@
-# CI/CD Cron Status — Last Run
+# FileOctopus — Cron Status
 
-**Date**: 2026-05-18
-**Agent**: CI/CD (GLM-5.1)
-**Duration**: ~25 minutes
+> Rewrite this file on every automated or manual cycle.
+> Use UTC timestamps and fill every section.
+> Current file status: migrated legacy entry, not full current gate evidence.
+
+## Run Metadata
+
+- Timestamp (UTC): `2026-05-18` (legacy entry migrated to the new template; exact time was not captured in the old format)
+- Agent: `CI/CD (GLM-5.1)`
+- Duration: `~25 minutes`
+- Branch: `main`
+- Selected task ID: `P1-1`
+- Selected task: `Tab System UI — TabBar component`
+- Acceptance refs: `MVP-UI-001`, UI inventory tabs-per-panel row, M5 hardening
+- RC scope: `true`
+- Run type: `feature`
+- Run ID: `legacy-not-recorded`
+- Dirty worktree policy: `legacy-not-recorded`
 
 ## Health Gate
 
-|                             | Check       | Status |     |
-| --------------------------- | ----------- | ------ | --- |
-| TypeScript (`tsc --noEmit`) | ✅ Clean    |
-| Vitest (205 tests)          | ✅ All pass |
-| Rust (`cargo check`)        | ✅ Clean    |
-| Clippy                      | ✅ Clean    |
+| Check                | Result   | Notes                                                                                                                                |
+| -------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| TypeScript           | ✅ Clean | Legacy entry recorded package-level frontend typecheck only. Future runs must use `bash scripts/health-check.sh` / `pnpm typecheck`. |
+| Workspace tests      | ✅ Clean | Legacy entry recorded frontend Vitest only. Future runs must use `bash scripts/health-check.sh` / `pnpm test`.                       |
+| Rust (`cargo check`) | ✅ Clean | —                                                                                                                                    |
+| Clippy               | ✅ Clean | —                                                                                                                                    |
 
 ## Work Completed
 
-### P1-1: Tab System UI — TabBar Component ✅
+- Commit: `8f7e762`
+- Added `openTab`, `closeTab`, and `switchTab` actions to the pane state flow.
+- Added `TabBar.tsx` and wired it into `FilePanel.tsx`.
+- Updated `FileOctopusApp.tsx`, `paneReducer.ts`, `panelStore.ts`, `pane.css`, and `@fileoctopus/ui` icons to support tab UI.
+- Updated drag-and-drop tests for the new required file-panel props.
 
-- **Commit**: `8f7e762`
-- Added `openTab`, `closeTab`, `switchTab` actions to `PanelAction` union in `panelStore.ts`
-- Created `tabsSlice.ts` with reducer handling all 3 tab management actions
-- Registered `tabsSlice` in `paneReducer.ts` dispatch routing
-- Created `TabBar.tsx` component with tab buttons, close (✕), new-tab (+), aria-selected
-- Integrated TabBar into `FilePanel.tsx` (renders above PaneHeader, hidden when single tab)
-- Wired tab actions through `makeFilePanelProps()` in `FileOctopusApp.tsx`
-- Added CSS for tab bar, tab items, close button, new-tab button in `pane.css`
-- Added `X` icon to `@fileoctopus/ui` icons library
-- Exported `storedSort`/`storedShowHidden` from panelStore for tabsSlice
-- Updated `dragDrop.test.tsx` with new required `panel`, `onSwitchTab`, `onCloseTab`, `onOpenTab` props
-- 9 tabsSlice reducer tests + 8 TabBar component tests = 17 new tests
-- 12 files changed, +767/-13 lines
+## TDD Evidence
 
-## Test Summary
+- Tests added: `packages/frontend/tests/tabsSlice.test.ts` (9), `packages/frontend/tests/tabBar.test.tsx` (8)
+- RED verified: not recorded in the legacy status format
+- GREEN verified: yes; related tests passed and the legacy run recorded clean typecheck / Vitest / cargo check / clippy
+- Net frontend test count after the run: `205`
 
-- **Before**: 188 tests (29 files)
-- **After**: 205 tests (31 files) — net +17 new tests
-- **New test files**: `tabsSlice.test.ts` (9), `tabBar.test.tsx` (8)
+## Current Micro-Spec
 
-## Previous Work (this session)
+Legacy run did not record the micro-spec. Future feature runs must write the selected task's micro-spec here before Phase 3.
 
-### P0-3: Implement Drag & Drop File Operations ✅ (earlier in session)
+## Spec / Docs Updated
 
-- **Commit**: `c869970`
+- Legacy run updated `CRON_STATUS.md` only.
+- Acceptance mapping and doc-sync details were not recorded in the legacy format.
+- Future runs must record any updates to `api-reference.md`, `PROJECT_STATUS_AND_DOC_ALIGNMENT.md`, and `CRON_TASKS.md`.
 
-### P2-3: Keyboard-navigable Context Menus ✅ (earlier in session)
+## Deferred / Next Queue
 
-- **Commit**: `c59a5e2`
-
-## Next Priority
-
-P1 tasks remaining: P1-2 (Column Resizing), P1-3 (Destination Chooser), P1-4 (Image Preview), P1-5 (Breadcrumb overflow)
+- Next eligible queue items: `P1-2`, `P1-3`, `P1-4`, `P1-5`
+- Known non-RC work is tracked in `CRON_TASKS.md` under `Deferred / Post-RC`
+- Blocking issues recorded for this run: none

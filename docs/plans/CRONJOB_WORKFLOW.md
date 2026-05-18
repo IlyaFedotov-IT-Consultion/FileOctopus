@@ -6,7 +6,7 @@ This document is the **operating procedure** for the automated (4-hourly) and ma
 
 Goals:
 
-1. Drive the product from **specification → tested implementation → verified delivery** until MVP acceptance criteria are met.
+1. Drive the product from **specification → tested implementation → verified delivery** until RC acceptance criteria are met.
 2. Enforce **Test-Driven Development (TDD)** on every behavior change.
 3. Enforce **specification-driven** work: no feature without a traced requirement and acceptance check.
 
@@ -37,12 +37,12 @@ flowchart TD
 
 ## State Files
 
-| File                                                | Role                                                                |
-| --------------------------------------------------- | ------------------------------------------------------------------- |
-| `docs/plans/CRON_STATUS.md`                         | Written every run: checks, commits, spec compliance, deferred items |
-| `docs/plans/CRON_TASKS.md`                          | Queue: `pending` → `in_progress` → `done`                           |
-| `docs/planning/PROJECT_STATUS_AND_DOC_ALIGNMENT.md` | Authoritative delivery matrix; update when MVP/UI status changes    |
-| `docs/architecture/api-reference.md`                | IPC contract; update with every boundary change                     |
+| File                                                | Role                                                                                              |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `docs/plans/CRON_STATUS.md`                         | Latest run record; rewritten every cycle with gate results, TDD evidence, and deferred follow-ups |
+| `docs/plans/CRON_TASKS.md`                          | Execution queue; only `Active RC Queue` is eligible for autonomous task selection                 |
+| `docs/planning/PROJECT_STATUS_AND_DOC_ALIGNMENT.md` | Authoritative delivery matrix; update when RC/UI status changes                                   |
+| `docs/architecture/api-reference.md`                | IPC contract; update with every boundary change                                                   |
 
 ---
 
@@ -50,22 +50,44 @@ flowchart TD
 
 Trust order for “what should exist” vs “what exists today”:
 
-| Priority | Document                                                                      | Use for                                                                                |
-| -------- | ----------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| 1        | `docs/architecture/api-reference.md`                                          | Commands, events, DTOs, error codes                                                    |
-| 2        | `docs/architecture/rc-engineering-spec.md`                                    | RC scope, milestones (§5), acceptance IDs (§4), testing (§13)                          |
-| 3        | `docs/planning/PROJECT_STATUS_AND_DOC_ALIGNMENT.md`                           | Current delivery vs specs                                                              |
-| 4        | `docs/plans/FileOctopus_Menu_and_Modal_Specification.md`                      | Menus, modals, shortcuts                                                               |
-| 5        | `docs/FileOctopus_UI_Design_and_Layout_Specification-1.md`                    | Layout architecture, visible surfaces, acceptance (§27), implementation priority (§28) |
-| 6        | `docs/planning/UI_FEATURE_INVENTORY.md`                                       | Coverage checklist                                                                     |
-| 7        | `docs/qa/e2e-audit-report.md`                                                 | Manual QA hints (may be stale—verify in code)                                          |
-| 8        | `~/.hermes/skills/dogfood/fileoctopus-dev/references/gap-analysis-2026-05.md` | Backlog ideas (sync to alignment doc)                                                  |
+| Priority | Document                                                   | Kind  | Use for                                                                                |
+| -------- | ---------------------------------------------------------- | ----- | -------------------------------------------------------------------------------------- |
+| 1        | `docs/architecture/api-reference.md`                       | Spec  | Commands, events, DTOs, error codes                                                    |
+| 2        | `docs/architecture/rc-engineering-spec.md`                 | Spec  | RC scope, milestones (§5), acceptance IDs (§4), testing (§13)                          |
+| 3        | `docs/planning/PROJECT_STATUS_AND_DOC_ALIGNMENT.md`        | State | Current delivery vs specs                                                              |
+| 4        | `docs/plans/FileOctopus_Menu_and_Modal_Specification.md`   | Spec  | Menus, modals, shortcuts                                                               |
+| 5        | `docs/FileOctopus_UI_Design_and_Layout_Specification-1.md` | Spec  | Layout architecture, visible surfaces, acceptance (§27), implementation priority (§28) |
+| 6        | `docs/planning/UI_FEATURE_INVENTORY.md`                    | State | Coverage checklist                                                                     |
+| 7        | `docs/qa/e2e-audit-report.md`                              | State | Manual QA hints (may be stale—verify in code)                                          |
+
+**Spec rows** describe what should exist; **State rows** describe what does. When they disagree, trust code + tests over either — and fix whichever row is wrong in Phase 5.
+
+**Dated plans under `docs/plans/2026-*.md` are immutable historical records.** Do not pull tasks from them; surface any still-relevant findings into `CRON_TASKS.md` and let the dated plan rot in place.
 
 Reference images: `docs/Images/MainApp/`, `docs/Images/MenuImages/`.
 
 ---
 
 ## Phase 0: Health Gate
+
+### Phase 0a: Sync & resume
+
+Before any checks, reconcile with upstream and clean up any interrupted prior cycle:
+
+```bash
+git fetch origin
+git status -sb               # inspect ahead/behind + uncommitted changes
+```
+
+- **Behind `origin/main`:** rebase before any new work. Investigate any merge conflict; never `git reset --hard` to "make it go away".
+- **Ahead of `origin/main` with unpushed commits:** investigate why before continuing — a prior cycle may have committed but not pushed, or an earlier slice was abandoned.
+- **Uncommitted changes present:** inspect `git diff --name-only`. If every changed path is workflow/doc maintenance (`docs/plans/CRON*.md`, trusted status/spec docs, or `scripts/health-check.sh`), record this as `maintenance` in `CRON_STATUS.md` and continue without selecting product work. Otherwise, scan `CRON_TASKS.md` for an `in_progress` row whose `Run ID` or `Owner` matches the current changes.
+- **Matching `in_progress` task found:** finish that slice first (jump to Phase 3 for the current micro-spec in `CRON_STATUS.md`).
+- **No matching task found:** treat this as orphan state. Record the dirty files in `CRON_STATUS.md` and stop until a human resolves it.
+- **`in_progress` task with no matching uncommitted changes:** if `Lock Expires UTC` is in the past, clear `Owner`, `Run ID`, `Started UTC`, and `Lock Expires UTC`, then mark it `pending`. If the lock has not expired, stop and record the active owner/run in `CRON_STATUS.md`.
+- **Lockfile changed during fetch/rebase:** if `pnpm-lock.yaml` or any `Cargo.lock` moved, run `pnpm install` before Phase 0b — stale `node_modules` will produce misleading typecheck/lint results.
+
+### Phase 0b: Health checks
 
 Run from repo root:
 
@@ -86,7 +108,9 @@ pnpm rust:fmt    # optional each cycle; required before merge-quality commits
 pnpm rust:clippy # optional each cycle; required before merge-quality commits
 ```
 
-**E2E (when UI/visual work):** start dev server (`pnpm dev` or Vite on `:1420`), then Playwright if configured.
+`git status --short` is informational only. A dirty tree does not fail Phase 0, but it must be recorded and must not be overwritten.
+
+**E2E:** run when `apps/desktop-tauri/playwright.config.ts` (or equivalent) exists **and** the upcoming slice touches `packages/frontend/src/` or `apps/desktop-tauri/src/`. Start dev server (`pnpm dev` or Vite on `:1420`) first.
 
 Record results in `CRON_STATUS.md`. Any failure blocks feature work.
 
@@ -96,9 +120,9 @@ Record results in `CRON_STATUS.md`. Any failure blocks feature work.
 
 Before selecting new work:
 
-1. Read **PROJECT_STATUS_AND_DOC_ALIGNMENT.md** — note open milestones (especially M4: Git, archives, terminal).
-2. Scan **MVP §4 acceptance criteria** — list IDs still `Not met` / `Partial`.
-3. Cross-check **CRON_TASKS.md** and gap analysis for duplicates.
+1. Read **PROJECT_STATUS_AND_DOC_ALIGNMENT.md** — note open milestones (especially M5 hardening and any RC rows still marked partial).
+2. Scan **RC spec §4 acceptance criteria** — list IDs still `Not met` / `Partial`.
+3. Cross-check **CRON_TASKS.md** and higher-trust docs for stale or duplicate rows.
 4. For UI tasks, read `docs/FileOctopus_UI_Design_and_Layout_Specification-1.md` §27–§28, then open the relevant Menu/UI spec section and reference PNGs.
 5. For UI tasks, identify the current UI implementation phase before coding:
    - Phase 1: shell cleanup and layout baseline
@@ -107,7 +131,7 @@ Before selecting new work:
    - Phase 4: preferences and dialogs
    - Phase 5: polish and QA
 
-Output (mental or in status): _which acceptance IDs this cycle could close_.
+Output (in status): _which acceptance refs this cycle could close_.
 
 ---
 
@@ -116,14 +140,31 @@ Output (mental or in status): _which acceptance IDs this cycle could close_.
 ### Task priority
 
 1. Fix failing tests / TypeScript / Rust / lint (TDD bugfix loop).
-2. Close **MVP acceptance criteria** marked not met (highest user impact first).
-3. Items in **CRON_TASKS.md** (`pending`, by priority).
-4. **Tier 1–2** gaps in `docs/plans/2026-05-16-gap-analysis-and-implementation.md` (verify not already done).
-5. Spec compliance gaps (menu/UI inventory).
-6. Visual regression vs `docs/Images/` (Playwright).
-7. Documentation drift (implementation changed contract).
+2. Close **RC acceptance criteria** marked `Not met` / `Partial` (highest user impact first).
+3. Items in **`docs/plans/CRON_TASKS.md` → `Active RC Queue`** (`pending`, by priority).
+4. Verified spec compliance gaps not yet in the queue; add them to `CRON_TASKS.md` before implementation.
+5. Visual regression vs `docs/Images/` (Playwright) when the selected slice is visual.
+6. Documentation drift (implementation changed contract).
 
-Pick **one primary feature slice** per cycle unless the slice is trivial (<30 min). Mark task `in_progress` in `CRON_TASKS.md`.
+Pick **one primary feature slice** per cycle unless the slice is trivial (<30 min). Claim the task by setting `Status=in_progress`, `Owner=<agent name>`, `Run ID=<unique run id>`, `Started UTC=<now>`, and `Lock Expires UTC=<now + 6 hours>` in `CRON_TASKS.md`.
+
+### Agent task-selection rules
+
+- Only select rows from **`Active RC Queue`**.
+- Do not select rows from **`Deferred / Post-RC`** unless a human explicitly reprioritizes them.
+- Do not select a row with a non-expired `Lock Expires UTC`.
+- If the chosen row conflicts with the codebase or higher-trust docs, update `CRON_TASKS.md` first, refresh `last_verified`, then continue.
+- Every selected slice must have explicit acceptance refs and an `RC scope` decision recorded in `CRON_STATUS.md`.
+
+### Scope-abort policy
+
+Estimate effort before starting. If the slice exceeds roughly **2× its initial estimate** or expands beyond the boundaries of its micro-spec mid-implementation:
+
+1. **Stop adding new behavior immediately.**
+2. Commit any green TDD progress (tests + passing implementation) as a partial slice — never produce a multi-hour mega-commit that mixes unrelated concerns.
+3. Record the overflow in `CRON_STATUS.md` under "Deferred" with: original estimate, actual time spent, why it grew, and proposed decomposition.
+4. Update the task in `CRON_TASKS.md` to reflect the narrower remainder, or split it into smaller follow-up tasks at the same priority.
+5. End the cycle (do not start a fresh slice on top of a half-finished one).
 
 ### UI implementation order (required for UI slices)
 
@@ -139,7 +180,7 @@ Do not start a later UI phase while earlier-phase blockers for that surface rema
 
 ### Micro-spec template (required before Phase 3)
 
-For the chosen slice, write (in run notes or a dated plan under `docs/plans/`):
+For the chosen slice, write the micro-spec in **`CRON_STATUS.md` → `Current Micro-Spec`** before writing production code. Dated plans are historical records and are not used for active micro-specs.
 
 ```markdown
 ## Feature: <short name>
@@ -147,8 +188,10 @@ For the chosen slice, write (in run notes or a dated plan under `docs/plans/`):
 ### Requirements
 
 - Spec: <doc> §<section>
-- Acceptance: <MVP-XXX-NNN or UI inventory id>
+- Task ID: <CRON task id>
+- Acceptance: <RC / MVP / UI / Menu spec refs>
 - Out of scope: <explicit exclusions>
+- RC scope: <true|false>
 
 ### Behavior
 
@@ -223,11 +266,7 @@ For **frontend-only** features (data already in DTO): start tests in `frontend` 
 
 ### Boundary checklist (every IPC change)
 
-- [ ] `ResourceUri` / `local://` at all boundaries (ADR-0003)
-- [ ] Mutations go through plan/start jobs where applicable (ADR-0002)
-- [ ] `#[serde(rename_all = "camelCase")]` matches `types.ts`
-- [ ] Error `code` strings stable and documented in api-reference
-- [ ] Event names match `app_ipc` constants and `packages/ts-api/src/events.ts` listeners
+Authoritative list lives in **CLAUDE.md → Boundary invariants** — do not maintain a second copy here. Every IPC change must pass that checklist; in particular: `local://` URIs at all boundaries (ADR-0003), mutations via planned jobs (ADR-0002), DTO `camelCase` parity, stable error `code` strings, and event-name constants shared between `app_ipc` and `packages/ts-api/src/events.ts`.
 
 ---
 
@@ -254,7 +293,7 @@ Do not mark task `done` until health gate passes.
 
 ## Phase 5: Specification Compliance & Documentation
 
-1. **Acceptance mapping:** In `CRON_STATUS.md`, state which MVP/UI criteria the slice satisfies (or partially satisfies). For UI work, map the slice to `docs/FileOctopus_UI_Design_and_Layout_Specification-1.md` §27 acceptance criteria and §28 implementation phase.
+1. **Acceptance mapping:** In `CRON_STATUS.md`, state which RC/MVP/UI/Menu criteria the slice satisfies (or partially satisfies). For UI work, map the slice to `docs/FileOctopus_UI_Design_and_Layout_Specification-1.md` §27 acceptance criteria and §28 implementation phase.
 2. **Spec diff:** If behavior matches spec but doc was wrong, update the spec or alignment doc—not silent drift.
 3. **IPC:** Update `docs/architecture/api-reference.md` for any command/event/DTO change.
 4. **Alignment:** Update `PROJECT_STATUS_AND_DOC_ALIGNMENT.md` when a milestone or acceptance row changes state.
@@ -272,20 +311,25 @@ Do not mark task `done` until health gate passes.
 
 Update **`docs/plans/CRON_TASKS.md`:**
 
-- Mark completed task `done` with date and commit hash.
-- Add newly discovered `pending` tasks (P1–P3, description, files, acceptance ID).
+- Mark completed task in `Recently Completed` with commit hash.
+- Clear `Owner`, `Run ID`, `Started UTC`, and `Lock Expires UTC` when moving a task out of `in_progress`.
+- Keep `Active RC Queue` limited to current RC-eligible work only.
+- Move speculative or product-expansion work to `Deferred / Post-RC`.
+- Add newly discovered `pending` tasks only after verifying they are RC-scope and have acceptance refs.
 - Keep at most one `in_progress` task.
 
 Update **`docs/plans/CRON_STATUS.md`:**
 
-| Section                 | Content                            |
-| ----------------------- | ---------------------------------- |
-| Last run timestamp      | UTC                                |
-| Build & tests table     | From health-check                  |
-| Work completed          | Feature, acceptance IDs, commit    |
-| Spec compliance summary | Menus, columns, shortcuts, stubs   |
-| TDD evidence            | Tests added; RED verified (yes/no) |
-| Deferred                | Next cycle with priority           |
+| Section             | Content                                                                 |
+| ------------------- | ----------------------------------------------------------------------- |
+| Timestamp (UTC)     | Exact UTC timestamp or explicit note if unavailable                     |
+| Selected task       | Task ID, title, acceptance refs, RC scope                               |
+| Build & tests table | From health-check; include per-check log path for failures              |
+| Work completed      | Feature, commit, concise behavior summary                               |
+| TDD evidence        | Tests added; RED verified; GREEN verified                               |
+| Current Micro-Spec  | Required before Phase 3; may be omitted only for health-gate-only fixes |
+| Spec / docs updated | `api-reference`, alignment doc, queue/status files                      |
+| Deferred            | Next eligible tasks and blockers                                        |
 
 If capacity remains and Phase 0 is still green, return to **Phase 2** for a second slice; otherwise end cycle.
 
@@ -295,14 +339,14 @@ If capacity remains and Phase 0 is still green, return to **Phase 2** for a seco
 
 The cron loop continues until:
 
-- [ ] All **MVP §4.1** functional acceptance criteria **Met**
-- [ ] **MVP §4.2** performance targets validated per `docs/testing/` protocol
-- [ ] **MVP §4.3** reliability criteria covered by automated tests where feasible
-- [ ] **MVP §13** test lists implemented (not merely stubbed)
-- [ ] **Milestone M4–M5** rows in alignment doc marked **Done**
+- [ ] All **RC spec §4.1** functional acceptance criteria **Met** or explicitly deferred in the RC spec
+- [ ] **RC spec §4.2** performance targets validated per `docs/testing/` protocol
+- [ ] **RC spec §4.3** reliability criteria covered by automated tests where feasible
+- [ ] **RC spec §13** test expectations implemented (not merely stubbed)
+- [ ] **Milestone M5** rows in alignment doc marked **Done**
 - [ ] `docs/FileOctopus_UI_Design_and_Layout_Specification-1.md` §27 acceptance criteria met or explicitly deferred with tracked follow-up work
-- [ ] Menu spec **application menu bar** delivered or explicitly deferred with ADR
-- [ ] `CRON_TASKS.md` has no P1 `pending` items
+- [ ] Remaining menu parity gaps are resolved or explicitly deferred in trusted docs
+- [ ] `CRON_TASKS.md` has no `Active RC Queue` items left
 - [ ] `bash scripts/health-check.sh` exits 0 on clean `main`
 
 ---
@@ -337,13 +381,8 @@ cargo run -p test-support --bin fileoctopus-test-tree -- --root ./tmp/100k --fil
 
 ---
 
-## Current Baseline (2026-05-16)
+## Current Baseline
 
-Snapshot for agents; refresh in `CRON_STATUS.md` each run:
-
-- Health: vitest + `cargo test` green; TypeScript clean; Rust check OK
-- Branch: `main`
-- Known stubs: Compress / Extract / Checksum toolbar (need archive/checksum backend per MVP-ARC / gap Tier 3)
-- Open milestone: **M4** (Git, archives, embedded terminal), **M5** hardening
+The latest health, branch, known-stubs, and open-milestone snapshot lives in **`docs/plans/CRON_STATUS.md`** — read that for current state; do not edit this section to record per-cycle facts (it will rot).
 
 See `CRON_TASKS.md` for the active queue.

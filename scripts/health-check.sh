@@ -9,18 +9,25 @@ cd "$(dirname "$0")/.."
 PASS=0
 FAIL=0
 RESULTS=""
+LOG_DIR="target/health-check"
+
+mkdir -p "$LOG_DIR"
 
 run_check() {
   local name="$1"
   shift
+  local slug
+  local log_file
+  slug="$(printf "%s" "$name" | tr "[:upper:] " "[:lower:]-" | tr -cd "a-z0-9._-")"
+  log_file="$LOG_DIR/${slug}.log"
   echo "⏳ $name..."
-  if "$@" &>/tmp/fo-check-output.txt; then
+  if "$@" >"$log_file" 2>&1; then
     echo "   ✅ $name"
     RESULTS="$RESULTS\n✅ $name"
     PASS=$((PASS + 1))
   else
-    echo "   ❌ $name (see /tmp/fo-check-output.txt)"
-    RESULTS="$RESULTS\n❌ $name"
+    echo "   ❌ $name (see $log_file)"
+    RESULTS="$RESULTS\n❌ $name - $log_file"
     FAIL=$((FAIL + 1))
   fi
 }
@@ -44,17 +51,17 @@ else
 fi
 echo ""
 
-# 2. TypeScript
-run_check "TypeScript (tsc --noEmit)" \
-  pnpm --filter @fileoctopus/frontend typecheck
+# 2. TypeScript workspace
+run_check "TypeScript workspace (pnpm typecheck)" \
+  pnpm typecheck
 
 # 3. Rust
 run_check "Rust (cargo check)" \
   cargo check --workspace
 
-# 4. Unit tests
-run_check "Unit tests (vitest)" \
-  pnpm --filter @fileoctopus/frontend test
+# 4. Workspace tests
+run_check "Workspace tests (pnpm test)" \
+  pnpm test
 
 # 5. Rust tests
 run_check "Rust tests" \
