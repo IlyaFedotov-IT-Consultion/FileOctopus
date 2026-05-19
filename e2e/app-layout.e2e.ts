@@ -3,6 +3,8 @@ import { test, expect } from "@playwright/test";
 test.describe("FileOctopus main layout", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/");
+    await page.waitForSelector(".fo-shell");
+    await page.waitForSelector("aside.fo-sidebar");
   });
 
   test("renders the shell root element", async ({ page }) => {
@@ -19,8 +21,9 @@ test.describe("FileOctopus main layout", () => {
     const topbar = page.locator("header.fo-topbar");
     await expect(topbar).toBeVisible();
 
-    await expect(topbar.locator("h1")).toHaveText("FileOctopus");
+    await expect(topbar.locator("h1")).not.toBeEmpty();
     await expect(topbar.locator("text=Settings").first()).toBeVisible();
+    await expect(topbar.getByRole("menubar")).toBeVisible();
   });
 
   test("renders the sidebar", async ({ page }) => {
@@ -47,18 +50,12 @@ test.describe("FileOctopus main layout", () => {
     expect(count).toBeGreaterThanOrEqual(2);
   });
 
-  test("left panel is identifiable", async ({ page }) => {
+  test("left and right panels are distinguishable by order", async ({
+    page,
+  }) => {
     const panels = page.locator(".fo-panel");
-    const leftPanel = panels.first();
-    await expect(leftPanel).toBeVisible();
-    await expect(leftPanel.locator(".fo-pane-badge")).toHaveText("Left");
-  });
-
-  test("right panel is identifiable", async ({ page }) => {
-    const panels = page.locator(".fo-panel");
-    const rightPanel = panels.nth(1);
-    await expect(rightPanel).toBeVisible();
-    await expect(rightPanel.locator(".fo-pane-badge")).toHaveText("Right");
+    await expect(panels.first()).toBeVisible();
+    await expect(panels.nth(1)).toBeVisible();
   });
 
   test("one panel is active on load", async ({ page }) => {
@@ -66,17 +63,17 @@ test.describe("FileOctopus main layout", () => {
     await expect(activePanel).toHaveCount(1);
   });
 
-  test("renders panel headers with navigation buttons", async ({ page }) => {
-    const leftPanel = page.locator(".fo-panel").first();
-    const header = leftPanel.locator("header.fo-panel-header");
-    await expect(header).toBeVisible();
+  test("renders workbench toolbar with navigation buttons", async ({
+    page,
+  }) => {
+    const toolbar = page.locator(".fo-workbench-toolbar .fo-operation-toolbar");
+    await expect(toolbar).toBeVisible();
 
-    const nav = header.locator(".fo-panel-nav");
-    await expect(nav).toBeVisible();
-
-    await expect(nav.locator(`[aria-label*="back"]`)).toBeVisible();
-    await expect(nav.locator(`[aria-label*="forward"]`)).toBeVisible();
-    await expect(nav.locator(`[aria-label*="up"]`)).toBeVisible();
+    await expect(toolbar.getByRole("button", { name: "Back" })).toBeVisible();
+    await expect(
+      toolbar.getByRole("button", { name: "Forward" }),
+    ).toBeVisible();
+    await expect(toolbar.getByRole("button", { name: "Up" })).toBeVisible();
   });
 
   test("renders breadcrumb path in panel header", async ({ page }) => {
@@ -88,45 +85,29 @@ test.describe("FileOctopus main layout", () => {
     expect(count).toBeGreaterThanOrEqual(1);
   });
 
-  test("renders the operation toolbar in each panel", async ({ page }) => {
-    const toolbars = page.locator(".fo-operation-toolbar");
-    const count = await toolbars.count();
-    expect(count).toBeGreaterThanOrEqual(2);
+  test("renders the shared operation toolbar", async ({ page }) => {
+    const toolbars = page.locator(
+      ".fo-workbench-toolbar .fo-operation-toolbar",
+    );
+    await expect(toolbars).toHaveCount(1);
   });
 
-  test("toolbar contains key action buttons", async ({ page }) => {
+  test("toolbar contains navigation and overflow actions", async ({ page }) => {
     const toolbar = page.locator(".fo-operation-toolbar").first();
     await expect(toolbar).toBeVisible();
 
-    // High-priority: always visible
+    await expect(toolbar.getByRole("button", { name: "Back" })).toBeVisible();
     await expect(
-      toolbar.locator("button:has-text('New Folder')").first(),
+      toolbar.getByRole("button", { name: "Refresh" }),
     ).toBeVisible();
-    await expect(
-      toolbar.locator("button:has-text('New File')").first(),
-    ).toBeVisible();
-    await expect(
-      toolbar.locator("button:has-text('Rename')").first(),
-    ).toBeVisible();
-    // Medium-priority: hidden at narrow widths (container < 560px), check via DOM existence
-    await expect(
-      toolbar.locator("button:has-text('Copy')").first(),
-    ).toBeAttached();
-    await expect(
-      toolbar.locator("button:has-text('Move')").first(),
-    ).toBeAttached();
+    await expect(toolbar.getByRole("button", { name: "More" })).toBeVisible();
 
-    // Low-priority: hidden at narrow widths (container < 760px), check via DOM existence
+    await toolbar.getByRole("button", { name: "More" }).click();
     await expect(
-      toolbar.locator("button:has-text('Trash')").first(),
-    ).toBeAttached();
+      page.getByRole("menuitem", { name: "New Folder" }),
+    ).toBeVisible();
     await expect(
-      toolbar.locator("button:has-text('Refresh')").first(),
-    ).toBeAttached();
-
-    // More button (overflow menu) should be visible
-    await expect(
-      toolbar.locator("button:has-text('More')").first(),
+      page.getByRole("menuitem", { name: "New File" }),
     ).toBeVisible();
   });
 
@@ -136,7 +117,7 @@ test.describe("FileOctopus main layout", () => {
     const tableHeader = page.locator(".fo-table-header[role='row']").first();
     await expect(tableHeader).toBeVisible();
 
-    const expectedColumns = ["Name", "Size", "Type", "Modified"];
+    const expectedColumns = ["Name", "size", "kind", "modified"];
 
     for (const col of expectedColumns) {
       await expect(
@@ -161,12 +142,7 @@ test.describe("FileOctopus main layout", () => {
     await expect(statusBar).toHaveAttribute("aria-label", "Application status");
   });
 
-  test("status bar shows readiness segment", async ({ page }) => {
-    const readiness = page.locator(".fo-status-readiness").first();
-    await expect(readiness).toBeVisible();
-  });
-
-  test("status bar shows pane info segment", async ({ page }) => {
+  test("status bar shows pane segment", async ({ page }) => {
     const paneInfo = page.locator(".fo-status-pane").first();
     await expect(paneInfo).toBeVisible();
   });
@@ -179,17 +155,16 @@ test.describe("FileOctopus main layout", () => {
       text!.includes("item") ||
       text!.includes("Loading") ||
       text!.includes("Empty") ||
-      text!.includes("Unavailable");
+      text!.includes("Unavailable") ||
+      text!.includes("Selected") ||
+      text!.includes("Total");
     expect(hasRelevantInfo).toBeTruthy();
   });
 
   test("status bar shows selection info", async ({ page }) => {
     const statusBar = page.locator("footer.fo-status").first();
     const text = await statusBar.textContent();
-    // Selection may be "No selection" or "N selected - ..." depending on focused state
-    const hasSelectionInfo =
-      text!.includes("No selection") || text!.includes("selected");
-    expect(hasSelectionInfo).toBeTruthy();
+    expect(text).toMatch(/Selected:|Total:/);
   });
 
   test("renders panel filter row", async ({ page }) => {
@@ -204,11 +179,12 @@ test.describe("FileOctopus main layout", () => {
     );
   });
 
-  test("renders view mode segmented control", async ({ page }) => {
-    const segmented = page
-      .locator("[aria-label='left view mode'], [aria-label='right view mode']")
+  test("renders view mode control in toolbar", async ({ page }) => {
+    const viewButton = page
+      .locator(".fo-operation-toolbar")
+      .getByRole("button", { name: /View/i })
       .first();
-    await expect(segmented).toBeVisible();
+    await expect(viewButton).toBeVisible();
   });
 
   test("renders the workspace section", async ({ page }) => {

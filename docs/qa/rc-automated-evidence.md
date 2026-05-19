@@ -13,6 +13,7 @@
 | 10k list streaming     | `cargo test -p fs-core list_streams_without_collecting_all_entries_first` | Pass (~0.53s)                                                             |
 | 100k UI virtualization | `appShell.test.tsx` — 100k batch DOM cap                                  | Pass (frontend RC)                                                        |
 | Diagnostics E2E        | `e2e/diagnostics.e2e.ts`                                                  | 2/2 pass (`FO_E2E_WEB_SERVER=vite`)                                       |
+| App layout E2E         | `e2e/app-layout.e2e.ts`                                                   | 24/24 pass                                                                |
 | Visual regression      | `e2e/visual-regression.e2e.ts`                                            | 12/12 pass; baselines in `e2e/visual-regression.e2e.ts-snapshots/`        |
 | Full Playwright        | `pnpm test:e2e:vite`                                                      | 104 passed, 33 skipped (preview has no real FS rows for navigation tests) |
 | Diagnostics zip (Rust) | `diagnostics_bundle_contains_expected_files`                              | Pass (backend RC)                                                         |
