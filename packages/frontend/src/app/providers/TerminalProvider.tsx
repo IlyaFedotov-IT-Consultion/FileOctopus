@@ -111,6 +111,7 @@ export function TerminalProvider({
         throw new Error("Embedded terminal supports local folders only");
       }
       onExpandActivity();
+      dispatch({ type: "setSegment", segment: "terminal" });
       await ensureRailWidth();
       const sessionId = await spawnSession(client, uri);
       dispatch({

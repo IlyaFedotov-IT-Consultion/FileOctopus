@@ -39,7 +39,7 @@ const TOOLBAR_DESCRIPTIONS: Partial<Record<CommandId, string>> = {
   "op.extract": "Extract selected archive",
   "search.recursive": "Open recursive search for the active pane",
   "search.focusFilter": "Focus quick filter for the active pane",
-  "op.openTerminal": "Open terminal in active folder",
+  "op.openTerminal": "Open terminal in this folder (activity rail)",
   "op.openTerminalExternal": "Open the system terminal in the active folder",
   "view.toggleActivity": "Open jobs and activity panel",
   "app.settings": "Open application settings",

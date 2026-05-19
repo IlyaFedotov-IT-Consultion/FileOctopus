@@ -86,6 +86,8 @@ export interface FilePanelProps {
   onSwitchTab: (panelId: PanelId, tabId: string) => void;
   onCloseTab: (panelId: PanelId, tabId: string) => void;
   onOpenTab: (panelId: PanelId) => void;
+  onOpenTerminal?: () => void;
+  terminalDisabled?: boolean;
 }
 
 export function FilePanel({
@@ -125,6 +127,8 @@ export function FilePanel({
   onSwitchTab,
   onCloseTab,
   onOpenTab,
+  onOpenTerminal,
+  terminalDisabled,
 }: FilePanelProps) {
   const displayedEntries = selectDisplayedEntries(tab);
   const itemCount = countVisibleEntries(tab);
@@ -191,6 +195,8 @@ export function FilePanel({
         pathFocusToken={pathFocusToken}
         onNavigate={onNavigate}
         onBreadcrumbContextMenu={onBreadcrumbContextMenu}
+        onOpenTerminal={onOpenTerminal}
+        terminalDisabled={terminalDisabled}
       />
       <div className="fo-panel-filter-row">
         <FilterInput

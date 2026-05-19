@@ -39,6 +39,7 @@ export function isToolbarSectionVisible(
     case "sync":
       return tier === "full" || tier === "comfortable";
     case "terminal":
+      return tier === "full" || tier === "comfortable" || tier === "compact";
     case "hotlist":
       return tier === "full" || tier === "comfortable";
     case "settings":

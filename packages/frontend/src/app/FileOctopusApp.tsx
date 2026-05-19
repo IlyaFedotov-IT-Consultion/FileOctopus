@@ -652,6 +652,11 @@ function FileOctopusAppInner({
           panelId,
           uri: activeTab(state.panels[panelId]).uri,
         }),
+      onOpenTerminal: () => {
+        dispatch({ type: "setActivePanel", panelId: pid });
+        handleCommandSelect("op.openTerminal", pid);
+      },
+      terminalDisabled: isRemoteUri(tab.uri),
     };
   }
 

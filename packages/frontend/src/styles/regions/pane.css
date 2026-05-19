@@ -126,12 +126,30 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 4px;
   min-height: var(--fo-pathbar-height);
   padding: 0;
   background: var(--fo-editor-bg);
   border-bottom: 1px solid var(--fo-panel-bg);
   font-size: 12px;
   font-weight: 700;
+}
+
+.fo-panel-header-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  padding-right: 4px;
+}
+
+.fo-panel-header .fo-panel-title-row {
+  flex: 1;
+  min-width: 0;
+}
+
+.fo-panel-terminal-btn.fo-ui-btn {
+  min-width: 28px;
+  padding: 0 6px;
 }
 
 .fo-panel[data-active="false"] .fo-panel-header {
