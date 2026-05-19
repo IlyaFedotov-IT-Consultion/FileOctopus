@@ -12,9 +12,10 @@ describe("toolbarOverflowTier", () => {
     expect(resolveToolbarOverflowTier(640)).toBe("minimal");
   });
 
-  it("keeps jobs-adjacent sections visible longer than archive", () => {
+  it("keeps terminal visible in compact tier for discoverability", () => {
     expect(isToolbarSectionVisible("archive", "compact")).toBe(false);
-    expect(isToolbarSectionVisible("terminal", "compact")).toBe(false);
+    expect(isToolbarSectionVisible("terminal", "compact")).toBe(true);
+    expect(isToolbarSectionVisible("terminal", "minimal")).toBe(false);
     expect(isToolbarSectionVisible("sync", "compact")).toBe(false);
   });
 
