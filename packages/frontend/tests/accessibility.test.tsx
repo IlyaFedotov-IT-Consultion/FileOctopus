@@ -43,6 +43,11 @@ describe("accessibility basics", () => {
           paneMode: "dual",
           jobDrawerBehavior: "manual",
           showAdvancedCopyOptions: false,
+          paneTerminalHeightLeft: 0.35,
+          paneTerminalHeightRight: 0.35,
+          paneTerminalDefaultOpen: false,
+          terminalCdOnNavigate: false,
+          confirmClosePaneWithTerminal: true,
         }}
         autostart={null}
         onClose={onClose}

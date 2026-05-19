@@ -11,6 +11,7 @@ function baseDeps(overrides: Record<string, unknown> = {}) {
     goHistory: vi.fn(),
     refreshPanel: vi.fn(),
     updatePreference: vi.fn(),
+    requestPaneModeChange: vi.fn(),
     setSettingsOpen: vi.fn(),
     setToolbarCustomizeOpen: vi.fn(),
     setShortcutsOpen: vi.fn(),

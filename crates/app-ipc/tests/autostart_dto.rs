@@ -25,7 +25,10 @@ fn preferences_dto_includes_new_fields() {
         "confirmOverwrite":false,"sidebarVisible":true,
         "statusBarVisible":true,"toolbarVisible":false,
         "paneMode":"single","jobDrawerBehavior":"openOnError",
-        "showAdvancedCopyOptions":true
+        "showAdvancedCopyOptions":true,
+        "paneTerminalHeightLeft":0.4,"paneTerminalHeightRight":0.45,
+        "paneTerminalDefaultOpen":true,"terminalCdOnNavigate":true,
+        "confirmClosePaneWithTerminal":false
     }"#;
     let dto: UserPreferencesDto = serde_json::from_str(json).unwrap();
     assert_eq!(dto.accent_color, "violet");
@@ -38,4 +41,9 @@ fn preferences_dto_includes_new_fields() {
     assert_eq!(dto.pane_mode, "single");
     assert_eq!(dto.job_drawer_behavior, "openOnError");
     assert!(dto.show_advanced_copy_options);
+    assert!((dto.pane_terminal_height_left - 0.4).abs() < f64::EPSILON);
+    assert!((dto.pane_terminal_height_right - 0.45).abs() < f64::EPSILON);
+    assert!(dto.pane_terminal_default_open);
+    assert!(dto.terminal_cd_on_navigate);
+    assert!(!dto.confirm_close_pane_with_terminal);
 }

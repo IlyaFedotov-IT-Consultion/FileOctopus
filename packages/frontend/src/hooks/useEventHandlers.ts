@@ -67,6 +67,7 @@ export interface UseEventHandlersParams {
   setAppHealth: Dispatch<SetStateAction<AppDataHealthResponse | null>>;
   setDiagnosticsMessage: Dispatch<SetStateAction<string | null>>;
   setExportingDiagnostics: Dispatch<SetStateAction<boolean>>;
+  syncTerminalCwd?: (panelId: PanelId, uri: string) => void;
 }
 
 export function useEventHandlers({
@@ -94,6 +95,7 @@ export function useEventHandlers({
   setAppHealth,
   setDiagnosticsMessage,
   setExportingDiagnostics,
+  syncTerminalCwd,
 }: UseEventHandlersParams) {
   // ── openExternal (used by activateEntry) ─────────────────────────
   async function openExternal(entry: FileEntryDto) {
@@ -185,6 +187,7 @@ export function useEventHandlers({
 
     await startListing(panelId, uri, options.includeHidden ?? tab.showHidden);
     if (!options.softRefresh) {
+      syncTerminalCwd?.(panelId, uri);
       void client.navigation
         .recordVisit({
           uri,

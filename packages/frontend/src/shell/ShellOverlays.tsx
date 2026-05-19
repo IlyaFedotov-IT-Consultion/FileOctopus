@@ -26,7 +26,10 @@ export function ShellOverlays() {
         manageFavoritesOpen={ctx.manageFavoritesOpen}
         recentLocationsOpen={ctx.recentLocationsOpen}
         clearRecentLocationsOpen={ctx.clearRecentLocationsOpen}
+        closePaneTerminalConfirmOpen={ctx.closePaneTerminalConfirmOpen}
         errorDetailsOpen={ctx.errorDetailsOpen}
+        settingsPreferenceChange={ctx.settingsPreferenceChange}
+        onConfirmClosePaneWithTerminal={ctx.onConfirmClosePaneWithTerminal}
         goToLocationInitialUri={ctx.activeTabUri}
         favorites={ctx.favorites}
         operationError={ctx.operationError}
@@ -65,6 +68,7 @@ export function ShellOverlays() {
         setManageFavoritesOpen={ctx.setManageFavoritesOpen}
         setRecentLocationsOpen={ctx.setRecentLocationsOpen}
         setClearRecentLocationsOpen={ctx.setClearRecentLocationsOpen}
+        setClosePaneTerminalConfirmOpen={ctx.setClosePaneTerminalConfirmOpen}
         setErrorDetailsOpen={ctx.setErrorDetailsOpen}
         setOperationHistoryOpen={ctx.setOperationHistoryOpen}
         setVolumePickerOpen={ctx.setVolumePickerOpen}

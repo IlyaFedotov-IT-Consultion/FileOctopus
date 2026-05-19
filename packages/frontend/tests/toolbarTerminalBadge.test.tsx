@@ -80,6 +80,7 @@ function terminalContextValue(
     setPaneTerminalCollapsed: () => {},
     setPaneTerminalSplit: () => {},
     setPaneActiveSession: () => {},
+    syncTerminalCwd: () => {},
     openExternalTerminal: async () => {},
     registerTerminalSessionHandlers: () => () => {},
   };

@@ -16,7 +16,7 @@ pub use network::{
     UpdateNetworkProfile,
 };
 
-pub const SCHEMA_VERSION: u32 = 9;
+pub const SCHEMA_VERSION: u32 = 10;
 
 #[derive(Debug, Error)]
 pub enum PreferencesError {
@@ -54,6 +54,11 @@ pub struct UserPreferences {
     pub pane_mode: String,
     pub job_drawer_behavior: String,
     pub show_advanced_copy_options: bool,
+    pub pane_terminal_height_left: f64,
+    pub pane_terminal_height_right: f64,
+    pub pane_terminal_default_open: bool,
+    pub terminal_cd_on_navigate: bool,
+    pub confirm_close_pane_with_terminal: bool,
 }
 
 impl Default for UserPreferences {
@@ -82,6 +87,11 @@ impl Default for UserPreferences {
             pane_mode: "dual".to_string(),
             job_drawer_behavior: "manual".to_string(),
             show_advanced_copy_options: false,
+            pane_terminal_height_left: 0.35,
+            pane_terminal_height_right: 0.35,
+            pane_terminal_default_open: false,
+            terminal_cd_on_navigate: false,
+            confirm_close_pane_with_terminal: true,
         }
     }
 }
@@ -189,6 +199,11 @@ impl PreferencesRepository {
 
         if user_version < 9 {
             self.backfill_v9_keys(&connection)?;
+            connection.pragma_update(None, "user_version", SCHEMA_VERSION)?;
+        }
+
+        if user_version < 10 {
+            self.backfill_v10_keys(&connection)?;
             connection.pragma_update(None, "user_version", SCHEMA_VERSION)?;
         }
 
@@ -345,6 +360,43 @@ impl PreferencesRepository {
         Ok(())
     }
 
+    fn backfill_v10_keys(&self, connection: &Connection) -> Result<(), PreferencesError> {
+        let defaults = UserPreferences::default();
+        let now = chrono_lite_now();
+        let rows = [
+            (
+                "paneTerminalHeightLeft",
+                defaults.pane_terminal_height_left.to_string(),
+            ),
+            (
+                "paneTerminalHeightRight",
+                defaults.pane_terminal_height_right.to_string(),
+            ),
+            (
+                "paneTerminalDefaultOpen",
+                defaults.pane_terminal_default_open.to_string(),
+            ),
+            (
+                "terminalCdOnNavigate",
+                defaults.terminal_cd_on_navigate.to_string(),
+            ),
+            (
+                "confirmClosePaneWithTerminal",
+                defaults.confirm_close_pane_with_terminal.to_string(),
+            ),
+        ];
+
+        for (key, value) in rows {
+            connection.execute(
+                "insert into preferences (key, value, updated_at) values (?1, ?2, ?3)
+                 on conflict(key) do nothing",
+                params![key, value, now],
+            )?;
+        }
+
+        Ok(())
+    }
+
     fn seed_defaults(&self, connection: &Connection) -> Result<(), PreferencesError> {
         let defaults = UserPreferences::default();
         let now = chrono_lite_now();
@@ -442,6 +494,26 @@ impl UserPreferences {
                 "showAdvancedCopyOptions",
                 self.show_advanced_copy_options.to_string(),
             ),
+            (
+                "paneTerminalHeightLeft",
+                self.pane_terminal_height_left.to_string(),
+            ),
+            (
+                "paneTerminalHeightRight",
+                self.pane_terminal_height_right.to_string(),
+            ),
+            (
+                "paneTerminalDefaultOpen",
+                self.pane_terminal_default_open.to_string(),
+            ),
+            (
+                "terminalCdOnNavigate",
+                self.terminal_cd_on_navigate.to_string(),
+            ),
+            (
+                "confirmClosePaneWithTerminal",
+                self.confirm_close_pane_with_terminal.to_string(),
+            ),
         ]
     }
 }
@@ -530,10 +602,32 @@ fn apply_value(
         "showAdvancedCopyOptions" => {
             preferences.show_advanced_copy_options = parse_bool(value, key)?;
         }
+        "paneTerminalHeightLeft" => {
+            preferences.pane_terminal_height_left = parse_pane_terminal_height(value)?;
+        }
+        "paneTerminalHeightRight" => {
+            preferences.pane_terminal_height_right = parse_pane_terminal_height(value)?;
+        }
+        "paneTerminalDefaultOpen" => {
+            preferences.pane_terminal_default_open = parse_bool(value, key)?;
+        }
+        "terminalCdOnNavigate" => {
+            preferences.terminal_cd_on_navigate = parse_bool(value, key)?;
+        }
+        "confirmClosePaneWithTerminal" => {
+            preferences.confirm_close_pane_with_terminal = parse_bool(value, key)?;
+        }
         _ => {}
     }
 
     Ok(())
+}
+
+fn parse_pane_terminal_height(value: &str) -> Result<f64, PreferencesError> {
+    let parsed = value
+        .parse::<f64>()
+        .map_err(|error| invalid_value("paneTerminalHeight", error.to_string()))?;
+    Ok(parsed.clamp(0.15, 0.85))
 }
 
 fn parse_toolbar_entries(value: &str) -> Result<String, PreferencesError> {
@@ -841,6 +935,26 @@ mod tests {
         let reloaded = PreferencesRepository::new(path).unwrap().get_all().unwrap();
         assert!(!reloaded.status_bar_visible);
         assert!(!reloaded.toolbar_visible);
+    }
+
+    #[test]
+    fn round_trips_terminal_preferences() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("preferences.sqlite");
+        let repository = PreferencesRepository::new(path.clone()).unwrap();
+        repository.set("paneTerminalHeightLeft", "0.42").unwrap();
+        repository.set("paneTerminalHeightRight", "0.38").unwrap();
+        repository.set("paneTerminalDefaultOpen", "true").unwrap();
+        repository.set("terminalCdOnNavigate", "true").unwrap();
+        repository
+            .set("confirmClosePaneWithTerminal", "false")
+            .unwrap();
+        let reloaded = PreferencesRepository::new(path).unwrap().get_all().unwrap();
+        assert!((reloaded.pane_terminal_height_left - 0.42).abs() < f64::EPSILON);
+        assert!((reloaded.pane_terminal_height_right - 0.38).abs() < f64::EPSILON);
+        assert!(reloaded.pane_terminal_default_open);
+        assert!(reloaded.terminal_cd_on_navigate);
+        assert!(!reloaded.confirm_close_pane_with_terminal);
     }
 
     #[test]

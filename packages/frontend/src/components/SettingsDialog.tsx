@@ -13,6 +13,7 @@ type SettingsSection =
   | "appearance"
   | "files"
   | "layout"
+  | "terminal"
   | "operations"
   | "diagnostics"
   | "shortcuts";
@@ -114,6 +115,17 @@ export function SettingsDialog({
               onClick={() => setActiveSection("layout")}
             >
               Layout
+            </button>
+            <button
+              type="button"
+              className={
+                activeSection === "terminal"
+                  ? "fo-settings-nav-active"
+                  : undefined
+              }
+              onClick={() => setActiveSection("terminal")}
+            >
+              Terminal
             </button>
             <button
               type="button"
@@ -493,6 +505,63 @@ export function SettingsDialog({
                     <option value="openOnError">Open on error</option>
                   </select>
                 </label>
+              </section>
+            )}
+            {activeSection === "terminal" && (
+              <section
+                className="fo-settings-section"
+                role="region"
+                aria-label="Terminal settings"
+              >
+                <h3>Terminal</h3>
+                <label className="fo-settings-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={preferences.paneTerminalDefaultOpen}
+                    onChange={(event) =>
+                      onChange(
+                        "paneTerminalDefaultOpen",
+                        event.target.checked ? "true" : "false",
+                      )
+                    }
+                  />
+                  <span>Open pane terminal expanded when started</span>
+                </label>
+                <label className="fo-settings-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={preferences.terminalCdOnNavigate}
+                    onChange={(event) =>
+                      onChange(
+                        "terminalCdOnNavigate",
+                        event.target.checked ? "true" : "false",
+                      )
+                    }
+                  />
+                  <span>
+                    Change directory when the file pane navigates (local only)
+                  </span>
+                </label>
+                <label className="fo-settings-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={preferences.confirmClosePaneWithTerminal}
+                    onChange={(event) =>
+                      onChange(
+                        "confirmClosePaneWithTerminal",
+                        event.target.checked ? "true" : "false",
+                      )
+                    }
+                  />
+                  <span>
+                    Confirm before hiding a pane with a running embedded
+                    terminal
+                  </span>
+                </label>
+                <p className="fo-settings-hint">
+                  Pane terminal height is saved when you resize the split inside
+                  each file pane.
+                </p>
               </section>
             )}
             {activeSection === "operations" && (

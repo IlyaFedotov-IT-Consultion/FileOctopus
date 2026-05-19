@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import { activeTab } from "../panelStore";
 import { applySplitRatio, applyThemePreference } from "../applyPreferences";
 import { useWorkspaceLayout } from "../hooks/useWorkspaceLayout";
@@ -17,6 +17,7 @@ import { buildPaletteEntries } from "../commands/paletteEntries";
 import type { FileEntryDto } from "@fileoctopus/ts-api";
 import { isRemoteUri, profileIdFromRemoteUri } from "@fileoctopus/ts-api";
 
+import { hasRunningPaneSessions } from "../terminal/terminalSlice";
 import {
   AppProviders,
   useJobs,
@@ -98,6 +99,7 @@ function FileOctopusAppInner({
     openExternalTerminal,
     setRailSegment,
     togglePaneTerminal,
+    syncTerminalCwd,
   } = useTerminal();
 
   const {
@@ -124,6 +126,8 @@ function FileOctopusAppInner({
     manageFavoritesOpen,
     recentLocationsOpen,
     clearRecentLocationsOpen,
+    closePaneTerminalConfirmOpen,
+    setClosePaneTerminalConfirmOpen,
     errorDetailsOpen,
     operationHistoryOpen,
     setAboutOpen,
@@ -199,7 +203,50 @@ function FileOctopusAppInner({
     setAppHealth,
     setDiagnosticsMessage,
     setExportingDiagnostics,
+    syncTerminalCwd,
   });
+
+  const pendingPaneModeRef = useRef<"single" | "dual" | null>(null);
+
+  const requestPaneModeChange = useCallback(
+    (next: "single" | "dual") => {
+      if (
+        next === "single" &&
+        preferences?.confirmClosePaneWithTerminal !== false &&
+        hasRunningPaneSessions(terminal.sessions, "right")
+      ) {
+        pendingPaneModeRef.current = next;
+        setClosePaneTerminalConfirmOpen(true);
+        return;
+      }
+      void updatePreference("paneMode", next);
+    },
+    [
+      preferences?.confirmClosePaneWithTerminal,
+      setClosePaneTerminalConfirmOpen,
+      terminal.sessions,
+      updatePreference,
+    ],
+  );
+
+  const handleSettingsPreferenceChange = useCallback(
+    (key: string, value: string) => {
+      if (key === "paneMode") {
+        requestPaneModeChange(value as "single" | "dual");
+        return;
+      }
+      void updatePreference(key, value);
+    },
+    [requestPaneModeChange, updatePreference],
+  );
+
+  const confirmClosePaneWithTerminal = useCallback(() => {
+    const next = pendingPaneModeRef.current;
+    pendingPaneModeRef.current = null;
+    if (next) {
+      void updatePreference("paneMode", next);
+    }
+  }, [updatePreference]);
 
   useWorkspaceLayout({
     workspaceRef,
@@ -343,6 +390,7 @@ function FileOctopusAppInner({
     goHistory,
     refreshPanel,
     updatePreference,
+    requestPaneModeChange,
     setSettingsOpen,
     setToolbarCustomizeOpen,
     setShortcutsOpen,
@@ -700,6 +748,10 @@ function FileOctopusAppInner({
       networkStatuses={networkStatuses}
       preferences={preferences}
       updatePreference={updatePreference}
+      settingsPreferenceChange={handleSettingsPreferenceChange}
+      closePaneTerminalConfirmOpen={closePaneTerminalConfirmOpen}
+      setClosePaneTerminalConfirmOpen={setClosePaneTerminalConfirmOpen}
+      onConfirmClosePaneWithTerminal={confirmClosePaneWithTerminal}
       client={client}
       jobs={jobs}
       jobMetrics={jobMetrics}
