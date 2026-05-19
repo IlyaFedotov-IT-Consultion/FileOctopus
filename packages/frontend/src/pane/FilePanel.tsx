@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useShell } from "../app/providers/ShellProvider";
 import { useTerminal } from "../app/providers/TerminalProvider";
 import {
@@ -134,18 +134,16 @@ export function FilePanel({
   terminalDisabled,
 }: FilePanelProps) {
   const { client } = useShell();
-  const { terminal, setPaneTerminalSplit } = useTerminal();
+  const {
+    terminal,
+    setPaneTerminalSplit,
+    setPaneActiveSession,
+    openPaneTerminal,
+  } = useTerminal();
   const paneChrome = terminal.pane[panelId];
-  const paneSession = useMemo(() => {
-    if (!paneChrome.sessionId) {
-      return null;
-    }
-    return (
-      terminal.sessions.find(
-        (session) => session.id === paneChrome.sessionId,
-      ) ?? null
-    );
-  }, [paneChrome.sessionId, terminal.sessions]);
+  const paneHasSessions = terminal.sessions.some(
+    (session) => session.paneId === panelId,
+  );
 
   const displayedEntries = selectDisplayedEntries(tab);
   const itemCount = countVisibleEntries(tab);
@@ -362,16 +360,20 @@ export function FilePanel({
             {selectedCount} selected - {itemCount} items
           </footer>
         </div>
-        {paneChrome.open && paneSession ? (
+        {paneChrome.open && paneHasSessions ? (
           <PaneTerminalSplit
             client={client}
             panelId={panelId}
-            sessionId={paneSession.id}
-            uri={paneSession.uri}
+            sessions={terminal.sessions}
+            activeSessionId={paneChrome.sessionId ?? terminal.activeSessionId}
             splitRatio={paneChrome.splitRatio}
             collapsed={paneChrome.collapsed}
             panelActive={active}
             onResize={(ratio) => setPaneTerminalSplit(panelId, ratio)}
+            onSwitch={(sessionId) => setPaneActiveSession(panelId, sessionId)}
+            onNewSession={() => {
+              void openPaneTerminal(panelId, tab.uri).catch(() => undefined);
+            }}
           />
         ) : null}
       </div>

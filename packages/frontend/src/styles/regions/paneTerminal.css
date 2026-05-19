@@ -1,0 +1,55 @@
+.fo-toolbar-button-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.fo-toolbar-button-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 8px;
+  padding: 0 4px;
+  font-size: 10px;
+  line-height: 16px;
+  pointer-events: none;
+}
+
+.fo-pane-terminal-inner {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.fo-pane-terminal-views {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--fo-editor-bg);
+}
+
+.fo-pane-terminal-view-wrap {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  min-height: 0;
+}
+
+.fo-pane-terminal-view-wrap[hidden] {
+  display: none;
+}
+
+.fo-panel-terminal-actions-inline {
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  z-index: 1;
+}
+
+.fo-panel-terminal .fo-pane-terminal-inner .fo-terminal-tab-bar {
+  padding-right: 2.5rem;
+}

@@ -1,10 +1,12 @@
 import { useState } from "react";
 import {
+  Badge,
   DropdownMenu,
   Icons,
   ToolbarButton,
   type DropdownMenuItem,
 } from "@fileoctopus/ui";
+import { useTerminal } from "../app/providers/TerminalProvider";
 import { toolbarCommandMeta } from "../commands/toolbarConfig";
 import type { ToolbarCommandContext } from "../commands/toolbarCommandState";
 import { isToolbarCommandDisabled } from "../commands/toolbarCommandState";
@@ -210,8 +212,7 @@ export function CommanderToolbarTail({
         aria-label="Tools"
       >
         {showTerminal ? (
-          <TailButton
-            commandId="op.openTerminal"
+          <TerminalTailButton
             commandContext={commandContext}
             handlers={handlers}
           />
@@ -274,5 +275,37 @@ export function CommanderToolbarTail({
         ) : null}
       </div>
     </>
+  );
+}
+
+function TerminalTailButton({
+  commandContext,
+  handlers,
+}: {
+  commandContext: ToolbarCommandContext;
+  handlers: ToolbarActionHandlers;
+}) {
+  const { terminal } = useTerminal();
+  const runningCount = terminal.sessions.filter(
+    (session) => session.status === "running",
+  ).length;
+
+  return (
+    <span className="fo-toolbar-button-wrap">
+      <TailButton
+        commandId="op.openTerminal"
+        commandContext={commandContext}
+        handlers={handlers}
+      />
+      {runningCount > 0 ? (
+        <Badge
+          tone="accent"
+          aria-label={`${runningCount} terminal sessions`}
+          className="fo-toolbar-button-badge"
+        >
+          {runningCount}
+        </Badge>
+      ) : null}
+    </span>
   );
 }

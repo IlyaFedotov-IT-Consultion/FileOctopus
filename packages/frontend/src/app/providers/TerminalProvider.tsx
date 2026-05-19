@@ -33,6 +33,7 @@ interface TerminalSessionHandlers {
 interface TerminalContextValue {
   terminal: TerminalState;
   openEmbeddedTerminal: (uri: string, panelId: PanelId) => Promise<void>;
+  openPaneTerminal: (panelId: PanelId, uri: string) => Promise<void>;
   openNewTerminalTab: (uri: string, panelId?: PanelId) => Promise<void>;
   togglePaneTerminal: (uri: string, panelId: PanelId) => Promise<void>;
   markSessionExited: (sessionId: string, exitCode?: number | null) => void;
@@ -41,6 +42,7 @@ interface TerminalContextValue {
   setRailSegment: (segment: ActivityRailSegment) => void;
   setPaneTerminalCollapsed: (panelId: PanelId, collapsed: boolean) => void;
   setPaneTerminalSplit: (panelId: PanelId, splitRatio: number) => void;
+  setPaneActiveSession: (panelId: PanelId, sessionId: string) => void;
   openExternalTerminal: (uri: string) => Promise<void>;
   registerTerminalSessionHandlers: (
     sessionId: string,
@@ -48,7 +50,7 @@ interface TerminalContextValue {
   ) => () => void;
 }
 
-const TerminalContext = createContext<TerminalContextValue | null>(null);
+export const TerminalContext = createContext<TerminalContextValue | null>(null);
 
 export function useTerminal(): TerminalContextValue {
   const ctx = useContext(TerminalContext);
@@ -83,7 +85,7 @@ function findRunningPaneSession(
     }
   }
   return terminal.sessions.find(
-    (session) => session.panelId === panelId && session.status !== "exited",
+    (session) => session.paneId === panelId && session.status !== "exited",
   );
 }
 
@@ -130,8 +132,8 @@ export function TerminalProvider({
     }
   }, [preferences, updatePreference]);
 
-  const openEmbeddedTerminal = useCallback(
-    async (uri: string, panelId: PanelId) => {
+  const openPaneTerminal = useCallback(
+    async (panelId: PanelId, uri: string) => {
       if (isRemoteUri(uri)) {
         throw new Error("Embedded terminal supports local folders only");
       }
@@ -146,7 +148,6 @@ export function TerminalProvider({
         return;
       }
 
-      dispatch({ type: "setSegment", segment: "terminal" });
       const sessionId = await spawnSession(client, uri);
       dispatch({
         type: "addSession",
@@ -155,17 +156,24 @@ export function TerminalProvider({
           uri,
           label: tabLabelForUri(uri),
           status: "running",
-          panelId,
+          paneId: panelId,
         },
       });
     },
     [client],
   );
 
+  const openEmbeddedTerminal = useCallback(
+    async (uri: string, panelId: PanelId) => {
+      await openPaneTerminal(panelId, uri);
+    },
+    [openPaneTerminal],
+  );
+
   const openNewTerminalTab = useCallback(
     async (uri: string, panelId?: PanelId) => {
       if (panelId) {
-        await openEmbeddedTerminal(uri, panelId);
+        await openPaneTerminal(panelId, uri);
         return;
       }
       if (isRemoteUri(uri)) {
@@ -182,10 +190,11 @@ export function TerminalProvider({
           uri,
           label: tabLabelForUri(uri),
           status: "running",
+          paneId: "rail",
         },
       });
     },
-    [client, ensureRailWidth, onExpandActivity, openEmbeddedTerminal],
+    [client, ensureRailWidth, onExpandActivity, openPaneTerminal],
   );
 
   const togglePaneTerminal = useCallback(
@@ -207,9 +216,9 @@ export function TerminalProvider({
         });
         return;
       }
-      await openEmbeddedTerminal(uri, panelId);
+      await openPaneTerminal(panelId, uri);
     },
-    [openEmbeddedTerminal],
+    [openPaneTerminal],
   );
 
   const markSessionExited = useCallback(
@@ -231,16 +240,6 @@ export function TerminalProvider({
 
   const switchTerminalTab = useCallback((sessionId: string) => {
     dispatch({ type: "switchSession", sessionId });
-    const session = terminalRef.current.sessions.find(
-      (item) => item.id === sessionId,
-    );
-    if (session?.panelId) {
-      dispatch({
-        type: "openPaneTerminal",
-        panelId: session.panelId,
-        sessionId,
-      });
-    }
   }, []);
 
   const setRailSegment = useCallback((segment: ActivityRailSegment) => {
@@ -257,6 +256,13 @@ export function TerminalProvider({
   const setPaneTerminalSplit = useCallback(
     (panelId: PanelId, splitRatio: number) => {
       dispatch({ type: "setPaneTerminalSplit", panelId, splitRatio });
+    },
+    [],
+  );
+
+  const setPaneActiveSession = useCallback(
+    (panelId: PanelId, sessionId: string) => {
+      dispatch({ type: "setPaneActiveSession", panelId, sessionId });
     },
     [],
   );
@@ -327,6 +333,7 @@ export function TerminalProvider({
     () => ({
       terminal,
       openEmbeddedTerminal,
+      openPaneTerminal,
       openNewTerminalTab,
       togglePaneTerminal,
       markSessionExited,
@@ -335,12 +342,14 @@ export function TerminalProvider({
       setRailSegment,
       setPaneTerminalCollapsed,
       setPaneTerminalSplit,
+      setPaneActiveSession,
       openExternalTerminal,
       registerTerminalSessionHandlers,
     }),
     [
       terminal,
       openEmbeddedTerminal,
+      openPaneTerminal,
       openNewTerminalTab,
       togglePaneTerminal,
       markSessionExited,
@@ -349,6 +358,7 @@ export function TerminalProvider({
       setRailSegment,
       setPaneTerminalCollapsed,
       setPaneTerminalSplit,
+      setPaneActiveSession,
       openExternalTerminal,
       registerTerminalSessionHandlers,
     ],
@@ -366,6 +376,7 @@ export function StubTerminalProvider({ children }: { children: ReactNode }) {
     () => ({
       terminal: createInitialTerminalState(),
       openEmbeddedTerminal: async () => {},
+      openPaneTerminal: async () => {},
       openNewTerminalTab: async () => {},
       togglePaneTerminal: async () => {},
       markSessionExited: () => {},
@@ -374,6 +385,7 @@ export function StubTerminalProvider({ children }: { children: ReactNode }) {
       setRailSegment: () => {},
       setPaneTerminalCollapsed: () => {},
       setPaneTerminalSplit: () => {},
+      setPaneActiveSession: () => {},
       openExternalTerminal: async () => {},
       registerTerminalSessionHandlers: () => () => {},
     }),
