@@ -480,6 +480,7 @@ vi.mock("@fileoctopus/ts-api", async (importOriginal) => {
         deleteProfile: vi.fn(async () => ({ ok: true })),
         setSecret: vi.fn(async () => ({ ok: true })),
         validateUri: vi.fn(async () => ({ ok: true })),
+        subscribeStatusEvents: vi.fn(async () => () => undefined),
       },
     }),
     normalizeIpcError: (error: unknown) =>

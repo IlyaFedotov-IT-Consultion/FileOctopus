@@ -14,6 +14,7 @@ pub const JOB_COMPLETED_EVENT: &str = "fileOperation:job:completed";
 pub const JOB_FAILED_EVENT: &str = "fileOperation:job:failed";
 pub const JOB_CANCELLED_EVENT: &str = "fileOperation:job:cancelled";
 pub const WATCH_CHANGED_EVENT: &str = "fs:watch:changed";
+pub const NETWORK_STATUS_EVENT: &str = "network:status";
 pub const FOLDER_SIZE_COMPLETED_EVENT: &str = "fs:folderSize:completed";
 pub const RECURSIVE_SEARCH_MATCH_EVENT: &str = "fs:recursiveSearch:match";
 pub const RECURSIVE_SEARCH_COMPLETED_EVENT: &str = "fs:recursiveSearch:completed";
@@ -369,6 +370,14 @@ pub struct NetworkProfileDto {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NetworkConnectionStatusDto {
+    pub profile_id: String,
+    pub status: String,
+    pub message: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NetworkStatusEventDto {
     pub profile_id: String,
     pub status: String,
     pub message: Option<String>,

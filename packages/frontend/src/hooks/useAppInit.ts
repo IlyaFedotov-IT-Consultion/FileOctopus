@@ -14,6 +14,7 @@ import type {
   StarredEntryDto,
   UserPreferencesDto,
   FolderSizeCompletedEventDto,
+  NetworkConnectionStatusDto,
   RecursiveSearchMatchEventDto,
   RecursiveSearchCompletedEventDto,
 } from "@fileoctopus/ts-api";
@@ -121,6 +122,7 @@ export interface UseAppInitParams {
   setPreferences: Dispatch<SetStateAction<UserPreferencesDto | null>>;
   setDensity: Dispatch<SetStateAction<DensityPreference>>;
   setActivityCollapsed: Dispatch<SetStateAction<boolean>>;
+  setNetworkStatuses: Dispatch<SetStateAction<NetworkConnectionStatusDto[]>>;
 }
 
 export interface UseAppInitReturn {
@@ -176,6 +178,7 @@ export function useAppInit({
   setPreferences,
   setDensity,
   setActivityCollapsed,
+  setNetworkStatuses,
 }: UseAppInitParams): UseAppInitReturn {
   const preferencesRef = useRef(preferences);
   const [jobMetrics, setJobMetrics] = useState<
@@ -517,6 +520,34 @@ export function useAppInit({
       }
     };
   }, [client]);
+
+  useEffect(() => {
+    let dispose: (() => void) | null = null;
+    void client.network
+      .subscribeStatusEvents((event) => {
+        setNetworkStatuses((current) => {
+          const others = current.filter(
+            (status) => status.profileId !== event.profileId,
+          );
+          return [
+            ...others,
+            {
+              profileId: event.profileId,
+              status: event.status,
+              message: event.message,
+            },
+          ];
+        });
+      })
+      .then((unsub) => {
+        dispose = unsub;
+      })
+      .catch(() => undefined);
+
+    return () => {
+      dispose?.();
+    };
+  }, [client, setNetworkStatuses]);
 
   // ── On-demand hash computation for selected file ──────────────────
   useEffect(() => {

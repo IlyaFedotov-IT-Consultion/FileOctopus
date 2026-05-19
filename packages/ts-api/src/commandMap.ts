@@ -45,6 +45,7 @@ export const commandMap: Record<string, string> = {
   "network.profileUpdate": "network_profile_update",
   "network.profileDelete": "network_profile_delete",
   "network.profileSetSecret": "network_profile_set_secret",
+  "network.profileForgetFingerprint": "network_profile_forget_fingerprint",
   "network.connect": "network_connect",
   "network.disconnect": "network_disconnect",
   "network.connectionStatus": "network_connection_status",
