@@ -35,6 +35,7 @@ function makePreferences(
     sidebarVisible: true,
     statusBarVisible: true,
     toolbarVisible: true,
+    toolbarEntries: "",
     paneMode: "dual",
     jobDrawerBehavior: "manual",
     ...overrides,
@@ -144,6 +145,28 @@ describe("SettingsDialog", () => {
     expect(onChange).toHaveBeenCalledWith("jobDrawerBehavior", "openOnError");
   });
 
+  it("opens toolbar customization from the layout section", () => {
+    const onCustomizeToolbar = vi.fn();
+    const onClose = vi.fn();
+    render(
+      <SettingsDialog
+        open
+        preferences={makePreferences()}
+        autostart={null}
+        onClose={onClose}
+        onChange={vi.fn()}
+        onSetAutostart={async () => {}}
+        onCustomizeToolbar={onCustomizeToolbar}
+      />,
+    );
+    fireEvent.click(navButton("Layout"));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Customize button bar…" }),
+    );
+    expect(onCustomizeToolbar).toHaveBeenCalledOnce();
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
   it("disables autostart switch when platform is unsupported", () => {
     const unsupported: AutostartStatusDto = {
       enabled: false,
@@ -217,7 +240,9 @@ describe("SettingsDialog", () => {
         name: "Shortcuts settings",
       });
       expect(within(content).getByText("Navigation")).toBeTruthy();
-      expect(within(content).getByText("View")).toBeTruthy();
+      expect(
+        within(content).getByRole("heading", { name: "View" }),
+      ).toBeTruthy();
       expect(within(content).getByText("File operations")).toBeTruthy();
     });
 

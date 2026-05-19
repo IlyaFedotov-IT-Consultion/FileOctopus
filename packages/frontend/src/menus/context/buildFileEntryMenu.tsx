@@ -22,6 +22,7 @@ interface FileEntryMenuParams {
   onPaste: (panelId: PanelId) => void;
   onCopyPath: (panelId: PanelId) => void;
   onCopyName: (panelId: PanelId) => void;
+  onView: (panelId: PanelId, entry: FileEntryDto | null) => void;
   onRename: (panelId: PanelId) => void;
   onCopyTo: (panelId: PanelId) => void;
   onMoveTo: (panelId: PanelId) => void;
@@ -59,6 +60,7 @@ export function buildFileEntryMenu({
   onPaste,
   onCopyPath,
   onCopyName,
+  onView,
   onRename,
   onCopyTo,
   onMoveTo,
@@ -106,6 +108,9 @@ export function buildFileEntryMenu({
           Open With Default App
         </ContextMenuItem>
       )}
+      <ContextMenuItem onClick={() => run(() => onView(panelId, entry))}>
+        View…
+      </ContextMenuItem>
       <ContextMenuItem onClick={() => run(() => onReveal(panelId, entry))}>
         Reveal in System File Manager
       </ContextMenuItem>
@@ -165,10 +170,10 @@ export function buildFileEntryMenu({
         Copy Resource URI
       </ContextMenuItem>
       <ContextMenuItem onClick={() => run(() => onCompress(panelId))}>
-        Compress…
+        Pack…
       </ContextMenuItem>
       <ContextMenuItem onClick={() => run(() => onExtract(panelId))}>
-        Extract…
+        Unpack…
       </ContextMenuItem>
       <ContextMenuItem onClick={() => run(() => onOpenTerminal(panelId))}>
         Open Terminal

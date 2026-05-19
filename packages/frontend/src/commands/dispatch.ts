@@ -10,6 +10,7 @@ import {
   type PanelId,
   type ViewMode,
 } from "../panelStore";
+import { rootUri } from "../utils/paneUtils";
 import type { CommandInvokeContext } from "./invokeContext";
 
 const LEGACY_COMMAND_ALIASES: Record<string, string> = {
@@ -31,6 +32,7 @@ export interface CommandDispatchDeps {
   refreshPanel: (panelId: PanelId) => void;
   updatePreference: (key: string, value: string) => Promise<void>;
   setSettingsOpen: (open: boolean) => void;
+  setToolbarCustomizeOpen: (open: boolean) => void;
   setShortcutsOpen: (open: boolean) => void;
   setDiagnosticsOpen: (open: boolean) => void;
   setAboutOpen: (open: boolean) => void;
@@ -44,6 +46,8 @@ export interface CommandDispatchDeps {
   setVolumePickerOpen: (open: boolean) => void;
   setFilterFocusToken: Dispatch<SetStateAction<number>>;
   setRecursiveSearchFocusToken: Dispatch<SetStateAction<number>>;
+  setPreviewOpen: (open: boolean) => void;
+  isPreviewable: (entry: FileEntryDto | null) => boolean;
   activityCollapsed: boolean;
   setActivityCollapsed: (collapsed: boolean) => void;
   markActivityPinnedOpen?: () => void;
@@ -120,6 +124,9 @@ export function dispatchCommand(
   switch (commandId) {
     case "app.settings":
       deps.setSettingsOpen(true);
+      return true;
+    case "app.customizeToolbar":
+      deps.setToolbarCustomizeOpen(true);
       return true;
     case "app.shortcuts":
       deps.setShortcutsOpen(true);
@@ -228,6 +235,9 @@ export function dispatchCommand(
     case "nav.home":
       void deps.navigatePanel(panelId, homeUri());
       return true;
+    case "nav.root":
+      void deps.navigatePanel(panelId, rootUri(tab.uri));
+      return true;
     case "nav.refresh":
       deps.refreshPanel(panelId);
       return true;
@@ -315,6 +325,21 @@ export function dispatchCommand(
     case "op.deletePermanent":
       deps.handlePermanentDelete(panelId);
       return true;
+    case "search.recursive":
+      deps.setRecursiveSearchFocusToken((value) => value + 1);
+      return true;
+    case "search.focusFilter":
+      deps.setFilterFocusToken((value) => value + 1);
+      return true;
+    case "op.view": {
+      const entry = selectedEntry;
+      if (entry && deps.isPreviewable(entry)) {
+        deps.setPreviewOpen(true);
+        return true;
+      }
+      void deps.handleProperties(panelId, entry);
+      return true;
+    }
     case "op.properties":
       void deps.handleProperties(panelId, selectedEntry);
       return true;

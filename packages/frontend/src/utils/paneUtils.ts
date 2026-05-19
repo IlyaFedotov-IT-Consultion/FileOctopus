@@ -33,6 +33,16 @@ export function parentUri(uri: string): string | null {
   return `local://${normalized.slice(0, index)}`;
 }
 
+export function rootUri(currentUri: string): string {
+  const path = localPathFromUri(currentUri);
+  const driveMatch =
+    path.match(/^\/([A-Za-z]:)[\\/]/) ?? path.match(/^([A-Za-z]:)[\\/]/);
+  if (driveMatch) {
+    return `local:///${driveMatch[1]}/`;
+  }
+  return "local:///";
+}
+
 export function breadcrumbSegments(
   uri: string,
 ): Array<{ label: string; uri: string }> {

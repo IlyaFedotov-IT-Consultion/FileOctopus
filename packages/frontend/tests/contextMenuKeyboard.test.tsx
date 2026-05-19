@@ -27,6 +27,7 @@ const baseProps = {
   onPermanentDelete: vi.fn(),
   onCopyPath: vi.fn(),
   onCopyName: vi.fn(),
+  onView: vi.fn(),
   onProperties: vi.fn(),
   onReveal: vi.fn(),
   onCompress: vi.fn(),

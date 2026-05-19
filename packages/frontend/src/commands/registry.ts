@@ -35,6 +35,16 @@ export const COMMAND_DEFINITIONS: CommandDefinition[] = [
     group: "navigation",
   },
   {
+    id: "nav.root",
+    label: "Root",
+    group: "navigation",
+  },
+  {
+    id: "nav.volumePicker",
+    label: "Drives",
+    group: "navigation",
+  },
+  {
     id: "nav.goToLocation",
     label: "Go to Location…",
     group: "navigation",
@@ -75,8 +85,8 @@ export const COMMAND_DEFINITIONS: CommandDefinition[] = [
     id: "create.folder",
     label: "New Folder",
     group: "creation",
-    shortcutMac: "⌘N",
-    shortcutWin: "Ctrl+N",
+    shortcutMac: "F7",
+    shortcutWin: "F7",
   },
   {
     id: "create.file",
@@ -108,11 +118,15 @@ export const COMMAND_DEFINITIONS: CommandDefinition[] = [
     id: "op.copyTo",
     label: "Copy To…",
     group: "operation",
+    shortcutMac: "F5",
+    shortcutWin: "F5",
   },
   {
     id: "op.moveTo",
     label: "Move To…",
     group: "operation",
+    shortcutMac: "F6",
+    shortcutWin: "F6",
   },
   {
     id: "op.rename",
@@ -125,8 +139,8 @@ export const COMMAND_DEFINITIONS: CommandDefinition[] = [
     id: "op.trash",
     label: "Move to Trash",
     group: "operation",
-    shortcutMac: "Delete",
-    shortcutWin: "Delete",
+    shortcutMac: "F8",
+    shortcutWin: "F8",
   },
   {
     id: "op.deletePermanent",
@@ -140,8 +154,8 @@ export const COMMAND_DEFINITIONS: CommandDefinition[] = [
     id: "op.properties",
     label: "Properties",
     group: "operation",
-    shortcutMac: "⌘I",
-    shortcutWin: "Ctrl+I",
+    shortcutMac: "⌥Return",
+    shortcutWin: "Alt+Enter",
   },
   {
     id: "op.reveal",
@@ -156,18 +170,27 @@ export const COMMAND_DEFINITIONS: CommandDefinition[] = [
     shortcutWin: "Enter",
   },
   {
+    id: "op.view",
+    label: "View",
+    group: "operation",
+    shortcutMac: "F3",
+    shortcutWin: "F3",
+  },
+  {
     id: "op.openDefault",
     label: "Open With Default App",
     group: "operation",
+    shortcutMac: "F4",
+    shortcutWin: "F4",
   },
   {
     id: "op.compress",
-    label: "Compress…",
+    label: "Pack",
     group: "operation",
   },
   {
     id: "op.extract",
-    label: "Extract…",
+    label: "Unpack",
     group: "operation",
   },
   {
@@ -287,6 +310,20 @@ export const COMMAND_DEFINITIONS: CommandDefinition[] = [
     shortcutWin: "Ctrl+U",
   },
   {
+    id: "search.recursive",
+    label: "Search",
+    group: "view",
+    shortcutMac: "⌘F",
+    shortcutWin: "Ctrl+F",
+  },
+  {
+    id: "search.focusFilter",
+    label: "Filter",
+    group: "view",
+    shortcutMac: "⌘⇧F",
+    shortcutWin: "Ctrl+Shift+F",
+  },
+  {
     id: "view.toggleActivity",
     label: "Jobs & Activity",
     group: "view",
@@ -334,6 +371,11 @@ export const COMMAND_DEFINITIONS: CommandDefinition[] = [
     id: "clipboard.clear",
     label: "Clear File Clipboard",
     group: "clipboard",
+  },
+  {
+    id: "app.customizeToolbar",
+    label: "Customize Button Bar",
+    group: "app",
   },
   {
     id: "app.settings",

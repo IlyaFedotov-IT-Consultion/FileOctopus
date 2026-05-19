@@ -39,6 +39,7 @@ describe("accessibility basics", () => {
           sidebarVisible: true,
           statusBarVisible: true,
           toolbarVisible: true,
+          toolbarEntries: "",
           paneMode: "dual",
           jobDrawerBehavior: "manual",
         }}
@@ -96,6 +97,7 @@ describe("accessibility basics", () => {
         onPermanentDelete={noop}
         onCopyPath={noop}
         onCopyName={noop}
+        onView={noop}
         onProperties={noop}
         onReveal={noop}
         onCreateFolder={noop}

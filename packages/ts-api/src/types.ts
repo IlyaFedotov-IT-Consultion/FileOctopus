@@ -196,6 +196,7 @@ export interface UserPreferencesDto {
   sidebarVisible: boolean;
   statusBarVisible: boolean;
   toolbarVisible: boolean;
+  toolbarEntries: string;
   paneMode: string;
   jobDrawerBehavior: string;
 }

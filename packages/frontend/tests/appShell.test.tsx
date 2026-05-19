@@ -75,6 +75,7 @@ const preferencesGet = vi.fn(async () => ({
     sidebarVisible: true,
     statusBarVisible: true,
     toolbarVisible: true,
+    toolbarEntries: "",
     paneMode: "dual",
     jobDrawerBehavior: "manual",
   },
@@ -604,7 +605,7 @@ describe("FileOctopusShell", () => {
     render(<FileOctopusShell />);
     await applyLeftEntries([entry("alpha.txt")]);
 
-    clickToolbar("Copy To…", 0);
+    clickToolbar("Copy", 0);
     expect(
       (screen.getByLabelText("Conflict policy") as HTMLSelectElement).value,
     ).toBe("fail");
@@ -656,9 +657,12 @@ describe("FileOctopusShell", () => {
       });
     });
 
-    const activityBtn = screen.getByTitle("Open Jobs & Activity panel");
+    const activityBtn = await screen.findByRole("button", {
+      name: /Copying 50%/i,
+    });
+    expect(activityBtn).toBeTruthy();
     fireEvent.click(activityBtn);
-    expect(screen.getByText(/copying/i)).toBeTruthy();
+    expect(screen.getAllByText(/copying/i).length).toBeGreaterThan(0);
     fireEvent.click(screen.getAllByText("Cancel")[0]);
     expect(cancelJob).toHaveBeenCalledWith({ jobId: "job-live" });
 
@@ -745,7 +749,7 @@ describe("FileOctopusShell", () => {
     render(<FileOctopusShell />);
     await applyLeftEntries([entry("alpha.txt")]);
 
-    clickToolbar("Compress…", 0);
+    clickToolbar("Pack", 0);
 
     await waitFor(() => expect(startFileOperation).toHaveBeenCalledTimes(1));
     expect(planFileOperation).toHaveBeenCalledWith({
@@ -787,7 +791,7 @@ describe("FileOctopusShell", () => {
     render(<FileOctopusShell />);
     await applyLeftEntries([entry("alpha.txt")]);
 
-    clickToolbar("Properties");
+    clickToolbar("Props");
     expect(await screen.findByText("/tmp/alpha.txt")).toBeTruthy();
 
     fireEvent.click(screen.getByText("Close"));
@@ -820,7 +824,7 @@ describe("FileOctopusShell", () => {
     // Clear any computeHash calls from the hash column useEffect
     computeHash.mockClear();
 
-    clickToolbar("Checksum…", 0);
+    clickToolbar("Checksum", 0);
 
     await waitFor(() =>
       expect(computeHash).toHaveBeenCalledWith({
@@ -834,7 +838,7 @@ describe("FileOctopusShell", () => {
     render(<FileOctopusShell />);
     await applyLeftEntries([folderEntry("mydir")]);
 
-    clickToolbar("Checksum…", 0);
+    clickToolbar("Checksum", 0);
 
     // Should not call computeHash for a directory
     await waitFor(() => {

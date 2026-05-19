@@ -50,6 +50,8 @@ pub struct UserPreferencesDto {
     pub sidebar_visible: bool,
     pub status_bar_visible: bool,
     pub toolbar_visible: bool,
+    #[serde(default)]
+    pub toolbar_entries: String,
     pub pane_mode: String,
     pub job_drawer_behavior: String,
 }
@@ -787,6 +789,7 @@ impl From<config::UserPreferences> for UserPreferencesDto {
             sidebar_visible: value.sidebar_visible,
             status_bar_visible: value.status_bar_visible,
             toolbar_visible: value.toolbar_visible,
+            toolbar_entries: value.toolbar_entries,
             pane_mode: value.pane_mode,
             job_drawer_behavior: value.job_drawer_behavior,
         }

@@ -11,7 +11,7 @@ pub use navigation::{
     FavoriteEntry, NavigationError, NavigationRepository, RecentBucket, RecentEntry, StarredEntry,
 };
 
-pub const SCHEMA_VERSION: u32 = 7;
+pub const SCHEMA_VERSION: u32 = 8;
 
 #[derive(Debug, Error)]
 pub enum PreferencesError {
@@ -45,6 +45,7 @@ pub struct UserPreferences {
     pub sidebar_visible: bool,
     pub status_bar_visible: bool,
     pub toolbar_visible: bool,
+    pub toolbar_entries: String,
     pub pane_mode: String,
     pub job_drawer_behavior: String,
 }
@@ -71,6 +72,7 @@ impl Default for UserPreferences {
             sidebar_visible: false,
             status_bar_visible: true,
             toolbar_visible: true,
+            toolbar_entries: String::new(),
             pane_mode: "dual".to_string(),
             job_drawer_behavior: "manual".to_string(),
         }
@@ -170,6 +172,11 @@ impl PreferencesRepository {
 
         if user_version < 7 {
             self.backfill_v7_keys(&connection)?;
+            connection.pragma_update(None, "user_version", SCHEMA_VERSION)?;
+        }
+
+        if user_version < 8 {
+            self.backfill_v8_keys(&connection)?;
             connection.pragma_update(None, "user_version", SCHEMA_VERSION)?;
         }
 
@@ -291,6 +298,22 @@ impl PreferencesRepository {
         Ok(())
     }
 
+    fn backfill_v8_keys(&self, connection: &Connection) -> Result<(), PreferencesError> {
+        let defaults = UserPreferences::default();
+        let now = chrono_lite_now();
+        let rows = [("toolbarEntries", defaults.toolbar_entries.clone())];
+
+        for (key, value) in rows {
+            connection.execute(
+                "insert into preferences (key, value, updated_at) values (?1, ?2, ?3)
+                 on conflict(key) do nothing",
+                params![key, value, now],
+            )?;
+        }
+
+        Ok(())
+    }
+
     fn seed_defaults(&self, connection: &Connection) -> Result<(), PreferencesError> {
         let defaults = UserPreferences::default();
         let now = chrono_lite_now();
@@ -381,6 +404,7 @@ impl UserPreferences {
             ("sidebarVisible", self.sidebar_visible.to_string()),
             ("statusBarVisible", self.status_bar_visible.to_string()),
             ("toolbarVisible", self.toolbar_visible.to_string()),
+            ("toolbarEntries", self.toolbar_entries.clone()),
             ("paneMode", self.pane_mode.clone()),
             ("jobDrawerBehavior", self.job_drawer_behavior.clone()),
         ]
@@ -459,6 +483,9 @@ fn apply_value(
         "toolbarVisible" => {
             preferences.toolbar_visible = parse_bool(value, key)?;
         }
+        "toolbarEntries" => {
+            preferences.toolbar_entries = parse_toolbar_entries(value)?;
+        }
         "paneMode" => {
             preferences.pane_mode = parse_pane_mode(value)?;
         }
@@ -469,6 +496,17 @@ fn apply_value(
     }
 
     Ok(())
+}
+
+fn parse_toolbar_entries(value: &str) -> Result<String, PreferencesError> {
+    if value.is_empty() {
+        return Ok(String::new());
+    }
+
+    serde_json::from_str::<Vec<serde_json::Value>>(value)
+        .map_err(|error| invalid_value("toolbarEntries", format!("invalid JSON array: {error}")))?;
+
+    Ok(value.to_string())
 }
 
 fn parse_theme(value: &str) -> Result<String, PreferencesError> {
@@ -631,6 +669,7 @@ mod tests {
         assert_eq!(rows["sidebarVisible"], "false");
         assert_eq!(rows["statusBarVisible"], "true");
         assert_eq!(rows["toolbarVisible"], "true");
+        assert_eq!(rows["toolbarEntries"], "");
         assert_eq!(rows["paneMode"], "dual");
         assert_eq!(rows["jobDrawerBehavior"], "manual");
     }
@@ -759,6 +798,69 @@ mod tests {
         let reloaded = PreferencesRepository::new(path).unwrap().get_all().unwrap();
         assert!(!reloaded.status_bar_visible);
         assert!(!reloaded.toolbar_visible);
+    }
+
+    #[test]
+    fn round_trips_toolbar_entries() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("preferences.sqlite");
+        let repository = PreferencesRepository::new(path.clone()).unwrap();
+        let entries = r#"[{"kind":"command","commandId":"op.copy"}]"#;
+        repository.set("toolbarEntries", entries).unwrap();
+        let reloaded = PreferencesRepository::new(path).unwrap().get_all().unwrap();
+        assert_eq!(reloaded.toolbar_entries, entries);
+    }
+
+    #[test]
+    fn rejects_invalid_toolbar_entries() {
+        let dir = tempdir().unwrap();
+        let repository = PreferencesRepository::new(dir.path().join("preferences.sqlite")).unwrap();
+        let error = repository.set("toolbarEntries", "not-json").unwrap_err();
+        assert!(matches!(error, PreferencesError::InvalidValue { .. }));
+    }
+
+    #[test]
+    fn migrates_v7_database_to_current_schema_with_toolbar_entries_default() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("preferences.sqlite");
+
+        {
+            let connection = Connection::open(&path).unwrap();
+            connection
+                .execute(
+                    "create table if not exists preferences (
+                        key text primary key,
+                        value text not null,
+                        updated_at text not null
+                    )",
+                    [],
+                )
+                .unwrap();
+            connection
+                .execute(
+                    "insert into preferences (key, value, updated_at) values
+                        ('theme', 'dark', '0'),
+                        ('toolbarVisible', 'true', '0')",
+                    [],
+                )
+                .unwrap();
+            connection
+                .pragma_update(None, "user_version", 7u32)
+                .unwrap();
+        }
+
+        let repository = PreferencesRepository::new(path.clone()).unwrap();
+        let prefs = repository.get_all().unwrap();
+
+        assert_eq!(prefs.theme, "dark");
+        assert!(prefs.toolbar_visible);
+        assert_eq!(prefs.toolbar_entries, "");
+
+        let connection = Connection::open(&path).unwrap();
+        let version: u32 = connection
+            .query_row("pragma user_version", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(version, SCHEMA_VERSION);
     }
 
     #[test]

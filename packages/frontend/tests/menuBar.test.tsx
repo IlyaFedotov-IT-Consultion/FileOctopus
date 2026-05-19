@@ -17,6 +17,7 @@ function createMenuBarProps(
     onNewFolder: noop,
     onNewFile: noop,
     onOpenSelected: noop,
+    onView: noop,
     onOpenWithDefaultApp: noop,
     onRevealInFileManager: noop,
     onRename: noop,
@@ -81,6 +82,7 @@ function createMenuBarProps(
     statusBarVisible: true,
     dualPane: true,
     showHidden: false,
+    onCustomizeToolbar: noop,
     ...overrides,
   };
 }
@@ -106,8 +108,8 @@ describe("MenuBar", () => {
 
     openTopMenu("File");
 
-    expect(screen.getByRole("menuitem", { name: /Compress/ })).toBeTruthy();
-    expect(screen.getByRole("menuitem", { name: /Extract/ })).toBeTruthy();
+    expect(screen.getByRole("menuitem", { name: /Pack/ })).toBeTruthy();
+    expect(screen.getByRole("menuitem", { name: /Unpack/ })).toBeTruthy();
 
     fireEvent.keyDown(window, { key: "Escape" });
 
@@ -127,11 +129,11 @@ describe("MenuBar", () => {
 
     openTopMenu("File");
 
-    expect(screen.getByRole("menuitem", { name: /Compress/ })).toHaveProperty(
+    expect(screen.getByRole("menuitem", { name: /Pack/ })).toHaveProperty(
       "disabled",
       true,
     );
-    expect(screen.getByRole("menuitem", { name: /Extract/ })).toHaveProperty(
+    expect(screen.getByRole("menuitem", { name: /Unpack/ })).toHaveProperty(
       "disabled",
       true,
     );
@@ -145,14 +147,14 @@ describe("MenuBar", () => {
     expect(screen.getByRole("menuitem", { name: /Compact View/ })).toBeTruthy();
   });
 
-  it("invokes onCompress when Compress is selected", () => {
+  it("invokes onCompress when Pack is selected", () => {
     const onCompress = vi.fn();
     render(
       <MenuBar {...createMenuBarProps({ hasSelection: true, onCompress })} />,
     );
 
     openTopMenu("File");
-    fireEvent.click(screen.getByRole("menuitem", { name: /Compress/ }));
+    fireEvent.click(screen.getByRole("menuitem", { name: /Pack/ }));
 
     expect(onCompress).toHaveBeenCalledOnce();
   });

@@ -120,6 +120,8 @@ function FileOctopusAppInner({
     setOperationHistoryOpen,
     volumePickerOpen,
     setVolumePickerOpen,
+    toolbarCustomizeOpen,
+    setToolbarCustomizeOpen,
     dialog,
     setSettingsOpen,
     setShortcutsOpen,
@@ -302,6 +304,7 @@ function FileOctopusAppInner({
     refreshPanel,
     updatePreference,
     setSettingsOpen,
+    setToolbarCustomizeOpen,
     setShortcutsOpen,
     setDiagnosticsOpen,
     setAboutOpen,
@@ -313,6 +316,8 @@ function FileOctopusAppInner({
     setVolumePickerOpen,
     setFilterFocusToken,
     setRecursiveSearchFocusToken,
+    setPreviewOpen,
+    isPreviewable,
     activityCollapsed,
     setActivityCollapsed,
     markActivityPinnedOpen,
@@ -468,6 +473,7 @@ function FileOctopusAppInner({
     statusBarVisible,
     toolbarVisible,
     recentLocations: [...recentToday, ...recentWeek],
+    onCustomizeToolbar: () => handleCommandSelect("app.customizeToolbar"),
   });
 
   function makeFilePanelProps(pid: "left" | "right"): FilePanelProps {
@@ -604,6 +610,8 @@ function FileOctopusAppInner({
       errorDetailsOpen={errorDetailsOpen}
       operationHistoryOpen={operationHistoryOpen}
       volumePickerOpen={volumePickerOpen}
+      toolbarCustomizeOpen={toolbarCustomizeOpen}
+      setToolbarCustomizeOpen={setToolbarCustomizeOpen}
       setGoToLocationOpen={setGoToLocationOpen}
       setManageFavoritesOpen={setManageFavoritesOpen}
       setRecentLocationsOpen={setRecentLocationsOpen}

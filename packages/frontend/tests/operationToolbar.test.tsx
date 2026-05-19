@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { ComponentProps } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { DEFAULT_TOOLBAR_ENTRIES } from "../src/commands/toolbarConfig";
 import { OperationToolbar } from "../src/pane/OperationToolbar";
 
 function createProps(
@@ -11,6 +12,12 @@ function createProps(
     selectedCount: 0,
     canRename: false,
     canPaste: false,
+    canView: true,
+    canEdit: false,
+    hotlistTargets: [],
+    hotlistOverflow: [],
+    driveVolumes: [],
+    jobsDisplay: { label: "Jobs", ariaLabel: "Jobs", activeCount: 0 },
     showHidden: false,
     viewMode: "details" as const,
     canGoBack: false,
@@ -19,8 +26,13 @@ function createProps(
     onBack: noop,
     onForward: noop,
     onUp: noop,
+    onRoot: noop,
+    onHome: noop,
+    onDrives: noop,
     onRefresh: noop,
     onCommandSearch: noop,
+    onView: noop,
+    onOpenHotlistTarget: noop,
     onCreateFolder: noop,
     onCreateFile: noop,
     onRename: noop,
@@ -43,6 +55,9 @@ function createProps(
     onToggleHidden: noop,
     onSelectAll: noop,
     onViewMode: noop,
+    toolbarEntries: DEFAULT_TOOLBAR_ENTRIES,
+    onCommand: noop,
+    onCustomizeToolbar: noop,
     ...overrides,
   };
 }
@@ -51,37 +66,64 @@ afterEach(() => {
   cleanup();
 });
 
-describe("OperationToolbar command search", () => {
-  it("opens command palette on click without keeping focus on the trigger", () => {
-    const onCommandSearch = vi.fn();
-    render(<OperationToolbar {...createProps({ onCommandSearch })} />);
+describe("OperationToolbar", () => {
+  it("renders commander labels without function-key prefixes", () => {
+    render(<OperationToolbar {...createProps()} />);
 
-    const input = screen.getByLabelText("Open command palette");
-    fireEvent.click(input);
-
-    expect(onCommandSearch).toHaveBeenCalledOnce();
-    expect(document.activeElement).not.toBe(input);
+    expect(screen.getByRole("button", { name: "View" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Trash" })).toBeTruthy();
+    expect(screen.queryByText("F3")).toBeNull();
+    expect(screen.queryByText("F8")).toBeNull();
   });
 
-  it("opens command palette on Enter without keeping focus on the trigger", () => {
-    const onCommandSearch = vi.fn();
-    render(<OperationToolbar {...createProps({ onCommandSearch })} />);
+  it("opens customize dialog from toolbar context menu", () => {
+    const onCustomizeToolbar = vi.fn();
+    render(<OperationToolbar {...createProps({ onCustomizeToolbar })} />);
 
-    const input = screen.getByLabelText("Open command palette");
-    input.focus();
-    fireEvent.keyDown(input, { key: "Enter" });
+    fireEvent.contextMenu(screen.getByLabelText("Commander toolbar"));
 
-    expect(onCommandSearch).toHaveBeenCalledOnce();
-    expect(document.activeElement).not.toBe(input);
+    expect(onCustomizeToolbar).toHaveBeenCalledOnce();
   });
 
-  it("does not open command palette on focus alone", () => {
-    const onCommandSearch = vi.fn();
-    render(<OperationToolbar {...createProps({ onCommandSearch })} />);
+  it("does not render a permanent command palette input", () => {
+    render(<OperationToolbar {...createProps()} />);
 
-    const input = screen.getByLabelText("Open command palette");
-    fireEvent.focus(input);
+    expect(screen.queryByLabelText("Open command palette")).toBeNull();
+  });
 
-    expect(onCommandSearch).not.toHaveBeenCalled();
+  it("moves focus across toolbar buttons with arrow keys", () => {
+    render(
+      <OperationToolbar
+        {...createProps({ canGoBack: true, canGoForward: true })}
+      />,
+    );
+
+    const back = screen.getByRole("button", { name: "Back" });
+    const forward = screen.getByRole("button", { name: "Forward" });
+
+    back.focus();
+    fireEvent.keyDown(back, { key: "ArrowRight" });
+    expect(document.activeElement).toBe(forward);
+
+    fireEvent.keyDown(forward, { key: "ArrowLeft" });
+    expect(document.activeElement).toBe(back);
+  });
+
+  it("jumps between toolbar groups with ctrl+arrow keys", () => {
+    render(
+      <OperationToolbar
+        {...createProps({ canGoBack: true, canGoForward: true })}
+      />,
+    );
+
+    const back = screen.getByRole("button", { name: "Back" });
+    const view = screen.getByRole("button", { name: "View" });
+
+    back.focus();
+    fireEvent.keyDown(back, { key: "ArrowRight", ctrlKey: true });
+    expect(document.activeElement).toBe(view);
+
+    fireEvent.keyDown(view, { key: "ArrowLeft", ctrlKey: true });
+    expect(document.activeElement).toBe(back);
   });
 });

@@ -51,6 +51,7 @@ const FALLBACK_PREFERENCES: UserPreferencesDto = {
   sidebarVisible: true,
   statusBarVisible: true,
   toolbarVisible: true,
+  toolbarEntries: "",
   paneMode: "dual",
   jobDrawerBehavior: "manual",
 };
@@ -87,6 +88,7 @@ export interface DialogOverlayGroupProps {
   fs: FsClient;
   updatePreference: (key: string, value: string) => void;
   handleSetAutostart: (enabled: boolean) => Promise<void>;
+  onCustomizeToolbar?: () => void;
   handleCommandSelect: (
     id: string,
     panelId?: import("../panelStore").PanelId,
@@ -178,6 +180,7 @@ export function DialogOverlayGroup({
   fs,
   updatePreference,
   handleSetAutostart,
+  onCustomizeToolbar,
   handleCommandSelect,
   setSettingsOpen,
   setShortcutsOpen,
@@ -227,6 +230,7 @@ export function DialogOverlayGroup({
         onClose={() => setSettingsOpen(false)}
         onChange={(key, value) => void updatePreference(key, value)}
         onSetAutostart={handleSetAutostart}
+        onCustomizeToolbar={onCustomizeToolbar}
       />
       <ShortcutsDialog
         open={shortcutsOpen}

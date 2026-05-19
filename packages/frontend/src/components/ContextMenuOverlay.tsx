@@ -73,6 +73,9 @@ export function ContextMenuOverlay({
       onPermanentDelete={() => run("op.deletePermanent")}
       onCopyPath={() => run("clipboard.copyPath")}
       onCopyName={() => run("clipboard.copyName")}
+      onView={(pid, entry) =>
+        runPanelCommand(pid, "op.view", entry ?? contextEntry ?? null)
+      }
       onProperties={(pid, entry) =>
         runPanelCommand(pid, "op.properties", entry ?? contextEntry ?? null)
       }
