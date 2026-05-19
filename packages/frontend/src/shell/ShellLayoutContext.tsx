@@ -48,6 +48,10 @@ export interface ShellLayoutContextValue {
   networkStatuses: NetworkConnectionStatusDto[];
   preferences: UserPreferencesDto | null;
   updatePreference: (key: string, value: string) => Promise<void>;
+  settingsPreferenceChange: (key: string, value: string) => void;
+  closePaneTerminalConfirmOpen: boolean;
+  setClosePaneTerminalConfirmOpen: (open: boolean) => void;
+  onConfirmClosePaneWithTerminal: () => void;
   client: FileOctopusClient;
   jobs: Record<string, JobSnapshot>;
   jobMetrics: Record<

@@ -6,7 +6,7 @@ import {
   activeTab,
   selectVisibleEntries,
 } from "../panelStore";
-import { isEditableTarget } from "../shortcuts";
+import { isEditableTarget, isTerminalInputContext } from "../shortcuts";
 import { createCommanderActions } from "../shell/commanderActions";
 
 export interface UseKeyboardShortcutsDeps {
@@ -92,7 +92,7 @@ export function createKeyboardShortcutsHandler(
       }
     }
 
-    if (isEditableTarget(event.target)) {
+    if (isEditableTarget(event.target) || isTerminalInputContext()) {
       return;
     }
 

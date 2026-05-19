@@ -21,6 +21,7 @@ import { GoToLocationDialog } from "./dialogs/GoToLocationDialog";
 import { ManageFavoritesDialog } from "./dialogs/ManageFavoritesDialog";
 import { RecentLocationsDialog } from "./dialogs/RecentLocationsDialog";
 import { ClearRecentLocationsDialog } from "./dialogs/ClearRecentLocationsDialog";
+import { ClosePaneTerminalDialog } from "./dialogs/ClosePaneTerminalDialog";
 import { ErrorDetailsDialog } from "./dialogs/ErrorDetailsDialog";
 import { OperationHistoryDialog } from "./dialogs/OperationHistoryDialog";
 import { VolumePickerDialog } from "./dialogs/VolumePickerDialog";
@@ -60,6 +61,11 @@ const FALLBACK_PREFERENCES: UserPreferencesDto = {
   paneMode: "dual",
   jobDrawerBehavior: "manual",
   showAdvancedCopyOptions: false,
+  paneTerminalHeightLeft: 0.35,
+  paneTerminalHeightRight: 0.35,
+  paneTerminalDefaultOpen: false,
+  terminalCdOnNavigate: false,
+  confirmClosePaneWithTerminal: true,
 };
 
 export interface DialogOverlayGroupProps {
@@ -74,7 +80,10 @@ export interface DialogOverlayGroupProps {
   manageFavoritesOpen: boolean;
   recentLocationsOpen: boolean;
   clearRecentLocationsOpen: boolean;
+  closePaneTerminalConfirmOpen: boolean;
   errorDetailsOpen: boolean;
+  settingsPreferenceChange?: (key: string, value: string) => void;
+  onConfirmClosePaneWithTerminal: () => void;
   operationHistoryOpen: boolean;
   volumePickerOpen: boolean;
   networkLocationsOpen: boolean;
@@ -114,6 +123,7 @@ export interface DialogOverlayGroupProps {
   setManageFavoritesOpen: (open: boolean) => void;
   setRecentLocationsOpen: (open: boolean) => void;
   setClearRecentLocationsOpen: (open: boolean) => void;
+  setClosePaneTerminalConfirmOpen: (open: boolean) => void;
   setErrorDetailsOpen: (open: boolean) => void;
   setOperationHistoryOpen: (open: boolean) => void;
   setVolumePickerOpen: (open: boolean) => void;
@@ -192,7 +202,10 @@ export function DialogOverlayGroup({
   manageFavoritesOpen,
   recentLocationsOpen,
   clearRecentLocationsOpen,
+  closePaneTerminalConfirmOpen,
   errorDetailsOpen,
+  settingsPreferenceChange,
+  onConfirmClosePaneWithTerminal,
   operationHistoryOpen,
   volumePickerOpen,
   networkLocationsOpen,
@@ -229,6 +242,7 @@ export function DialogOverlayGroup({
   setManageFavoritesOpen,
   setRecentLocationsOpen,
   setClearRecentLocationsOpen,
+  setClosePaneTerminalConfirmOpen,
   setErrorDetailsOpen,
   setOperationHistoryOpen,
   setVolumePickerOpen,
@@ -275,7 +289,10 @@ export function DialogOverlayGroup({
         preferences={preferences ?? FALLBACK_PREFERENCES}
         autostart={autostart}
         onClose={() => setSettingsOpen(false)}
-        onChange={(key, value) => void updatePreference(key, value)}
+        onChange={(key, value) => {
+          const change = settingsPreferenceChange ?? updatePreference;
+          void change(key, value);
+        }}
         onSetAutostart={handleSetAutostart}
         onCustomizeToolbar={onCustomizeToolbar}
       />
@@ -327,6 +344,11 @@ export function DialogOverlayGroup({
         open={clearRecentLocationsOpen}
         onClose={() => setClearRecentLocationsOpen(false)}
         onConfirm={onClearRecentEntries}
+      />
+      <ClosePaneTerminalDialog
+        open={closePaneTerminalConfirmOpen}
+        onClose={() => setClosePaneTerminalConfirmOpen(false)}
+        onConfirm={onConfirmClosePaneWithTerminal}
       />
       <ErrorDetailsDialog
         open={errorDetailsOpen}

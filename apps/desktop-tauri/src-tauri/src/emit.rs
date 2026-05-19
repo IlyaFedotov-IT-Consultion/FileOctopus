@@ -1,7 +1,10 @@
 use app_ipc::{job_event_name, job_event_payload};
 use jobs::JobEvent;
-use tauri::{AppHandle, Emitter, Manager};
+#[cfg(target_os = "linux")]
+use tauri::Manager;
+use tauri::{AppHandle, Emitter};
 
+#[cfg(target_os = "linux")]
 fn eval_event_js(event: &str, payload_json: &str) -> String {
     let event_lit = event.replace('\\', "\\\\").replace('\'', "\\'");
     let safe = serde_json::to_string(payload_json).unwrap_or_else(|_| "\"{}\"".to_string());

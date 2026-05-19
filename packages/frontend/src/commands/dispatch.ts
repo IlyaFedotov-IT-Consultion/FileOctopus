@@ -32,6 +32,7 @@ export interface CommandDispatchDeps {
   goHistory: (panelId: PanelId, direction: "back" | "forward") => Promise<void>;
   refreshPanel: (panelId: PanelId) => void;
   updatePreference: (key: string, value: string) => Promise<void>;
+  requestPaneModeChange: (next: "single" | "dual") => void;
   setSettingsOpen: (open: boolean) => void;
   setToolbarCustomizeOpen: (open: boolean) => void;
   setShortcutsOpen: (open: boolean) => void;
@@ -163,7 +164,7 @@ export function dispatchCommand(
       return true;
     case "view.toggleDualPane": {
       const next = deps.preferences?.paneMode === "single" ? "dual" : "single";
-      void deps.updatePreference("paneMode", next);
+      deps.requestPaneModeChange(next);
       return true;
     }
     case "view.toggleActivity": {

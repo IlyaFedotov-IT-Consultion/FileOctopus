@@ -35,6 +35,11 @@ const basePreferences = {
   paneMode: "dual",
   jobDrawerBehavior: "auto",
   showAdvancedCopyOptions: false,
+  paneTerminalHeightLeft: 0.35,
+  paneTerminalHeightRight: 0.35,
+  paneTerminalDefaultOpen: false,
+  terminalCdOnNavigate: false,
+  confirmClosePaneWithTerminal: true,
 };
 
 function renderDialog(overrides: Record<string, unknown> = {}) {

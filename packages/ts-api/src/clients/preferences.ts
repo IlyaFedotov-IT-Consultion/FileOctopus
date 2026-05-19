@@ -47,7 +47,10 @@ export function preferenceValue(
     key === "sidebarVisible" ||
     key === "statusBarVisible" ||
     key === "toolbarVisible" ||
-    key === "showAdvancedCopyOptions"
+    key === "showAdvancedCopyOptions" ||
+    key === "paneTerminalDefaultOpen" ||
+    key === "terminalCdOnNavigate" ||
+    key === "confirmClosePaneWithTerminal"
   ) {
     return value === "true";
   }
@@ -55,7 +58,9 @@ export function preferenceValue(
   if (
     key === "sidebarWidth" ||
     key === "activityPanelWidth" ||
-    key === "splitRatio"
+    key === "splitRatio" ||
+    key === "paneTerminalHeightLeft" ||
+    key === "paneTerminalHeightRight"
   ) {
     return Number(value);
   }

@@ -247,6 +247,11 @@ export interface UserPreferencesDto {
   paneMode: string;
   jobDrawerBehavior: string;
   showAdvancedCopyOptions: boolean;
+  paneTerminalHeightLeft: number;
+  paneTerminalHeightRight: number;
+  paneTerminalDefaultOpen: boolean;
+  terminalCdOnNavigate: boolean;
+  confirmClosePaneWithTerminal: boolean;
 }
 
 export interface AutostartStatusDto {

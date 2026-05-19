@@ -12,9 +12,15 @@ import {
   isRemoteUri,
   normalizeIpcError,
   type FileOctopusClient,
+  type UserPreferencesDto,
 } from "@fileoctopus/ts-api";
 import { useShell } from "./ShellProvider";
 import type { PanelId } from "../../panelStore";
+import { localPathFromUri } from "../../utils/paneUtils";
+import {
+  encodeTerminalInput,
+  shellEscapePosixPath,
+} from "../../terminal/shellEscape";
 import {
   createInitialTerminalState,
   tabLabelForUri,
@@ -22,6 +28,8 @@ import {
   type ActivityRailSegment,
   type TerminalState,
 } from "../../terminal/terminalSlice";
+
+const PANE_TERMINAL_HEIGHT_DEBOUNCE_MS = 400;
 
 const MIN_TERMINAL_RAIL_WIDTH = 480;
 
@@ -43,6 +51,7 @@ interface TerminalContextValue {
   setPaneTerminalCollapsed: (panelId: PanelId, collapsed: boolean) => void;
   setPaneTerminalSplit: (panelId: PanelId, splitRatio: number) => void;
   setPaneActiveSession: (panelId: PanelId, sessionId: string) => void;
+  syncTerminalCwd: (panelId: PanelId, uri: string) => void;
   openExternalTerminal: (uri: string) => Promise<void>;
   registerTerminalSessionHandlers: (
     sessionId: string,
@@ -97,7 +106,7 @@ export function TerminalProvider({
 }: {
   children: ReactNode;
   updatePreference: (key: string, value: string) => Promise<void>;
-  preferences: { activityPanelWidth: number } | null;
+  preferences: UserPreferencesDto | null;
   onExpandActivity: () => void;
 }) {
   const { client } = useShell();
@@ -109,6 +118,8 @@ export function TerminalProvider({
   const terminalRef = useRef(terminal);
   terminalRef.current = terminal;
   const sessionHandlers = useRef(new Map<string, TerminalSessionHandlers>());
+  const heightPersistTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hydratedPreferencesRef = useRef(false);
 
   const registerTerminalSessionHandlers = useCallback(
     (sessionId: string, handlers: TerminalSessionHandlers) => {
@@ -132,18 +143,32 @@ export function TerminalProvider({
     }
   }, [preferences, updatePreference]);
 
+  const paneSplitRatio = useCallback(
+    (panelId: PanelId) => {
+      if (!preferences) {
+        return undefined;
+      }
+      return panelId === "left"
+        ? preferences.paneTerminalHeightLeft
+        : preferences.paneTerminalHeightRight;
+    },
+    [preferences],
+  );
+
   const openPaneTerminal = useCallback(
     async (panelId: PanelId, uri: string) => {
       if (isRemoteUri(uri)) {
         throw new Error("Embedded terminal supports local folders only");
       }
 
+      const splitRatio = paneSplitRatio(panelId);
       const existing = findRunningPaneSession(terminalRef.current, panelId);
       if (existing) {
         dispatch({
           type: "openPaneTerminal",
           panelId,
           sessionId: existing.id,
+          splitRatio,
         });
         return;
       }
@@ -159,8 +184,14 @@ export function TerminalProvider({
           paneId: panelId,
         },
       });
+      dispatch({
+        type: "openPaneTerminal",
+        panelId,
+        sessionId,
+        splitRatio,
+      });
     },
-    [client],
+    [client, paneSplitRatio],
   );
 
   const openEmbeddedTerminal = useCallback(
@@ -253,12 +284,76 @@ export function TerminalProvider({
     [],
   );
 
+  const persistPaneTerminalHeight = useCallback(
+    (panelId: PanelId, splitRatio: number) => {
+      const key =
+        panelId === "left"
+          ? "paneTerminalHeightLeft"
+          : "paneTerminalHeightRight";
+      if (heightPersistTimer.current) {
+        clearTimeout(heightPersistTimer.current);
+      }
+      heightPersistTimer.current = setTimeout(() => {
+        heightPersistTimer.current = null;
+        void updatePreference(key, String(splitRatio));
+      }, PANE_TERMINAL_HEIGHT_DEBOUNCE_MS);
+    },
+    [updatePreference],
+  );
+
   const setPaneTerminalSplit = useCallback(
     (panelId: PanelId, splitRatio: number) => {
       dispatch({ type: "setPaneTerminalSplit", panelId, splitRatio });
+      persistPaneTerminalHeight(panelId, splitRatio);
     },
-    [],
+    [persistPaneTerminalHeight],
   );
+
+  const syncTerminalCwd = useCallback(
+    (panelId: PanelId, uri: string) => {
+      if (!preferences?.terminalCdOnNavigate || isRemoteUri(uri)) {
+        return;
+      }
+      const chrome = terminalRef.current.pane[panelId];
+      const sessionId = chrome.sessionId;
+      if (!sessionId) {
+        return;
+      }
+      const session = terminalRef.current.sessions.find(
+        (item) => item.id === sessionId,
+      );
+      if (!session || session.status === "exited") {
+        return;
+      }
+      const path = localPathFromUri(uri);
+      const command = `cd ${shellEscapePosixPath(path)}\n`;
+      void client.terminal.write({
+        sessionId,
+        data: encodeTerminalInput(command),
+      });
+    },
+    [client, preferences?.terminalCdOnNavigate],
+  );
+
+  useEffect(() => {
+    if (!preferences || hydratedPreferencesRef.current) {
+      return;
+    }
+    hydratedPreferencesRef.current = true;
+    dispatch({
+      type: "hydratePaneTerminalPreferences",
+      leftHeight: preferences.paneTerminalHeightLeft,
+      rightHeight: preferences.paneTerminalHeightRight,
+    });
+  }, [preferences]);
+
+  useEffect(() => {
+    return () => {
+      if (heightPersistTimer.current) {
+        clearTimeout(heightPersistTimer.current);
+      }
+    };
+  }, []);
 
   const setPaneActiveSession = useCallback(
     (panelId: PanelId, sessionId: string) => {
@@ -343,6 +438,7 @@ export function TerminalProvider({
       setPaneTerminalCollapsed,
       setPaneTerminalSplit,
       setPaneActiveSession,
+      syncTerminalCwd,
       openExternalTerminal,
       registerTerminalSessionHandlers,
     }),
@@ -359,6 +455,7 @@ export function TerminalProvider({
       setPaneTerminalCollapsed,
       setPaneTerminalSplit,
       setPaneActiveSession,
+      syncTerminalCwd,
       openExternalTerminal,
       registerTerminalSessionHandlers,
     ],
@@ -386,6 +483,7 @@ export function StubTerminalProvider({ children }: { children: ReactNode }) {
       setPaneTerminalCollapsed: () => {},
       setPaneTerminalSplit: () => {},
       setPaneActiveSession: () => {},
+      syncTerminalCwd: () => {},
       openExternalTerminal: async () => {},
       registerTerminalSessionHandlers: () => () => {},
     }),

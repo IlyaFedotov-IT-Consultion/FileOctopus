@@ -45,6 +45,11 @@ export function createPreviewTransport(): IpcTransport {
     paneMode: "dual",
     jobDrawerBehavior: "manual",
     showAdvancedCopyOptions: false,
+    paneTerminalHeightLeft: 0.35,
+    paneTerminalHeightRight: 0.35,
+    paneTerminalDefaultOpen: false,
+    terminalCdOnNavigate: false,
+    confirmClosePaneWithTerminal: true,
   };
   const batchHandlers = new Set<(payload: DirectoryBatchEventDto) => void>();
   const folderSizeHandlers = new Set<

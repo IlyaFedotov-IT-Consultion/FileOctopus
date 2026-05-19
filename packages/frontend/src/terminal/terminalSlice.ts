@@ -73,7 +73,12 @@ export type TerminalAction =
       panelId: PanelId;
       sessionId: string;
     }
-  | { type: "closePaneTerminal"; panelId: PanelId };
+  | { type: "closePaneTerminal"; panelId: PanelId }
+  | {
+      type: "hydratePaneTerminalPreferences";
+      leftHeight: number;
+      rightHeight: number;
+    };
 
 function createPaneTerminalChrome(): PaneTerminalChrome {
   return {
@@ -303,9 +308,32 @@ export function terminalReducer(
           },
         },
       };
+    case "hydratePaneTerminalPreferences":
+      return {
+        ...state,
+        pane: {
+          left: {
+            ...state.pane.left,
+            splitRatio: clampPaneSplit(action.leftHeight),
+          },
+          right: {
+            ...state.pane.right,
+            splitRatio: clampPaneSplit(action.rightHeight),
+          },
+        },
+      };
     default:
       return state;
   }
+}
+
+export function hasRunningPaneSessions(
+  sessions: TerminalSession[],
+  paneId: PanelId,
+): boolean {
+  return sessionsForPane(sessions, paneId).some(
+    (session) => session.status !== "exited",
+  );
 }
 
 export function tabLabelForUri(uri: string): string {

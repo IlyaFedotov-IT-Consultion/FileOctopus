@@ -79,6 +79,11 @@ const appPreferences: UserPreferencesDto = {
   paneMode: "dual",
   jobDrawerBehavior: "manual",
   showAdvancedCopyOptions: false,
+  paneTerminalHeightLeft: 0.35,
+  paneTerminalHeightRight: 0.35,
+  paneTerminalDefaultOpen: false,
+  terminalCdOnNavigate: false,
+  confirmClosePaneWithTerminal: true,
 };
 const preferencesGet = vi.fn(async () => ({
   preferences: appPreferences,

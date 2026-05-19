@@ -22,6 +22,7 @@ export interface ModalsContextValue {
   manageFavoritesOpen: boolean;
   recentLocationsOpen: boolean;
   clearRecentLocationsOpen: boolean;
+  closePaneTerminalConfirmOpen: boolean;
   errorDetailsOpen: boolean;
   operationHistoryOpen: boolean;
   volumePickerOpen: boolean;
@@ -42,6 +43,7 @@ export interface ModalsContextValue {
   setManageFavoritesOpen: Dispatch<SetStateAction<boolean>>;
   setRecentLocationsOpen: Dispatch<SetStateAction<boolean>>;
   setClearRecentLocationsOpen: Dispatch<SetStateAction<boolean>>;
+  setClosePaneTerminalConfirmOpen: Dispatch<SetStateAction<boolean>>;
   setErrorDetailsOpen: Dispatch<SetStateAction<boolean>>;
   setOperationHistoryOpen: Dispatch<SetStateAction<boolean>>;
   setVolumePickerOpen: Dispatch<SetStateAction<boolean>>;
@@ -76,6 +78,8 @@ export function ModalsProvider({ children }: { children: ReactNode }) {
   const [recentLocationsOpen, setRecentLocationsOpen] = useState(false);
   const [clearRecentLocationsOpen, setClearRecentLocationsOpen] =
     useState(false);
+  const [closePaneTerminalConfirmOpen, setClosePaneTerminalConfirmOpen] =
+    useState(false);
   const [errorDetailsOpen, setErrorDetailsOpen] = useState(false);
   const [operationHistoryOpen, setOperationHistoryOpen] = useState(false);
   const [volumePickerOpen, setVolumePickerOpen] = useState(false);
@@ -101,6 +105,7 @@ export function ModalsProvider({ children }: { children: ReactNode }) {
       manageFavoritesOpen,
       recentLocationsOpen,
       clearRecentLocationsOpen,
+      closePaneTerminalConfirmOpen,
       errorDetailsOpen,
       operationHistoryOpen,
       volumePickerOpen,
@@ -121,6 +126,7 @@ export function ModalsProvider({ children }: { children: ReactNode }) {
       setManageFavoritesOpen,
       setRecentLocationsOpen,
       setClearRecentLocationsOpen,
+      setClosePaneTerminalConfirmOpen,
       setErrorDetailsOpen,
       setOperationHistoryOpen,
       setVolumePickerOpen,
@@ -143,6 +149,7 @@ export function ModalsProvider({ children }: { children: ReactNode }) {
       manageFavoritesOpen,
       recentLocationsOpen,
       clearRecentLocationsOpen,
+      closePaneTerminalConfirmOpen,
       errorDetailsOpen,
       operationHistoryOpen,
       volumePickerOpen,

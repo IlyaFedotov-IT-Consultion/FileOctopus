@@ -58,6 +58,11 @@ pub struct UserPreferencesDto {
     pub pane_mode: String,
     pub job_drawer_behavior: String,
     pub show_advanced_copy_options: bool,
+    pub pane_terminal_height_left: f64,
+    pub pane_terminal_height_right: f64,
+    pub pane_terminal_default_open: bool,
+    pub terminal_cd_on_navigate: bool,
+    pub confirm_close_pane_with_terminal: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -999,6 +1004,11 @@ impl From<config::UserPreferences> for UserPreferencesDto {
             pane_mode: value.pane_mode,
             job_drawer_behavior: value.job_drawer_behavior,
             show_advanced_copy_options: value.show_advanced_copy_options,
+            pane_terminal_height_left: value.pane_terminal_height_left,
+            pane_terminal_height_right: value.pane_terminal_height_right,
+            pane_terminal_default_open: value.pane_terminal_default_open,
+            terminal_cd_on_navigate: value.terminal_cd_on_navigate,
+            confirm_close_pane_with_terminal: value.confirm_close_pane_with_terminal,
         }
     }
 }

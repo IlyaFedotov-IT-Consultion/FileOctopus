@@ -59,6 +59,18 @@ export function TerminalView({
     terminalRef.current = terminal;
     fitRef.current = fitAddon;
 
+    const focusTerminal = () => {
+      terminal.focus();
+    };
+    const stopKeyBubble = (event: KeyboardEvent) => {
+      event.stopPropagation();
+    };
+
+    container.addEventListener("mousedown", focusTerminal);
+    container.addEventListener("pointerdown", focusTerminal);
+    container.addEventListener("keydown", stopKeyBubble);
+    container.addEventListener("keyup", stopKeyBubble);
+
     const resize = () => {
       fitAddon.fit();
       const cols = terminal.cols;
@@ -93,6 +105,10 @@ export function TerminalView({
     });
 
     return () => {
+      container.removeEventListener("mousedown", focusTerminal);
+      container.removeEventListener("pointerdown", focusTerminal);
+      container.removeEventListener("keydown", stopKeyBubble);
+      container.removeEventListener("keyup", stopKeyBubble);
       observer.disconnect();
       onData.dispose();
       unregister();
