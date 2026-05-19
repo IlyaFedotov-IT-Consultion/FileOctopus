@@ -47,6 +47,7 @@
 | ID    | Result                                                                                         | Commit     |
 | ----- | ---------------------------------------------------------------------------------------------- | ---------- |
 | RC-6  | MenuBar sort/theme/density/favorites/filter/search routed via `runCommand` → `dispatchCommand` | 2026-05-19 |
+| RC-4d | `app-layout.e2e.ts` updated for shell toolbar layout; 24/24 pass                               | 2026-05-19 |
 | RC-4c | Visual regression baselines + preview `sidebarVisible`; `pnpm test:e2e:vite` 104 pass          | 2026-05-19 |
 | RC-4b | Diagnostics E2E + `scripts/rc-qa-automated.sh` + `docs/qa/rc-automated-evidence.md`            | 2026-05-19 |
 | RC-4a | Automated RC: `pnpm rc:validate` + `pnpm tauri:build` (deb/rpm/AppImage bundles)               | 2026-05-19 |
