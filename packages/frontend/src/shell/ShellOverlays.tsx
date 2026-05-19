@@ -46,6 +46,9 @@ export function ShellOverlays() {
         fs={ctx.client.fs}
         updatePreference={ctx.updatePreference}
         handleSetAutostart={ctx.handleSetAutostart}
+        onCustomizeToolbar={() =>
+          ctx.handleCommandSelect("app.customizeToolbar")
+        }
         handleCommandSelect={ctx.handleCommandSelect}
         setSettingsOpen={ctx.setSettingsOpen}
         setShortcutsOpen={ctx.setShortcutsOpen}

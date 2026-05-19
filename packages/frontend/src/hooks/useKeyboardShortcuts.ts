@@ -178,6 +178,12 @@ export function createKeyboardShortcutsHandler(
       return;
     }
 
+    if (event.altKey && event.key === "Enter") {
+      event.preventDefault();
+      runCommand("op.properties");
+      return;
+    }
+
     if (mod && event.key.toLowerCase() === "n") {
       event.preventDefault();
       runCommand("create.folder");

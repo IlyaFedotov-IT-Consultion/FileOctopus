@@ -15,6 +15,7 @@ function baseParams(overrides: Record<string, unknown> = {}) {
     runCommand: vi.fn(),
     statusBarVisible: true,
     toolbarVisible: true,
+    onCustomizeToolbar: vi.fn(),
     ...overrides,
   };
 }

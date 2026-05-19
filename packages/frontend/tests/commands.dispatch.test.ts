@@ -12,6 +12,7 @@ function baseDeps(overrides: Record<string, unknown> = {}) {
     refreshPanel: vi.fn(),
     updatePreference: vi.fn(),
     setSettingsOpen: vi.fn(),
+    setToolbarCustomizeOpen: vi.fn(),
     setShortcutsOpen: vi.fn(),
     setDiagnosticsOpen: vi.fn(),
     setAboutOpen: vi.fn(),
@@ -88,6 +89,16 @@ describe("dispatchCommand", () => {
     dispatchCommand("settings", baseDeps({ setSettingsOpen }));
 
     expect(setSettingsOpen).toHaveBeenCalledWith(true);
+  });
+
+  it("opens toolbar customize dialog for app.customizeToolbar", () => {
+    const setToolbarCustomizeOpen = vi.fn();
+    dispatchCommand(
+      "app.customizeToolbar",
+      baseDeps({ setToolbarCustomizeOpen }),
+    );
+
+    expect(setToolbarCustomizeOpen).toHaveBeenCalledWith(true);
   });
 
   it("starts inline rename for op.rename", () => {

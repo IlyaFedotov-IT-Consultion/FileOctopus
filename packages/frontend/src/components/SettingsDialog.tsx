@@ -24,6 +24,7 @@ interface SettingsDialogProps {
   onClose: () => void;
   onChange: (key: string, value: string) => void;
   onSetAutostart: (enabled: boolean) => Promise<void>;
+  onCustomizeToolbar?: () => void;
 }
 
 export function SettingsDialog({
@@ -33,6 +34,7 @@ export function SettingsDialog({
   onClose,
   onChange,
   onSetAutostart,
+  onCustomizeToolbar,
 }: SettingsDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   useDialogEscape(open, onClose);
@@ -451,6 +453,21 @@ export function SettingsDialog({
                   />
                   <span>Show pane toolbar</span>
                 </label>
+                {onCustomizeToolbar ? (
+                  <div className="fo-settings-field">
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={preferences.toolbarVisible === false}
+                      onClick={() => {
+                        onCustomizeToolbar();
+                        onClose();
+                      }}
+                    >
+                      Customize button bar…
+                    </Button>
+                  </div>
+                ) : null}
                 <label className="fo-settings-field">
                   <span>Pane mode</span>
                   <select

@@ -1,5 +1,15 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { DropdownMenu, Icons, type DropdownMenuItem } from "@fileoctopus/ui";
+import { formatCommandShortcut } from "../commands/registry";
+import type { CommandId } from "../commands/types";
+
+function menuShortcut(commandId: CommandId): string | undefined {
+  const platform =
+    typeof navigator !== "undefined" && navigator.platform.startsWith("Mac")
+      ? "mac"
+      : "windowsLinux";
+  return formatCommandShortcut(commandId, platform) ?? undefined;
+}
 
 export interface MenuBarProps {
   activePanelId: "left" | "right";
@@ -13,6 +23,7 @@ export interface MenuBarProps {
   onNewFolder: () => void;
   onNewFile: () => void;
   onOpenSelected: () => void;
+  onView: () => void;
   onOpenWithDefaultApp: () => void;
   onRevealInFileManager: () => void;
   onRename: () => void;
@@ -77,6 +88,7 @@ export interface MenuBarProps {
   statusBarVisible: boolean;
   dualPane: boolean;
   showHidden: boolean;
+  onCustomizeToolbar: () => void;
 }
 
 type MenuId = "file" | "edit" | "view" | "go" | "tools" | "window" | "help";
@@ -178,7 +190,7 @@ export function MenuBar(props: MenuBarProps) {
     {
       id: "new-folder",
       label: "New Folder…",
-      shortcut: "Ctrl+N",
+      shortcut: menuShortcut("create.folder"),
       onSelect: wrap(props.onNewFolder),
     },
     { id: "new-file", label: "Empty File…", onSelect: wrap(props.onNewFile) },
@@ -186,15 +198,22 @@ export function MenuBar(props: MenuBarProps) {
     {
       id: "open-selected",
       label: "Open Selected",
-      shortcut: "Enter",
+      shortcut: menuShortcut("op.open"),
       disabled: !props.hasSelection,
       onSelect: wrap(props.onOpenSelected),
     },
     {
       id: "open-default",
       label: "Open With Default App",
+      shortcut: menuShortcut("op.openDefault"),
       disabled: !props.hasSelection,
       onSelect: wrap(props.onOpenWithDefaultApp),
+    },
+    {
+      id: "view-selected",
+      label: "View",
+      shortcut: menuShortcut("op.view"),
+      onSelect: wrap(props.onView),
     },
     {
       id: "reveal-fm",
@@ -206,45 +225,47 @@ export function MenuBar(props: MenuBarProps) {
     {
       id: "rename",
       label: "Rename…",
-      shortcut: "F2",
+      shortcut: menuShortcut("op.rename"),
       disabled: !props.hasSelection,
       onSelect: wrap(props.onRename),
     },
     {
       id: "copy-to",
       label: "Copy To…",
+      shortcut: menuShortcut("op.copyTo"),
       disabled: !props.hasSelection,
       onSelect: wrap(props.onCopyTo),
     },
     {
       id: "move-to",
       label: "Move To…",
+      shortcut: menuShortcut("op.moveTo"),
       disabled: !props.hasSelection,
       onSelect: wrap(props.onMoveTo),
     },
     {
       id: "trash",
       label: "Move to Trash…",
-      shortcut: "Delete",
+      shortcut: menuShortcut("op.trash"),
       disabled: !props.hasSelection,
       onSelect: wrap(props.onTrash),
     },
     {
       id: "compress",
-      label: "Compress…",
+      label: "Pack…",
       disabled: !props.hasSelection,
       onSelect: wrap(props.onCompress),
     },
     {
       id: "extract",
-      label: "Extract…",
+      label: "Unpack…",
       disabled: !props.hasSelection,
       onSelect: wrap(props.onExtract),
     },
     {
       id: "delete",
       label: "Delete Permanently…",
-      shortcut: "Shift+Delete",
+      shortcut: menuShortcut("op.deletePermanent"),
       disabled: !props.hasSelection,
       danger: true,
       onSelect: wrap(props.onDeletePermanently),
@@ -253,7 +274,7 @@ export function MenuBar(props: MenuBarProps) {
       id: "properties",
       label: "Properties…",
       icon: Icons.info(),
-      shortcut: "Ctrl+I",
+      shortcut: menuShortcut("op.properties"),
       disabled: !props.hasSelection,
       onSelect: wrap(props.onProperties),
     },
@@ -278,21 +299,21 @@ export function MenuBar(props: MenuBarProps) {
     {
       id: "cut",
       label: "Cut",
-      shortcut: "Ctrl+X",
+      shortcut: menuShortcut("op.cut"),
       disabled: !props.hasSelection,
       onSelect: wrap(props.onCut),
     },
     {
       id: "copy",
       label: "Copy",
-      shortcut: "Ctrl+C",
+      shortcut: menuShortcut("op.copy"),
       disabled: !props.hasSelection,
       onSelect: wrap(props.onCopy),
     },
     {
       id: "paste",
       label: "Paste",
-      shortcut: "Ctrl+V",
+      shortcut: menuShortcut("op.paste"),
       disabled: !props.hasClipboard,
       onSelect: wrap(props.onPaste),
     },
@@ -306,7 +327,7 @@ export function MenuBar(props: MenuBarProps) {
     {
       id: "select-all",
       label: "Select All",
-      shortcut: "Ctrl+A",
+      shortcut: menuShortcut("selection.selectAll"),
       onSelect: wrap(props.onSelectAll),
     },
     {
@@ -456,6 +477,12 @@ export function MenuBar(props: MenuBarProps) {
       onSelect: wrap(props.onToggleToolbar),
     },
     {
+      id: "customize-toolbar",
+      label: "Customize Button Bar…",
+      disabled: !props.toolbarVisible,
+      onSelect: wrap(props.onCustomizeToolbar),
+    },
+    {
       id: "toggle-statusbar",
       label: "Show Status Bar",
       checked: props.statusBarVisible,
@@ -594,13 +621,13 @@ export function MenuBar(props: MenuBarProps) {
     {
       id: "filter",
       label: "Filter Current Folder",
-      shortcut: "Ctrl+F",
+      shortcut: menuShortcut("search.focusFilter"),
       onSelect: wrap(props.onFilter),
     },
     {
       id: "search-recursive",
       label: "Search Recursively…",
-      shortcut: "Ctrl+Shift+F",
+      shortcut: menuShortcut("search.recursive"),
       onSelect: wrap(props.onSearchRecursive),
     },
     sep("sep-ops"),

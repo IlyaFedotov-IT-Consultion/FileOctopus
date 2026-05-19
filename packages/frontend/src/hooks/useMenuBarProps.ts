@@ -34,6 +34,7 @@ export interface UseMenuBarPropsParams {
   ) => void;
   statusBarVisible: boolean;
   toolbarVisible: boolean;
+  onCustomizeToolbar: () => void;
   recentLocations: RecentEntryDto[];
 }
 
@@ -52,6 +53,7 @@ export function useMenuBarProps(params: UseMenuBarPropsParams): MenuBarProps {
     statusBarVisible,
     toolbarVisible,
     recentLocations,
+    onCustomizeToolbar,
   } = params;
 
   const panelId = state.activePanelId;
@@ -74,6 +76,7 @@ export function useMenuBarProps(params: UseMenuBarPropsParams): MenuBarProps {
     onNewFolder: () => runCommand("create.folder"),
     onNewFile: () => runCommand("create.file"),
     onOpenSelected: () => runCommand("op.open"),
+    onView: () => runCommand("op.view"),
     onOpenWithDefaultApp: () => runCommand("op.openDefault"),
     onRevealInFileManager: () => runCommand("op.reveal"),
     onRename: () => handleRename(panelId),
@@ -176,5 +179,6 @@ export function useMenuBarProps(params: UseMenuBarPropsParams): MenuBarProps {
     statusBarVisible,
     dualPane: preferences?.paneMode !== "single",
     showHidden: tab.showHidden,
+    onCustomizeToolbar,
   };
 }

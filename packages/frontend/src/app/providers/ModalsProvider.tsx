@@ -24,6 +24,7 @@ export interface ModalsContextValue {
   errorDetailsOpen: boolean;
   operationHistoryOpen: boolean;
   volumePickerOpen: boolean;
+  toolbarCustomizeOpen: boolean;
   dialog: OperationDialog | null;
   setSettingsOpen: Dispatch<SetStateAction<boolean>>;
   setShortcutsOpen: Dispatch<SetStateAction<boolean>>;
@@ -39,6 +40,7 @@ export interface ModalsContextValue {
   setErrorDetailsOpen: Dispatch<SetStateAction<boolean>>;
   setOperationHistoryOpen: Dispatch<SetStateAction<boolean>>;
   setVolumePickerOpen: Dispatch<SetStateAction<boolean>>;
+  setToolbarCustomizeOpen: Dispatch<SetStateAction<boolean>>;
   setDialog: Dispatch<SetStateAction<OperationDialog | null>>;
 }
 
@@ -68,6 +70,7 @@ export function ModalsProvider({ children }: { children: ReactNode }) {
   const [errorDetailsOpen, setErrorDetailsOpen] = useState(false);
   const [operationHistoryOpen, setOperationHistoryOpen] = useState(false);
   const [volumePickerOpen, setVolumePickerOpen] = useState(false);
+  const [toolbarCustomizeOpen, setToolbarCustomizeOpen] = useState(false);
   const [dialog, setDialog] = useState<OperationDialog | null>(null);
 
   const value = useMemo<ModalsContextValue>(
@@ -86,6 +89,7 @@ export function ModalsProvider({ children }: { children: ReactNode }) {
       errorDetailsOpen,
       operationHistoryOpen,
       volumePickerOpen,
+      toolbarCustomizeOpen,
       dialog,
       setSettingsOpen,
       setShortcutsOpen,
@@ -101,6 +105,7 @@ export function ModalsProvider({ children }: { children: ReactNode }) {
       setErrorDetailsOpen,
       setOperationHistoryOpen,
       setVolumePickerOpen,
+      setToolbarCustomizeOpen,
       setDialog,
     }),
     [
@@ -118,6 +123,7 @@ export function ModalsProvider({ children }: { children: ReactNode }) {
       errorDetailsOpen,
       operationHistoryOpen,
       volumePickerOpen,
+      toolbarCustomizeOpen,
       dialog,
     ],
   );

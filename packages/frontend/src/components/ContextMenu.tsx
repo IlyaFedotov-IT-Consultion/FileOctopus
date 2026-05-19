@@ -35,6 +35,7 @@ interface ContextMenuProps {
   onPermanentDelete: (panelId: PanelId) => void;
   onCopyPath: (panelId: PanelId) => void;
   onCopyName: (panelId: PanelId) => void;
+  onView: (panelId: PanelId, entry: FileEntryDto | null) => void;
   onProperties: (panelId: PanelId, entry: FileEntryDto | null) => void;
   onReveal: (panelId: PanelId, entry: FileEntryDto | null) => void;
   onCompress: (panelId: PanelId) => void;
@@ -78,6 +79,7 @@ export function ContextMenu({
   onPermanentDelete,
   onCopyPath,
   onCopyName,
+  onView,
   onProperties,
   onReveal,
   onCompress,
@@ -276,6 +278,7 @@ export function ContextMenu({
       onPaste,
       onCopyPath,
       onCopyName,
+      onView,
       onRename,
       onCopyTo,
       onMoveTo,

@@ -75,6 +75,8 @@ export interface ShellLayoutContextValue {
   errorDetailsOpen: boolean;
   operationHistoryOpen: boolean;
   volumePickerOpen: boolean;
+  toolbarCustomizeOpen: boolean;
+  setToolbarCustomizeOpen: (v: boolean) => void;
   setGoToLocationOpen: (v: boolean) => void;
   setManageFavoritesOpen: (v: boolean) => void;
   setRecentLocationsOpen: (v: boolean) => void;

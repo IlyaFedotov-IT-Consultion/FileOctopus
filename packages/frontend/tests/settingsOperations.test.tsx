@@ -31,6 +31,7 @@ const basePreferences = {
   sidebarVisible: true,
   statusBarVisible: true,
   toolbarVisible: true,
+  toolbarEntries: "",
   paneMode: "dual",
   jobDrawerBehavior: "auto",
 };
