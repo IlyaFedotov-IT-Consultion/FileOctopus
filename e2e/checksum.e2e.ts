@@ -21,30 +21,28 @@ test.describe("Checksum", () => {
    * the type column. We look for a row whose text does NOT contain "Folder".
    */
   async function findFileRow(page: import("@playwright/test").Page) {
-    const rows = page.locator('.fo-row[role="row"]');
-    const count = await rows.count();
-    for (let i = 0; i < count; i++) {
-      const text = await rows.nth(i).textContent();
-      if (text && !text.includes("Folder")) {
-        return rows.nth(i);
-      }
-    }
-    return null;
+    const row = page
+      .locator(
+        ".fo-panel.fo-panel-active .fo-row[role='row']:not(.fo-row-parent)",
+      )
+      .filter({ hasNotText: /Folder|DIR|parent/i })
+      .first();
+    const count = await row.count();
+    return count > 0 ? row : null;
   }
 
   /**
    * Helper: find a directory row. Directories have "Folder" in the type label.
    */
   async function findDirectoryRow(page: import("@playwright/test").Page) {
-    const rows = page.locator('.fo-row[role="row"]');
-    const count = await rows.count();
-    for (let i = 0; i < count; i++) {
-      const text = await rows.nth(i).textContent();
-      if (text && text.includes("Folder")) {
-        return rows.nth(i);
-      }
-    }
-    return null;
+    const row = page
+      .locator(
+        ".fo-panel.fo-panel-active .fo-row[role='row']:not(.fo-row-parent)",
+      )
+      .filter({ hasText: /Folder|DIR/i })
+      .first();
+    const count = await row.count();
+    return count > 0 ? row : null;
   }
 
   /**
@@ -52,12 +50,11 @@ test.describe("Checksum", () => {
    * the dropdown element.
    */
   async function openMoreDropdown(page: import("@playwright/test").Page) {
-    const toolbar = page.locator(".fo-operation-toolbar").first();
-    const moreBtn = toolbar.locator("button:has-text('More')").first();
-    await moreBtn.click();
-
-    // Wait for the dropdown menu to appear (it's portaled to body)
-    const dropdown = page.locator(".fo-ui-dropdown-menu--portal").last();
+    const toolbar = page.locator(".fo-workbench-toolbar .fo-operation-toolbar");
+    await toolbar.getByRole("button", { name: "More" }).click();
+    const dropdown = page.getByRole("menu").filter({
+      has: page.getByRole("menuitem", { name: /^New Folder/ }),
+    });
     await expect(dropdown).toBeVisible();
     return dropdown;
   }
@@ -73,9 +70,9 @@ test.describe("Checksum", () => {
     await fileRow.click({ button: "right" });
     await expect(page.locator(MENU_SELECTOR)).toBeVisible();
 
-    const checksumItem = page.locator(
-      `${MENU_SELECTOR} > ${ITEM_SELECTOR}:has-text("Checksum…")`,
-    );
+    const checksumItem = page.locator(`${MENU_SELECTOR} ${ITEM_SELECTOR}`, {
+      hasText: "Checksum…",
+    });
     await checksumItem.click();
   }
 
@@ -91,7 +88,7 @@ test.describe("Checksum", () => {
     await expect(page.locator(MENU_SELECTOR)).toBeVisible();
 
     const texts = await page
-      .locator(`${MENU_SELECTOR} > ${ITEM_SELECTOR}`)
+      .locator(`${MENU_SELECTOR} ${ITEM_SELECTOR}`)
       .allTextContents();
     const trimmed = texts.map((t) => t.trim());
     expect(trimmed).toContain("Checksum…");
@@ -106,9 +103,9 @@ test.describe("Checksum", () => {
     await fileRow!.click({ button: "right" });
     await expect(page.locator(MENU_SELECTOR)).toBeVisible();
 
-    const checksumItem = page.locator(
-      `${MENU_SELECTOR} > ${ITEM_SELECTOR}:has-text("Checksum…")`,
-    );
+    const checksumItem = page.locator(`${MENU_SELECTOR} ${ITEM_SELECTOR}`, {
+      hasText: "Checksum…",
+    });
     await expect(checksumItem).toBeEnabled();
   });
 

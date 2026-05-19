@@ -15,15 +15,14 @@ test.describe("Compress & Extract", () => {
    * the type column. We look for a row whose text does NOT contain "Folder".
    */
   async function findFileRow(page: import("@playwright/test").Page) {
-    const rows = page.locator('.fo-row[role="row"]');
-    const count = await rows.count();
-    for (let i = 0; i < count; i++) {
-      const text = await rows.nth(i).textContent();
-      if (text && !text.includes("Folder")) {
-        return rows.nth(i);
-      }
-    }
-    return null;
+    const row = page
+      .locator(
+        ".fo-panel.fo-panel-active .fo-row[role='row']:not(.fo-row-parent)",
+      )
+      .filter({ hasNotText: /Folder|DIR|parent/i })
+      .first();
+    const count = await row.count();
+    return count > 0 ? row : null;
   }
 
   /**
@@ -40,11 +39,11 @@ test.describe("Compress & Extract", () => {
    * the dropdown element.
    */
   async function openMoreDropdown(page: import("@playwright/test").Page) {
-    const toolbar = page.locator(".fo-operation-toolbar").first();
-    const moreBtn = toolbar.locator("button:has-text('More')").first();
-    await moreBtn.click();
-
-    const dropdown = page.locator(".fo-ui-dropdown-menu--portal").last();
+    const toolbar = page.locator(".fo-workbench-toolbar .fo-operation-toolbar");
+    await toolbar.getByRole("button", { name: "More" }).click();
+    const dropdown = page.getByRole("menu").filter({
+      has: page.getByRole("menuitem", { name: /^New Folder/ }),
+    });
     await expect(dropdown).toBeVisible();
     return dropdown;
   }
@@ -55,9 +54,8 @@ test.describe("Compress & Extract", () => {
   async function openContextMenuOnFileRow(
     page: import("@playwright/test").Page,
   ) {
-    const fileRow = page.locator('.fo-row[role="row"]').first();
-    const rowCount = await fileRow.count();
-    if (rowCount > 0) {
+    const fileRow = await findFileRow(page);
+    if (fileRow) {
       await fileRow.click({ button: "right" });
     } else {
       const tableShell = page.locator(".fo-table-shell").first();
@@ -74,7 +72,7 @@ test.describe("Compress & Extract", () => {
     await openContextMenuOnFileRow(page);
 
     const texts = await page
-      .locator(`${MENU_SELECTOR} > ${ITEM_SELECTOR}`)
+      .locator(`${MENU_SELECTOR} ${ITEM_SELECTOR}`)
       .allTextContents();
     const trimmed = texts.map((t) => t.trim());
     expect(trimmed).toContain("Compress…");
@@ -103,9 +101,9 @@ test.describe("Compress & Extract", () => {
     await fileRow!.click({ button: "right" });
     await expect(page.locator(MENU_SELECTOR)).toBeVisible();
 
-    const compressItem = page.locator(
-      `${MENU_SELECTOR} > ${ITEM_SELECTOR}:has-text("Compress…")`,
-    );
+    const compressItem = page.locator(`${MENU_SELECTOR} ${ITEM_SELECTOR}`, {
+      hasText: "Compress…",
+    });
     const hasCompress = (await compressItem.count()) > 0;
     test.skip(!hasCompress, "Compress… item not found in context menu");
 
@@ -134,9 +132,9 @@ test.describe("Compress & Extract", () => {
     await fileRow!.click({ button: "right" });
     await expect(page.locator(MENU_SELECTOR)).toBeVisible();
 
-    const compressItem = page.locator(
-      `${MENU_SELECTOR} > ${ITEM_SELECTOR}:has-text("Compress…")`,
-    );
+    const compressItem = page.locator(`${MENU_SELECTOR} ${ITEM_SELECTOR}`, {
+      hasText: "Compress…",
+    });
     await compressItem.click();
 
     // In Vite-only mode (no Tauri IPC), compress shows an info toast
@@ -181,9 +179,9 @@ test.describe("Compress & Extract", () => {
     await rows.first().click({ button: "right" });
     await expect(page.locator(MENU_SELECTOR)).toBeVisible();
 
-    const compressItem = page.locator(
-      `${MENU_SELECTOR} > ${ITEM_SELECTOR}:has-text("Compress…")`,
-    );
+    const compressItem = page.locator(`${MENU_SELECTOR} ${ITEM_SELECTOR}`, {
+      hasText: "Compress…",
+    });
     const hasCompress = (await compressItem.count()) > 0;
     test.skip(!hasCompress, "Compress… item not found in context menu");
 
@@ -201,9 +199,9 @@ test.describe("Compress & Extract", () => {
     await tableShell.click({ button: "right" });
     await expect(page.locator(MENU_SELECTOR)).toBeVisible();
 
-    const compressItem = page.locator(
-      `${MENU_SELECTOR} > ${ITEM_SELECTOR}:has-text("Compress…")`,
-    );
+    const compressItem = page.locator(`${MENU_SELECTOR} ${ITEM_SELECTOR}`, {
+      hasText: "Compress…",
+    });
     const hasCompress = (await compressItem.count()) > 0;
     test.skip(!hasCompress, "Compress… item not found in context menu");
 
@@ -219,9 +217,9 @@ test.describe("Compress & Extract", () => {
     await fileRow!.click({ button: "right" });
     await expect(page.locator(MENU_SELECTOR)).toBeVisible();
 
-    const compressItem = page.locator(
-      `${MENU_SELECTOR} > ${ITEM_SELECTOR}:has-text("Compress…")`,
-    );
+    const compressItem = page.locator(`${MENU_SELECTOR} ${ITEM_SELECTOR}`, {
+      hasText: "Compress…",
+    });
     const hasCompress = (await compressItem.count()) > 0;
     test.skip(!hasCompress, "Compress… item not found in context menu");
 
@@ -241,13 +239,13 @@ test.describe("Compress & Extract", () => {
 
   // ─── Extract — Context Menu ───────────────────────────────────
 
-  test("context menu has Extract… item when archive is selected", async ({
+  test("context menu has Extract… item when a file is selected", async ({
     page,
   }) => {
     await openContextMenuOnFileRow(page);
 
     const texts = await page
-      .locator(`${MENU_SELECTOR} > ${ITEM_SELECTOR}`)
+      .locator(`${MENU_SELECTOR} ${ITEM_SELECTOR}`)
       .allTextContents();
     const trimmed = texts.map((t) => t.trim());
     expect(trimmed).toContain("Extract…");
@@ -287,9 +285,9 @@ test.describe("Compress & Extract", () => {
     await fileRow!.click({ button: "right" });
     await expect(page.locator(MENU_SELECTOR)).toBeVisible();
 
-    const extractItem = page.locator(
-      `${MENU_SELECTOR} > ${ITEM_SELECTOR}:has-text("Extract…")`,
-    );
+    const extractItem = page.locator(`${MENU_SELECTOR} ${ITEM_SELECTOR}`, {
+      hasText: "Extract…",
+    });
     const hasExtract = (await extractItem.count()) > 0;
     test.skip(!hasExtract, "Extract… item not found in context menu");
 
@@ -316,9 +314,9 @@ test.describe("Compress & Extract", () => {
     await tableShell.click({ button: "right" });
     await expect(page.locator(MENU_SELECTOR)).toBeVisible();
 
-    const extractItem = page.locator(
-      `${MENU_SELECTOR} > ${ITEM_SELECTOR}:has-text("Extract…")`,
-    );
+    const extractItem = page.locator(`${MENU_SELECTOR} ${ITEM_SELECTOR}`, {
+      hasText: "Extract…",
+    });
     const hasExtract = (await extractItem.count()) > 0;
     test.skip(!hasExtract, "Extract… item not found in context menu");
 

@@ -136,6 +136,12 @@ test.describe("Dialog — Command Palette (Ctrl+P)", () => {
   });
 });
 
+function selectableFileRow(page: import("@playwright/test").Page) {
+  return page.locator(
+    ".fo-panel.fo-panel-active .fo-row[role='row']:not(.fo-row-parent)",
+  );
+}
+
 test.describe("Dialog — Properties", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/");
@@ -143,16 +149,16 @@ test.describe("Dialog — Properties", () => {
   });
 
   test("Properties opens from context menu on file row", async ({ page }) => {
-    const fileRow = page.locator('.fo-row[role="row"]').first();
+    const fileRow = selectableFileRow(page).first();
     const count = await fileRow.count();
     test.skip(count === 0, "No file rows visible");
 
     await fileRow.click({ button: "right" });
     await expect(page.locator(".fo-context-menu")).toBeVisible();
 
-    const propertiesBtn = page.locator(
-      '.fo-context-menu [role="menuitem"]:has-text("Properties")',
-    );
+    const propertiesBtn = page.locator('.fo-context-menu [role="menuitem"]', {
+      hasText: "Properties",
+    });
     await expect(propertiesBtn).toBeVisible();
     await propertiesBtn.click();
 
@@ -162,14 +168,14 @@ test.describe("Dialog — Properties", () => {
   });
 
   test("Properties dialog shows file name", async ({ page }) => {
-    const fileRow = page.locator('.fo-row[role="row"]').first();
+    const fileRow = selectableFileRow(page).first();
     const count = await fileRow.count();
     test.skip(count === 0, "No file rows visible");
 
     await fileRow.click({ button: "right" });
-    const propertiesBtn = page.locator(
-      '.fo-context-menu [role="menuitem"]:has-text("Properties")',
-    );
+    const propertiesBtn = page.locator('.fo-context-menu [role="menuitem"]', {
+      hasText: "Properties",
+    });
     await expect(propertiesBtn).toBeVisible();
     await propertiesBtn.click();
 
@@ -189,14 +195,14 @@ test.describe("Dialog — Properties", () => {
   });
 
   test("Properties dialog shows Copy Path button", async ({ page }) => {
-    const fileRow = page.locator('.fo-row[role="row"]').first();
+    const fileRow = selectableFileRow(page).first();
     const count = await fileRow.count();
     test.skip(count === 0, "No file rows visible");
 
     await fileRow.click({ button: "right" });
-    const propertiesBtn = page.locator(
-      '.fo-context-menu [role="menuitem"]:has-text("Properties")',
-    );
+    const propertiesBtn = page.locator('.fo-context-menu [role="menuitem"]', {
+      hasText: "Properties",
+    });
     await expect(propertiesBtn).toBeVisible();
     await propertiesBtn.click();
 
@@ -211,14 +217,14 @@ test.describe("Dialog — Properties", () => {
   });
 
   test("Properties dialog closes with Escape", async ({ page }) => {
-    const fileRow = page.locator('.fo-row[role="row"]').first();
+    const fileRow = selectableFileRow(page).first();
     const count = await fileRow.count();
     test.skip(count === 0, "No file rows visible");
 
     await fileRow.click({ button: "right" });
-    const propertiesBtn = page.locator(
-      '.fo-context-menu [role="menuitem"]:has-text("Properties")',
-    );
+    const propertiesBtn = page.locator('.fo-context-menu [role="menuitem"]', {
+      hasText: "Properties",
+    });
     await propertiesBtn.click();
 
     const dialog = page.locator('[role="dialog"]');
@@ -231,7 +237,7 @@ test.describe("Dialog — Properties", () => {
   test("multi-select opens Selection Properties with aggregate counts", async ({
     page,
   }) => {
-    const rows = page.locator('.fo-row[role="row"]');
+    const rows = selectableFileRow(page);
     const count = await rows.count();
     test.skip(count < 2, "Need at least two file rows");
 
@@ -239,9 +245,9 @@ test.describe("Dialog — Properties", () => {
     await rows.nth(1).click({ modifiers: ["Control"] });
 
     await rows.nth(1).click({ button: "right" });
-    const propertiesBtn = page.locator(
-      '.fo-context-menu [role="menuitem"]:has-text("Properties")',
-    );
+    const propertiesBtn = page.locator('.fo-context-menu [role="menuitem"]', {
+      hasText: "Properties",
+    });
     await expect(propertiesBtn).toBeVisible();
     await propertiesBtn.click();
 

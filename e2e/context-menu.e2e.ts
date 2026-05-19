@@ -44,13 +44,16 @@ test.describe("Context Menu", () => {
   async function openContextMenuOnFileRow(
     page: import("@playwright/test").Page,
   ) {
-    const fileRow = page.locator('.fo-row[role="row"]').first();
+    const fileRow = page
+      .locator(
+        ".fo-panel.fo-panel-active .fo-row[role='row']:not(.fo-row-parent)",
+      )
+      .first();
     const rowCount = await fileRow.count();
 
     if (rowCount > 0) {
       await fileRow.click({ button: "right" });
     } else {
-      // No rows visible — click empty space; file actions will be disabled
       const tableShell = page.locator(".fo-table-shell").first();
       await tableShell.click({ button: "right" });
     }
@@ -64,7 +67,7 @@ test.describe("Context Menu", () => {
   async function getMenuItemTexts(
     page: import("@playwright/test").Page,
   ): Promise<string[]> {
-    const items = page.locator(`${MENU_SELECTOR} > ${ITEM_SELECTOR}`);
+    const items = page.locator(`${MENU_SELECTOR} ${ITEM_SELECTOR}`);
     return items.allTextContents();
   }
 
@@ -123,7 +126,7 @@ test.describe("Context Menu", () => {
   test("contains Open item at top of menu", async ({ page }) => {
     await openContextMenuOnFileRow(page);
 
-    const items = page.locator(`${MENU_SELECTOR} > ${ITEM_SELECTOR}`);
+    const items = page.locator(`${MENU_SELECTOR} ${ITEM_SELECTOR}`);
     const firstItemText = await items.first().textContent();
     expect(firstItemText?.trim()).toBe("Open");
   });
