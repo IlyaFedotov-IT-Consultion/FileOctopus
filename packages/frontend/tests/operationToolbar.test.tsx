@@ -2,7 +2,18 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { ComponentProps } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_TOOLBAR_ENTRIES } from "../src/commands/toolbarConfig";
+import { StubTerminalProvider } from "../src/app/providers/TerminalProvider";
 import { OperationToolbar } from "../src/pane/OperationToolbar";
+
+function renderToolbar(
+  props: ComponentProps<typeof OperationToolbar> = createProps(),
+) {
+  return render(
+    <StubTerminalProvider>
+      <OperationToolbar {...props} />
+    </StubTerminalProvider>,
+  );
+}
 
 function createProps(
   overrides: Partial<ComponentProps<typeof OperationToolbar>> = {},
@@ -69,7 +80,7 @@ afterEach(() => {
 
 describe("OperationToolbar", () => {
   it("renders commander labels without function-key prefixes", () => {
-    render(<OperationToolbar {...createProps()} />);
+    renderToolbar();
 
     expect(screen.getByRole("button", { name: "View" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Trash" })).toBeTruthy();
@@ -79,7 +90,7 @@ describe("OperationToolbar", () => {
 
   it("opens customize dialog from toolbar context menu", () => {
     const onCustomizeToolbar = vi.fn();
-    render(<OperationToolbar {...createProps({ onCustomizeToolbar })} />);
+    renderToolbar(createProps({ onCustomizeToolbar }));
 
     fireEvent.contextMenu(screen.getByLabelText("Commander toolbar"));
 
@@ -87,17 +98,13 @@ describe("OperationToolbar", () => {
   });
 
   it("does not render a permanent command palette input", () => {
-    render(<OperationToolbar {...createProps()} />);
+    renderToolbar();
 
     expect(screen.queryByLabelText("Open command palette")).toBeNull();
   });
 
   it("moves focus across toolbar buttons with arrow keys", () => {
-    render(
-      <OperationToolbar
-        {...createProps({ canGoBack: true, canGoForward: true })}
-      />,
-    );
+    renderToolbar(createProps({ canGoBack: true, canGoForward: true }));
 
     const back = screen.getByRole("button", { name: "Back" });
     const forward = screen.getByRole("button", { name: "Forward" });
@@ -111,11 +118,7 @@ describe("OperationToolbar", () => {
   });
 
   it("jumps between toolbar groups with ctrl+arrow keys", () => {
-    render(
-      <OperationToolbar
-        {...createProps({ canGoBack: true, canGoForward: true })}
-      />,
-    );
+    renderToolbar(createProps({ canGoBack: true, canGoForward: true }));
 
     const back = screen.getByRole("button", { name: "Back" });
     const view = screen.getByRole("button", { name: "View" });

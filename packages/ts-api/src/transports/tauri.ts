@@ -8,6 +8,14 @@ type EventBridgeWindow = Window & {
   __FO_EVENT_BUFFER__?: Record<string, unknown[]>;
 };
 
+/** WebKitGTK on Linux often misses native Tauri events; use the eval bridge there only. */
+export function needsEvalEventBridge(): boolean {
+  if (typeof navigator === "undefined") {
+    return false;
+  }
+  return /linux/i.test(navigator.userAgent);
+}
+
 export function createTauriTransport(): IpcTransport {
   return {
     invoke<TResponse>(command: string, args?: Record<string, unknown>) {
@@ -17,44 +25,46 @@ export function createTauriTransport(): IpcTransport {
       event: string,
       handler: (payload: TPayload) => void,
     ) {
-      const tauriUnlisten = await tauriListen<TPayload>(event, (tauriEvent) =>
-        handler(tauriEvent.payload),
-      );
+      const useEvalBridge = needsEvalEventBridge();
+      let tauriUnlisten = () => {};
 
-      // Fallback transport for WebKitGTK-headless where app.emit() does not
-      // deliver events to the WebView: Rust also replays the payload via
-      // webview.eval(), registering it under window.__FO_EVENT_HANDLERS__ and
-      // buffering anything that arrived before this listener attached.
-      const w = window as unknown as EventBridgeWindow;
-      const handlers = (w.__FO_EVENT_HANDLERS__ ??= {});
-      const buffer = (w.__FO_EVENT_BUFFER__ ??= {});
-      const typedHandler = handler as (payload: unknown) => void;
-      (handlers[event] ??= []).push(typedHandler);
-      const pending = buffer[event];
-      if (Array.isArray(pending) && pending.length > 0) {
-        buffer[event] = [];
-        for (const item of pending) {
-          try {
-            typedHandler(item);
-          } catch {
-            // Swallow handler errors during drain to keep loop healthy.
+      if (!useEvalBridge) {
+        tauriUnlisten = await tauriListen<TPayload>(event, (tauriEvent) =>
+          handler(tauriEvent.payload),
+        );
+      }
+
+      let removeEvalHandler: (() => void) | undefined;
+      if (useEvalBridge) {
+        const w = window as unknown as EventBridgeWindow;
+        const handlers = (w.__FO_EVENT_HANDLERS__ ??= {});
+        const buffer = (w.__FO_EVENT_BUFFER__ ??= {});
+        const typedHandler = handler as (payload: unknown) => void;
+        (handlers[event] ??= []).push(typedHandler);
+        const pending = buffer[event];
+        if (Array.isArray(pending) && pending.length > 0) {
+          buffer[event] = [];
+          for (const item of pending) {
+            try {
+              typedHandler(item);
+            } catch {
+              // Swallow handler errors during drain to keep loop healthy.
+            }
           }
         }
+        removeEvalHandler = () => {
+          const list = handlers[event];
+          if (list) {
+            const idx = list.indexOf(typedHandler);
+            if (idx >= 0) list.splice(idx, 1);
+            if (list.length === 0) delete handlers[event];
+          }
+        };
       }
-      const domHandler = (e: Event) =>
-        handler((e as CustomEvent).detail as TPayload);
-      const domEventName = `fo-event-${event}`;
-      window.addEventListener(domEventName, domHandler);
 
       return () => {
         tauriUnlisten();
-        window.removeEventListener(domEventName, domHandler);
-        const list = handlers[event];
-        if (list) {
-          const idx = list.indexOf(typedHandler);
-          if (idx >= 0) list.splice(idx, 1);
-          if (list.length === 0) delete handlers[event];
-        }
+        removeEvalHandler?.();
       };
     },
   };

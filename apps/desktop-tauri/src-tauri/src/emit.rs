@@ -24,8 +24,9 @@ fn eval_event_js(event: &str, payload_json: &str) -> String {
                             try {{ handlers[j](queue[i]); }} catch (_) {{}}
                         }}
                     }}
+                }} else {{
+                    try {{ window.dispatchEvent(new CustomEvent('fo-event-' + name, {{ detail: payload }})); }} catch (_) {{}}
                 }}
-                try {{ window.dispatchEvent(new CustomEvent('fo-event-' + name, {{ detail: payload }})); }} catch (_) {{}}
             }} catch (_) {{}}
         }}, 0);
     }} catch (_) {{}}
@@ -44,21 +45,27 @@ fn emit_with_eval_on_webview<S: serde::Serialize + Clone>(
             "failed to emit {event} to {window_label}: {error}"
         ));
     }
-    let json = match serde_json::to_string(&payload) {
-        Ok(j) => j,
-        Err(e) => {
-            telemetry::error(&format!("emit_with_eval: failed to serialize {event}: {e}"));
+
+    // WebKitGTK on Linux often does not deliver app.emit() to the webview; replay
+    // through eval there only. On macOS/Windows, eval plus emit duplicates every event.
+    #[cfg(target_os = "linux")]
+    {
+        let json = match serde_json::to_string(&payload) {
+            Ok(j) => j,
+            Err(e) => {
+                telemetry::error(&format!("emit_with_eval: failed to serialize {event}: {e}"));
+                return;
+            }
+        };
+        let Some(webview) = app.get_webview_window(window_label) else {
             return;
+        };
+        let js = eval_event_js(event, &json);
+        if let Err(e) = webview.eval(&js) {
+            telemetry::error(&format!(
+                "emit_with_eval: webview.eval failed for {event} on {window_label}: {e}"
+            ));
         }
-    };
-    let Some(webview) = app.get_webview_window(window_label) else {
-        return;
-    };
-    let js = eval_event_js(event, &json);
-    if let Err(e) = webview.eval(&js) {
-        telemetry::error(&format!(
-            "emit_with_eval: webview.eval failed for {event} on {window_label}: {e}"
-        ));
     }
 }
 

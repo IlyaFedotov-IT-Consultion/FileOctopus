@@ -4,9 +4,11 @@ export type ActivityRailSegment = "activity" | "history" | "terminal";
 
 export type TerminalSessionStatus = "starting" | "running" | "exited";
 
+export type TerminalPaneId = PanelId | "rail";
+
 export const DEFAULT_PANE_TERMINAL_SPLIT = 0.35;
-export const MIN_PANE_TERMINAL_SPLIT = 0.2;
-export const MAX_PANE_TERMINAL_SPLIT = 0.55;
+export const MIN_PANE_TERMINAL_SPLIT = 0.15;
+export const MAX_PANE_TERMINAL_SPLIT = 0.85;
 
 export interface TerminalSession {
   id: string;
@@ -14,7 +16,7 @@ export interface TerminalSession {
   label: string;
   status: TerminalSessionStatus;
   exitCode?: number | null;
-  panelId?: PanelId;
+  paneId: TerminalPaneId;
 }
 
 export interface PaneTerminalChrome {
@@ -66,6 +68,11 @@ export type TerminalAction =
       panelId: PanelId;
       splitRatio: number;
     }
+  | {
+      type: "setPaneActiveSession";
+      panelId: PanelId;
+      sessionId: string;
+    }
   | { type: "closePaneTerminal"; panelId: PanelId };
 
 function createPaneTerminalChrome(): PaneTerminalChrome {
@@ -96,23 +103,32 @@ function clampPaneSplit(ratio: number): number {
   );
 }
 
+function isPaneBound(paneId: TerminalPaneId): paneId is PanelId {
+  return paneId === "left" || paneId === "right";
+}
+
 function clearPaneBinding(
   pane: Record<PanelId, PaneTerminalChrome>,
   sessionId: string,
+  remainingSessions: TerminalSession[],
 ): Record<PanelId, PaneTerminalChrome> {
   let next = pane;
   for (const panelId of ["left", "right"] as const) {
-    if (pane[panelId].sessionId === sessionId) {
-      if (next === pane) {
-        next = { ...pane };
-      }
-      next[panelId] = {
-        ...pane[panelId],
-        open: false,
-        collapsed: false,
-        sessionId: null,
-      };
+    if (pane[panelId].sessionId !== sessionId) {
+      continue;
     }
+    if (next === pane) {
+      next = { ...pane };
+    }
+    const sibling = remainingSessions.find(
+      (session) => session.paneId === panelId,
+    );
+    next[panelId] = {
+      ...pane[panelId],
+      open: sibling !== undefined,
+      collapsed: false,
+      sessionId: sibling?.id ?? null,
+    };
   }
   return next;
 }
@@ -125,28 +141,30 @@ export function terminalReducer(
     case "setSegment":
       return { ...state, segment: action.segment };
     case "addSession": {
-      const sessions = [...state.sessions, action.session];
-      const pane =
-        action.session.panelId === undefined
-          ? state.pane
-          : {
-              ...state.pane,
-              [action.session.panelId]: {
-                ...state.pane[action.session.panelId],
-                open: true,
-                collapsed: false,
-                sessionId: action.session.id,
-              },
-            };
+      const session: TerminalSession = {
+        ...action.session,
+        paneId: action.session.paneId ?? "rail",
+      };
+      const sessions = [...state.sessions, session];
+      let pane = state.pane;
+      if (isPaneBound(session.paneId)) {
+        pane = {
+          ...state.pane,
+          [session.paneId]: {
+            ...state.pane[session.paneId],
+            open: true,
+            collapsed: false,
+            sessionId: session.id,
+          },
+        };
+      }
       return {
         ...state,
         sessions,
         pane,
         activeSessionId:
-          action.makeActive === false
-            ? state.activeSessionId
-            : action.session.id,
-        segment: "terminal",
+          action.makeActive === false ? state.activeSessionId : session.id,
+        segment: session.paneId === "rail" ? "terminal" : state.segment,
       };
     }
     case "setSessionStatus":
@@ -171,12 +189,29 @@ export function terminalReducer(
             : session,
         ),
       };
-    case "switchSession":
+    case "switchSession": {
+      const session = state.sessions.find(
+        (item) => item.id === action.sessionId,
+      );
+      let pane = state.pane;
+      if (session && isPaneBound(session.paneId)) {
+        pane = {
+          ...state.pane,
+          [session.paneId]: {
+            ...state.pane[session.paneId],
+            open: true,
+            collapsed: false,
+            sessionId: session.id,
+          },
+        };
+      }
       return {
         ...state,
         activeSessionId: action.sessionId,
-        segment: "terminal",
+        pane,
+        segment: session?.paneId === "rail" ? "terminal" : state.segment,
       };
+    }
     case "closeSession": {
       const sessions = state.sessions.filter(
         (session) => session.id !== action.sessionId,
@@ -190,7 +225,7 @@ export function terminalReducer(
           sessions[Math.max(0, index - 1)] ?? sessions[0] ?? null;
         activeSessionId = fallback?.id ?? null;
       }
-      const pane = clearPaneBinding(state.pane, action.sessionId);
+      const pane = clearPaneBinding(state.pane, action.sessionId, sessions);
       return {
         ...state,
         sessions,
@@ -218,7 +253,6 @@ export function terminalReducer(
           },
         },
         activeSessionId: action.sessionId,
-        segment: "terminal",
       };
     case "setPaneTerminalCollapsed":
       return {
@@ -239,6 +273,20 @@ export function terminalReducer(
           [action.panelId]: {
             ...state.pane[action.panelId],
             splitRatio: clampPaneSplit(action.splitRatio),
+          },
+        },
+      };
+    case "setPaneActiveSession":
+      return {
+        ...state,
+        activeSessionId: action.sessionId,
+        pane: {
+          ...state.pane,
+          [action.panelId]: {
+            ...state.pane[action.panelId],
+            open: true,
+            collapsed: false,
+            sessionId: action.sessionId,
           },
         },
       };
@@ -272,5 +320,12 @@ export function tabLabelForUri(uri: string): string {
 export function sessionsForActivityRail(
   sessions: TerminalSession[],
 ): TerminalSession[] {
-  return sessions.filter((session) => session.panelId === undefined);
+  return sessions.filter((session) => session.paneId === "rail");
+}
+
+export function sessionsForPane(
+  sessions: TerminalSession[],
+  paneId: PanelId,
+): TerminalSession[] {
+  return sessions.filter((session) => session.paneId === paneId);
 }

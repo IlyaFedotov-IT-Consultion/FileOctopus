@@ -1,45 +1,62 @@
-import { IconButton, Icons } from "@fileoctopus/ui";
 import type { FileOctopusClient } from "@fileoctopus/ts-api";
+import { IconButton, Icons } from "@fileoctopus/ui";
 import { useTerminal } from "../app/providers/TerminalProvider";
-import { TerminalView } from "../terminal/TerminalView";
-import { tabLabelForUri } from "../terminal/terminalSlice";
 import type { PanelId } from "../panelStore";
 import { PaneTerminalResizer } from "../shell/LayoutResizers";
+import { PaneTerminalRegion } from "./PaneTerminalRegion";
+import type { TerminalSession } from "../terminal/terminalSlice";
+import { tabLabelForUri, sessionsForPane } from "../terminal/terminalSlice";
 
 interface PaneTerminalSplitProps {
   client: FileOctopusClient;
   panelId: PanelId;
-  sessionId: string;
-  uri: string;
+  sessions: TerminalSession[];
+  activeSessionId: string | null;
   splitRatio: number;
   collapsed: boolean;
   panelActive: boolean;
   onResize: (ratio: number) => void;
+  onSwitch: (sessionId: string) => void;
+  onNewSession: () => void;
 }
 
 export function PaneTerminalSplit({
   client,
   panelId,
-  sessionId,
-  uri,
+  sessions,
+  activeSessionId,
   splitRatio,
   collapsed,
   panelActive,
   onResize,
+  onSwitch,
+  onNewSession,
 }: PaneTerminalSplitProps) {
   const { markSessionExited, closeTerminalTab, setPaneTerminalCollapsed } =
     useTerminal();
+  const paneSessions = sessionsForPane(sessions, panelId);
+  const activeSession =
+    paneSessions.find((session) => session.id === activeSessionId) ??
+    paneSessions[paneSessions.length - 1] ??
+    null;
+
+  if (paneSessions.length === 0) {
+    return null;
+  }
 
   if (collapsed) {
+    const label = activeSession
+      ? tabLabelForUri(activeSession.uri)
+      : "Terminal";
     return (
       <button
         type="button"
         className="fo-panel-terminal-collapsed"
-        aria-label={`Expand terminal (${tabLabelForUri(uri)})`}
+        aria-label={`Expand terminal (${label})`}
         onClick={() => setPaneTerminalCollapsed(panelId, false)}
       >
         {Icons.terminal()}
-        <span>{tabLabelForUri(uri)}</span>
+        <span>{label}</span>
         <span className="fo-panel-terminal-collapsed-hint">Expand</span>
       </button>
     );
@@ -53,41 +70,27 @@ export function PaneTerminalSplit({
         style={{ flex: `${splitRatio} 1 0`, minHeight: 120 }}
         aria-label="Pane terminal"
       >
-        <header className="fo-panel-terminal-header">
-          <span className="fo-panel-terminal-title">
-            {Icons.terminal()}
-            {tabLabelForUri(uri)}
-          </span>
-          <div className="fo-panel-terminal-actions">
-            <IconButton
-              label="Collapse terminal"
-              size="sm"
-              onClick={() => setPaneTerminalCollapsed(panelId, true)}
-            >
-              −
-            </IconButton>
-            <IconButton
-              label="Close terminal"
-              size="sm"
-              onClick={() => closeTerminalTab(sessionId)}
-            >
-              ×
-            </IconButton>
-          </div>
-        </header>
-        <div className="fo-panel-terminal-view">
-          {sessionId.startsWith("pending-") ? (
-            <div className="fo-empty-inline">Starting shell…</div>
-          ) : (
-            <TerminalView
-              client={client}
-              sessionId={sessionId}
-              active={panelActive}
-              onExit={(exitCode) => {
-                markSessionExited(sessionId, exitCode);
-              }}
-            />
-          )}
+        <PaneTerminalRegion
+          paneId={panelId}
+          sessions={sessions}
+          activeSessionId={activeSessionId}
+          client={client}
+          panelActive={panelActive}
+          onSwitch={onSwitch}
+          onClose={(sessionId) => closeTerminalTab(sessionId)}
+          onNewSession={onNewSession}
+          onSessionExited={(sessionId, exitCode) => {
+            markSessionExited(sessionId, exitCode);
+          }}
+        />
+        <div className="fo-panel-terminal-actions fo-panel-terminal-actions-inline">
+          <IconButton
+            label="Collapse terminal"
+            size="sm"
+            onClick={() => setPaneTerminalCollapsed(panelId, true)}
+          >
+            −
+          </IconButton>
         </div>
       </section>
     </>

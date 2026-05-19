@@ -3,10 +3,11 @@ import {
   createInitialTerminalState,
   tabLabelForUri,
   terminalReducer,
+  type TerminalSession,
 } from "../src/terminal/terminalSlice";
 
 describe("terminalReducer", () => {
-  it("opens a session and selects the terminal segment", () => {
+  it("opens a session and selects the terminal segment for rail sessions", () => {
     const state = terminalReducer(createInitialTerminalState(), {
       type: "addSession",
       session: {
@@ -14,12 +15,42 @@ describe("terminalReducer", () => {
         uri: "local:///Users/demo/Projects",
         label: "Projects",
         status: "running",
+        paneId: "rail",
       },
     });
 
     expect(state.segment).toBe("terminal");
     expect(state.activeSessionId).toBe("session-1");
     expect(state.sessions).toHaveLength(1);
+  });
+
+  it("addSession preserves the paneId field", () => {
+    const session: TerminalSession = {
+      id: "s1",
+      uri: "local:///tmp",
+      label: "tmp",
+      status: "running",
+      paneId: "left",
+    };
+    const next = terminalReducer(createInitialTerminalState(), {
+      type: "addSession",
+      session,
+    });
+    expect(next.sessions).toHaveLength(1);
+    expect(next.sessions[0]?.paneId).toBe("left");
+  });
+
+  it("addSession defaults paneId to rail if missing", () => {
+    const next = terminalReducer(createInitialTerminalState(), {
+      type: "addSession",
+      session: {
+        id: "s1",
+        uri: "local:///tmp",
+        label: "tmp",
+        status: "running",
+      } as TerminalSession,
+    });
+    expect(next.sessions[0]?.paneId).toBe("rail");
   });
 
   it("marks a session as exited without removing it", () => {
@@ -30,6 +61,7 @@ describe("terminalReducer", () => {
         uri: "local:///tmp",
         label: "tmp",
         status: "running",
+        paneId: "rail",
       },
     });
 
@@ -52,7 +84,7 @@ describe("terminalReducer", () => {
         uri: "local:///tmp",
         label: "tmp",
         status: "running",
-        panelId: "left",
+        paneId: "left",
       },
     });
 
@@ -70,6 +102,7 @@ describe("terminalReducer", () => {
         uri: "local:///a",
         label: "a",
         status: "running",
+        paneId: "rail",
       },
     });
     state = terminalReducer(state, {
@@ -79,6 +112,7 @@ describe("terminalReducer", () => {
         uri: "local:///b",
         label: "b",
         status: "running",
+        paneId: "rail",
       },
     });
     state = terminalReducer(state, { type: "switchSession", sessionId: "b" });

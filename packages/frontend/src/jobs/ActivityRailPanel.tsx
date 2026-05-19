@@ -103,7 +103,7 @@ export function ActivityRailPanel({
     [activeJobs, recentJobs],
   );
 
-  const openTerminalCount = terminal.sessions.filter(
+  const openTerminalCount = railSessions.filter(
     (session) => session.status !== "exited",
   ).length;
 
