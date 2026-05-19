@@ -10,4 +10,6 @@ export const mockNetworkClient = {
   deleteProfile: vi.fn(async () => ({ ok: true })),
   setSecret: vi.fn(async () => ({ ok: true })),
   validateUri: vi.fn(async () => ({ ok: true })),
+  subscribeStatusEvents: vi.fn(async () => () => undefined),
+  forgetFingerprint: vi.fn(async () => ({ ok: true })),
 };

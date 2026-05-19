@@ -5,6 +5,7 @@ mod emit;
 mod state;
 
 use state::{ListingRegistry, MetadataJobState, WatchState};
+use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -19,8 +20,45 @@ pub fn run() {
         .manage(WatchState::default())
         .manage(MetadataJobState::default())
         .manage(ListingRegistry::default())
-        .setup(|_app| {
+        .setup(|app| {
             telemetry::info("FileOctopus Tauri shell started");
+
+            let app_handle = app.handle().clone();
+            let state = app_handle
+                .state::<std::sync::Arc<app_core::AppState>>()
+                .inner()
+                .clone();
+
+            let sessions_for_reaper = state.sessions();
+            tauri::async_runtime::spawn(async move {
+                remote_core::run_idle_reaper(sessions_for_reaper).await;
+            });
+
+            let mut rx = state.sessions().subscribe_status();
+            tauri::async_runtime::spawn(async move {
+                use app_ipc::{NetworkStatusEventDto, NETWORK_STATUS_EVENT};
+                while let Ok(event) = rx.recv().await {
+                    let (status, message) = match event.status {
+                        remote_core::ConnectionStatus::Connected => ("connected".to_string(), None),
+                        remote_core::ConnectionStatus::Disconnected => {
+                            ("disconnected".to_string(), None)
+                        }
+                        remote_core::ConnectionStatus::Error { message } => {
+                            ("error".to_string(), Some(message))
+                        }
+                    };
+                    crate::emit::emit_with_eval(
+                        &app_handle,
+                        NETWORK_STATUS_EVENT,
+                        NetworkStatusEventDto {
+                            profile_id: event.profile_id,
+                            status,
+                            message,
+                        },
+                    );
+                }
+            });
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -62,6 +100,7 @@ pub fn run() {
             commands::network::network_profile_update,
             commands::network::network_profile_delete,
             commands::network::network_profile_set_secret,
+            commands::network::network_profile_forget_fingerprint,
             commands::network::network_connect,
             commands::network::network_disconnect,
             commands::network::network_connection_status,

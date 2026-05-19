@@ -128,6 +128,8 @@ function FileOctopusAppInner({
     networkLocationsOpen,
     connectServerOpen,
     connectServerProfile,
+    removeServerProfile,
+    setRemoveServerProfile,
     setVolumePickerOpen,
     setNetworkLocationsOpen,
     setConnectServerOpen,
@@ -240,6 +242,7 @@ function FileOctopusAppInner({
     setPreferences,
     setDensity,
     setActivityCollapsed,
+    setNetworkStatuses,
   });
 
   const commandEntries: CommandEntry[] = useMemo(
@@ -311,12 +314,18 @@ function FileOctopusAppInner({
   const statusBarVisible = preferences?.statusBarVisible !== false;
   const toolbarVisible = preferences?.toolbarVisible !== false;
 
-  const { connectProfile, disconnectProfile, deleteProfile, saveProfile } =
-    useNetworkHandlers({
-      client,
-      refreshNetworkProfiles,
-      setOperationError,
-    });
+  const {
+    connectProfile,
+    disconnectProfile,
+    deleteProfile,
+    saveProfile,
+    forgetFingerprint,
+    busyProfileIds,
+  } = useNetworkHandlers({
+    client,
+    refreshNetworkProfiles,
+    setOperationError,
+  });
 
   const handleCommandSelect = useCommandDispatch({
     state,
@@ -654,6 +663,8 @@ function FileOctopusAppInner({
       networkLocationsOpen={networkLocationsOpen}
       connectServerOpen={connectServerOpen}
       connectServerProfile={connectServerProfile}
+      removeServerProfile={removeServerProfile}
+      busyProfileIds={busyProfileIds}
       toolbarCustomizeOpen={toolbarCustomizeOpen}
       setToolbarCustomizeOpen={setToolbarCustomizeOpen}
       setGoToLocationOpen={setGoToLocationOpen}
@@ -666,10 +677,12 @@ function FileOctopusAppInner({
       setNetworkLocationsOpen={setNetworkLocationsOpen}
       setConnectServerOpen={setConnectServerOpen}
       setConnectServerProfile={setConnectServerProfile}
+      setRemoveServerProfile={setRemoveServerProfile}
       connectProfile={connectProfile}
       disconnectProfile={disconnectProfile}
       deleteProfile={deleteProfile}
       saveProfile={saveProfile}
+      forgetFingerprint={forgetFingerprint}
       refreshNetworkProfiles={refreshNetworkProfiles}
       dialog={dialog}
       autostart={autostart}

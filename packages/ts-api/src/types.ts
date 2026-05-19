@@ -352,6 +352,14 @@ export interface NetworkConnectionStatusDto {
   message: string | null;
 }
 
+export interface NetworkStatusEvent {
+  profileId: string;
+  status: "connected" | "disconnected" | "error";
+  message: string | null;
+}
+
+export const NETWORK_STATUS_EVENT = "network:status";
+
 export interface NetworkProfilesListResponse {
   profiles: NetworkProfileDto[];
 }

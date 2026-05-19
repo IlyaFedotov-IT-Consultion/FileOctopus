@@ -8,9 +8,12 @@ import type {
   NetworkProfileSetSecretRequest,
   NetworkProfileUpdateRequest,
   NetworkProfilesListResponse,
+  NetworkStatusEvent,
   OkResponse,
 } from "../types";
+import { NETWORK_STATUS_EVENT } from "../types";
 import { normalizeIpcError } from "../normalizeError";
+import { requireListen } from "../requireListen";
 
 export class NetworkClient {
   constructor(private readonly transport: IpcTransport) {}
@@ -92,6 +95,24 @@ export class NetworkClient {
   async validateUri(uri: string): Promise<OkResponse> {
     try {
       return await this.transport.invoke("network.validateUri", { uri });
+    } catch (error) {
+      throw normalizeIpcError(error);
+    }
+  }
+
+  async subscribeStatusEvents(
+    listener: (event: NetworkStatusEvent) => void,
+  ): Promise<() => void> {
+    return requireListen(this.transport, NETWORK_STATUS_EVENT, listener);
+  }
+
+  async forgetFingerprint(
+    request: NetworkProfileActionRequest,
+  ): Promise<OkResponse> {
+    try {
+      return await this.transport.invoke("network.profileForgetFingerprint", {
+        request,
+      });
     } catch (error) {
       throw normalizeIpcError(error);
     }
