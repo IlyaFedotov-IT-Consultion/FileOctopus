@@ -16,6 +16,8 @@
     "test:backend:rc": "cargo fmt --all --check && cargo check --workspace && cargo test --workspace && cargo clippy --workspace --all-targets -- -D warnings",
     "test:frontend:rc": "pnpm typecheck && pnpm lint && pnpm test && pnpm build",
     "rc:validate": "pnpm test:backend:rc && pnpm test:frontend:rc",
+    "rc:qa": "bash scripts/rc-qa-automated.sh",
+    "test:e2e:vite": "FO_E2E_WEB_SERVER=vite playwright test",
     "tauri:build": "pnpm --filter @fileoctopus/desktop-tauri tauri build",
     "rust:check": "cargo check --workspace",
     "rust:test": "cargo test --workspace",
