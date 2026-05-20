@@ -42,6 +42,7 @@ interface TerminalContextValue {
   terminal: TerminalState;
   openEmbeddedTerminal: (uri: string, panelId: PanelId) => Promise<void>;
   openPaneTerminal: (panelId: PanelId, uri: string) => Promise<void>;
+  openAdditionalPaneTab: (panelId: PanelId, uri: string) => Promise<void>;
   openNewTerminalTab: (uri: string, panelId?: PanelId) => Promise<void>;
   togglePaneTerminal: (uri: string, panelId: PanelId) => Promise<void>;
   markSessionExited: (sessionId: string, exitCode?: number | null) => void;
@@ -221,6 +222,33 @@ export function TerminalProvider({
       await openPaneTerminal(panelId, uri);
     },
     [openPaneTerminal],
+  );
+
+  const openAdditionalPaneTab = useCallback(
+    async (panelId: PanelId, uri: string) => {
+      if (isRemoteUri(uri)) {
+        throw new Error("Embedded terminal supports local folders only");
+      }
+      const splitRatio = paneSplitRatio(panelId);
+      const sessionId = await spawnSession(client, uri, preferences);
+      dispatch({
+        type: "addSession",
+        session: {
+          id: sessionId,
+          uri,
+          label: tabLabelForUri(uri),
+          status: "running",
+          paneId: panelId,
+        },
+      });
+      dispatch({
+        type: "openPaneTerminal",
+        panelId,
+        sessionId,
+        splitRatio,
+      });
+    },
+    [client, paneSplitRatio, preferences],
   );
 
   const openNewTerminalTab = useCallback(
@@ -472,6 +500,7 @@ export function TerminalProvider({
       terminal,
       openEmbeddedTerminal,
       openPaneTerminal,
+      openAdditionalPaneTab,
       openNewTerminalTab,
       togglePaneTerminal,
       markSessionExited,
@@ -491,6 +520,7 @@ export function TerminalProvider({
       terminal,
       openEmbeddedTerminal,
       openPaneTerminal,
+      openAdditionalPaneTab,
       openNewTerminalTab,
       togglePaneTerminal,
       markSessionExited,
@@ -521,6 +551,7 @@ export function StubTerminalProvider({ children }: { children: ReactNode }) {
       terminal: createInitialTerminalState(),
       openEmbeddedTerminal: async () => {},
       openPaneTerminal: async () => {},
+      openAdditionalPaneTab: async () => {},
       openNewTerminalTab: async () => {},
       togglePaneTerminal: async () => {},
       markSessionExited: () => {},
