@@ -39,17 +39,20 @@
   min-height: 0;
 }
 
+.fo-pane-terminal-view-wrap .fo-terminal-view-host {
+  width: 100%;
+  height: 100%;
+}
+
 .fo-pane-terminal-view-wrap[hidden] {
   display: none;
 }
 
-.fo-panel-terminal-actions-inline {
-  position: absolute;
-  top: 2px;
-  right: 4px;
-  z-index: 1;
-}
-
-.fo-panel-terminal .fo-pane-terminal-inner .fo-terminal-tab-bar {
-  padding-right: 5rem;
+.fo-terminal-tab-bar-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex: 0 0 auto;
+  margin-left: auto;
+  padding: 0 4px;
 }

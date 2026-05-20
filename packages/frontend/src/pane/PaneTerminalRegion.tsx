@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { FileOctopusClient } from "@fileoctopus/ts-api";
 import type { PanelId } from "../panelStore";
 import { TerminalTabBar } from "../terminal/TerminalTabBar";
@@ -15,6 +16,7 @@ export interface PaneTerminalRegionProps {
   onClose: (sessionId: string) => void;
   onNewSession: () => void;
   onSessionExited: (sessionId: string, exitCode?: number | null) => void;
+  tabBarActions?: ReactNode;
 }
 
 export function PaneTerminalRegion({
@@ -27,6 +29,7 @@ export function PaneTerminalRegion({
   onClose,
   onNewSession,
   onSessionExited,
+  tabBarActions,
 }: PaneTerminalRegionProps) {
   const paneSessions = sessionsForPane(sessions, paneId);
   if (paneSessions.length === 0) {
@@ -51,6 +54,7 @@ export function PaneTerminalRegion({
         onSwitch={onSwitch}
         onClose={onClose}
         onNew={onNewSession}
+        actions={tabBarActions}
       />
       <div className="fo-pane-terminal-views">
         {paneSessions.map((session) => (

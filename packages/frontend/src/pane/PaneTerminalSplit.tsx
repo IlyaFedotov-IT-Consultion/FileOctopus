@@ -106,31 +106,33 @@ export function PaneTerminalSplit({
           onSessionExited={(sessionId, exitCode) => {
             markSessionExited(sessionId, exitCode);
           }}
+          tabBarActions={
+            <>
+              <IconButton
+                label={maximized ? "Restore terminal" : "Maximize terminal"}
+                size="sm"
+                onClick={() => setPaneTerminalMaximized(panelId, !maximized)}
+              >
+                {maximized ? Icons.minimize() : Icons.maximize()}
+              </IconButton>
+              <IconButton
+                label="Collapse terminal"
+                size="sm"
+                onClick={() => setPaneTerminalCollapsed(panelId, true)}
+                disabled={maximized}
+              >
+                −
+              </IconButton>
+              <IconButton
+                label="Close terminal"
+                size="sm"
+                onClick={() => closePaneTerminal(panelId)}
+              >
+                {Icons.x()}
+              </IconButton>
+            </>
+          }
         />
-        <div className="fo-panel-terminal-actions fo-panel-terminal-actions-inline">
-          <IconButton
-            label={maximized ? "Restore terminal" : "Maximize terminal"}
-            size="sm"
-            onClick={() => setPaneTerminalMaximized(panelId, !maximized)}
-          >
-            {maximized ? Icons.minimize() : Icons.maximize()}
-          </IconButton>
-          <IconButton
-            label="Collapse terminal"
-            size="sm"
-            onClick={() => setPaneTerminalCollapsed(panelId, true)}
-            disabled={maximized}
-          >
-            −
-          </IconButton>
-          <IconButton
-            label="Close terminal"
-            size="sm"
-            onClick={() => closePaneTerminal(panelId)}
-          >
-            {Icons.x()}
-          </IconButton>
-        </div>
       </section>
     </>
   );

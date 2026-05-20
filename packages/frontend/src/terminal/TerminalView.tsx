@@ -28,6 +28,8 @@ export function TerminalView({
   const terminalRef = useRef<Terminal | null>(null);
   const fitRef = useRef<FitAddon | null>(null);
   const decoderRef = useRef(new TextDecoder());
+  const onExitRef = useRef(onExit);
+  onExitRef.current = onExit;
 
   useEffect(() => {
     const container = containerRef.current;
@@ -37,8 +39,11 @@ export function TerminalView({
 
     const terminal = new Terminal({
       cursorBlink: true,
-      fontFamily: "var(--fo-mono, ui-monospace, monospace)",
+      fontFamily:
+        'ui-monospace, "SF Mono", SFMono-Regular, Menlo, Monaco, "Cascadia Mono", Consolas, "Liberation Mono", "Courier New", monospace',
       fontSize: 13,
+      lineHeight: 1.2,
+      letterSpacing: 0,
       theme: buildTerminalTheme(),
       scrollback: 5000,
     });
@@ -109,7 +114,7 @@ export function TerminalView({
         terminal.write(decoderRef.current.decode(bytes, { stream: true }));
       },
       onExit: (exitCode) => {
-        onExit(exitCode);
+        onExitRef.current(exitCode);
       },
     });
 
@@ -127,7 +132,7 @@ export function TerminalView({
       fitRef.current = null;
       decoderRef.current = new TextDecoder();
     };
-  }, [client, onExit, registerTerminalSessionHandlers, sessionId]);
+  }, [client, registerTerminalSessionHandlers, sessionId]);
 
   useEffect(() => {
     if (!active) {
@@ -135,7 +140,6 @@ export function TerminalView({
     }
     requestAnimationFrame(() => {
       fitRef.current?.fit();
-      terminalRef.current?.focus();
     });
   }, [active]);
 

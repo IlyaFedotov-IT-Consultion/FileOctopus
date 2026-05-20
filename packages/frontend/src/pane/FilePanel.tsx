@@ -138,7 +138,7 @@ export function FilePanel({
     terminal,
     setPaneTerminalSplit,
     setPaneActiveSession,
-    openPaneTerminal,
+    openAdditionalPaneTab,
   } = useTerminal();
   const paneChrome = terminal.pane[panelId];
   const paneHasSessions = terminal.sessions.some(
@@ -375,7 +375,9 @@ export function FilePanel({
             onResize={(ratio) => setPaneTerminalSplit(panelId, ratio)}
             onSwitch={(sessionId) => setPaneActiveSession(panelId, sessionId)}
             onNewSession={() => {
-              void openPaneTerminal(panelId, tab.uri).catch(() => undefined);
+              void openAdditionalPaneTab(panelId, tab.uri).catch(
+                () => undefined,
+              );
             }}
           />
         ) : null}

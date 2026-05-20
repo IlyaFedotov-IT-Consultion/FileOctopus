@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Icons } from "@fileoctopus/ui";
 import type { TerminalSession } from "./terminalSlice";
 
@@ -11,6 +12,7 @@ interface TerminalTabBarProps {
   onSwitch: (sessionId: string) => void;
   onClose: (sessionId: string) => void;
   onNew: () => void;
+  actions?: ReactNode;
 }
 
 export function TerminalTabBar({
@@ -19,6 +21,7 @@ export function TerminalTabBar({
   onSwitch,
   onClose,
   onNew,
+  actions,
 }: TerminalTabBarProps) {
   return (
     <div className="fo-tab-bar fo-terminal-tab-bar" aria-label="Terminal tabs">
@@ -37,6 +40,9 @@ export function TerminalTabBar({
       >
         +
       </button>
+      {actions ? (
+        <div className="fo-terminal-tab-bar-actions">{actions}</div>
+      ) : null}
     </div>
   );
 }
