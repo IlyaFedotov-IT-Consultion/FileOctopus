@@ -1,7 +1,7 @@
 # FileOctopus Architecture Improvement Implementation Plan
 
 **Date:** 2026-05-22
-**Status:** Phase 1 partially implemented
+**Status:** Phases 1-3 implemented; Phases 4-6 pending
 **Goal:** Turn the architecture review findings into a concrete task backlog that improves correctness, contract safety, maintainability, and release readiness without changing product scope unnecessarily.
 
 ## Phase 1: Contract And Boundary Guardrails
@@ -131,7 +131,7 @@ Acceptance criteria:
 
 ### Task 2.4: Route Columns View Through Shared Listing Lifecycle
 
-**Status:** Pending
+**Status:** Done
 
 Remove the independent `ColumnsView` IPC client and event subscription path.
 
@@ -149,7 +149,7 @@ Acceptance criteria:
 
 ### Task 2.5: Virtualize Icons View
 
-**Status:** Pending
+**Status:** Done
 
 Avoid mounting every item in large directories when icons mode is active.
 
@@ -174,7 +174,7 @@ Catch drift between `CommandId` and `COMMAND_DEFINITIONS`.
 
 Implementation notes:
 
-- Add a registry test that parses `CommandId` and compares it to the metadata registry.
+- Add a registry test that verifies command registry metadata is present and unique.
 - Add missing `nav.connectServer` metadata.
 
 Acceptance criteria:
@@ -184,13 +184,13 @@ Acceptance criteria:
 
 ### Task 3.2: Derive CommandId From Registry
 
-**Status:** Pending
+**Status:** Done
 
 Remove the manually maintained command-id union as the primary source.
 
 Implementation notes:
 
-- Convert `COMMAND_DEFINITIONS` to an `as const satisfies` registry.
+- Convert `COMMAND_DEFINITIONS` to a registry backed by `COMMAND_REGISTRY`.
 - Derive `CommandId` from registry keys or item ids.
 - Keep shortcut/help/palette generation based on the same registry.
 
@@ -201,7 +201,7 @@ Acceptance criteria:
 
 ### Task 3.3: Add Dispatch Exhaustiveness Coverage
 
-**Status:** Pending
+**Status:** Done
 
 Catch commands that have metadata but no behavior or explicit no-op policy.
 
