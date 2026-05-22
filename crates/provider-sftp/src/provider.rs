@@ -2,11 +2,17 @@ use std::sync::Arc;
 
 use remote_core::ConnectionSessionManager;
 use vfs::{
-    DirectoryBatch, DirectorySink, ListOptions, ProviderCapabilities, ProviderId, ResourceUri,
-    VfsError, VfsProvider,
+    DirectoryBatch, DirectorySink, FileKind, ListOptions, ProviderCapabilities, ProviderId,
+    ResourceUri, VfsError, VfsProvider,
 };
 
-use crate::connector::{list_directory_incremental_blocking, stat_path_blocking, SftpSession};
+use crate::connector::{
+    list_directory_blocking, list_directory_incremental_blocking, stat_path_blocking, SftpSession,
+};
+use crate::ops::{
+    create_empty_file_blocking, mkdir_blocking, read_file_prefix_blocking, remove_dir_blocking,
+    remove_file_blocking, rename_blocking, TRANSFER_CHUNK_SIZE,
+};
 
 pub struct SftpProvider {
     sessions: Arc<ConnectionSessionManager>,
@@ -21,6 +27,99 @@ impl SftpProvider {
         uri.remote_authority()
             .map(str::to_string)
             .ok_or_else(|| VfsError::invalid_uri(uri.as_str(), "missing sftp profile id"))
+    }
+
+    async fn session_for(&self, uri: &ResourceUri) -> Result<(String, SftpSession), VfsError> {
+        let profile_id = Self::profile_id_for_uri(uri)?;
+        let session = self
+            .sessions
+            .session_for_profile(&profile_id)
+            .await
+            .map_err(VfsError::from)?;
+        let sftp_session = session
+            .as_any()
+            .downcast_ref::<SftpSession>()
+            .ok_or_else(|| VfsError::internal("invalid sftp session handle"))?
+            .clone_handle();
+        Ok((profile_id, sftp_session))
+    }
+
+    fn remote_path_for(uri: &ResourceUri) -> Result<String, VfsError> {
+        uri.remote_path()
+            .filter(|path| !path.is_empty())
+            .ok_or_else(|| VfsError::invalid_uri(uri.as_str(), "missing sftp remote path"))
+    }
+}
+
+fn remove_sftp_tree_blocking(
+    session: &SftpSession,
+    uri: &ResourceUri,
+    path: &str,
+) -> Result<(), VfsError> {
+    let entries = list_directory_blocking(session, uri, path, true)?;
+    for entry in entries {
+        let child_path = join_remote_path(path, &entry.name);
+        let child_uri = ResourceUri::from_remote_profile(
+            "sftp",
+            uri.remote_authority().unwrap_or_default(),
+            &child_path,
+        )?;
+        if entry.kind == FileKind::Directory {
+            remove_sftp_tree_blocking(session, &child_uri, &child_path)?;
+        } else {
+            remove_file_blocking(session, &child_uri, &child_path)?;
+        }
+    }
+    remove_dir_blocking(session, uri, path)
+}
+
+fn copy_within_session_blocking(
+    session: &SftpSession,
+    source: &ResourceUri,
+    source_path: &str,
+    destination: &ResourceUri,
+    destination_path: &str,
+    on_progress: &mut (dyn FnMut(u64) + Send),
+) -> Result<u64, VfsError> {
+    use std::io::{Read, Write};
+    use std::path::Path;
+
+    let guard = session.lock_session()?;
+    let sftp = guard
+        .sftp()
+        .map_err(|error| VfsError::internal(&format!("{}: {}", error, source.as_str())))?;
+    let mut reader = sftp
+        .open(Path::new(source_path))
+        .map_err(|error| crate::connector::map_stat_error(source, error))?;
+    let mut writer = sftp
+        .create(Path::new(destination_path))
+        .map_err(|error| crate::connector::map_stat_error(destination, error))?;
+    let mut buffer = vec![0_u8; TRANSFER_CHUNK_SIZE];
+    let mut total = 0_u64;
+    loop {
+        let read = reader
+            .read(&mut buffer)
+            .map_err(|error| VfsError::internal(&error.to_string()))?;
+        if read == 0 {
+            break;
+        }
+        writer
+            .write_all(&buffer[..read])
+            .map_err(|error| VfsError::internal(&error.to_string()))?;
+        total += read as u64;
+        on_progress(total);
+    }
+    writer
+        .flush()
+        .map_err(|error| VfsError::internal(&error.to_string()))?;
+    Ok(total)
+}
+
+fn join_remote_path(base: &str, name: &str) -> String {
+    if base.ends_with('/') {
+        format!("{base}{name}")
+    } else {
+        format!("{base}/{name}")
     }
 }
 
@@ -39,21 +138,11 @@ impl VfsProvider for SftpProvider {
     }
 
     async fn stat(&self, uri: &ResourceUri) -> Result<vfs::FileEntry, VfsError> {
-        let profile_id = Self::profile_id_for_uri(uri)?;
+        let (profile_id, sftp_session) = self.session_for(uri).await?;
         let remote_path = uri.remote_path().unwrap_or_else(|| "/".to_string());
-        let session = self
-            .sessions
-            .session_for_profile(&profile_id)
-            .await
-            .map_err(VfsError::from)?;
-        let sftp_session = session
-            .as_any()
-            .downcast_ref::<SftpSession>()
-            .ok_or_else(|| VfsError::internal("invalid sftp session handle"))?
-            .clone_handle();
-        let uri = uri.clone();
+        let uri_clone = uri.clone();
         let entry = tokio::task::spawn_blocking(move || {
-            stat_path_blocking(&sftp_session, &uri, &remote_path)
+            stat_path_blocking(&sftp_session, &uri_clone, &remote_path)
         })
         .await
         .map_err(|error| VfsError::internal(&error.to_string()))??;
@@ -67,18 +156,8 @@ impl VfsProvider for SftpProvider {
         options: ListOptions,
         sink: DirectorySink,
     ) -> Result<(), VfsError> {
-        let profile_id = Self::profile_id_for_uri(uri)?;
+        let (profile_id, sftp_session) = self.session_for(uri).await?;
         let remote_path = uri.remote_path().unwrap_or_else(|| "/".to_string());
-        let session = self
-            .sessions
-            .session_for_profile(&profile_id)
-            .await
-            .map_err(VfsError::from)?;
-        let sftp_session = session
-            .as_any()
-            .downcast_ref::<SftpSession>()
-            .ok_or_else(|| VfsError::internal("invalid sftp session handle"))?
-            .clone_handle();
         let batch_size = options.batch_size.max(1);
         let include_hidden = options.include_hidden;
         let list_uri = uri.clone();
@@ -112,6 +191,126 @@ impl VfsProvider for SftpProvider {
 
         self.sessions.touch_session(&profile_id).await;
         Ok(())
+    }
+
+    async fn create_directory(&self, uri: &ResourceUri) -> Result<(), VfsError> {
+        let (profile_id, sftp_session) = self.session_for(uri).await?;
+        let remote_path = Self::remote_path_for(uri)?;
+        let uri_clone = uri.clone();
+        tokio::task::spawn_blocking(move || {
+            mkdir_blocking(&sftp_session, &uri_clone, &remote_path)
+        })
+        .await
+        .map_err(|error| VfsError::internal(&error.to_string()))??;
+        self.sessions.touch_session(&profile_id).await;
+        Ok(())
+    }
+
+    async fn create_file(&self, uri: &ResourceUri) -> Result<(), VfsError> {
+        let (profile_id, sftp_session) = self.session_for(uri).await?;
+        let remote_path = Self::remote_path_for(uri)?;
+        let uri_clone = uri.clone();
+        tokio::task::spawn_blocking(move || {
+            create_empty_file_blocking(&sftp_session, &uri_clone, &remote_path)
+        })
+        .await
+        .map_err(|error| VfsError::internal(&error.to_string()))??;
+        self.sessions.touch_session(&profile_id).await;
+        Ok(())
+    }
+
+    async fn rename(&self, from: &ResourceUri, to: &ResourceUri) -> Result<(), VfsError> {
+        let from_authority = Self::profile_id_for_uri(from)?;
+        let to_authority = Self::profile_id_for_uri(to)?;
+        if from_authority != to_authority {
+            return Err(VfsError::UnsupportedOperation {
+                scheme: "sftp".to_string(),
+                operation: "rename across profiles",
+            });
+        }
+        let (profile_id, sftp_session) = self.session_for(from).await?;
+        let from_path = Self::remote_path_for(from)?;
+        let to_path = Self::remote_path_for(to)?;
+        let from_clone = from.clone();
+        tokio::task::spawn_blocking(move || {
+            rename_blocking(&sftp_session, &from_clone, &from_path, &to_path)
+        })
+        .await
+        .map_err(|error| VfsError::internal(&error.to_string()))??;
+        self.sessions.touch_session(&profile_id).await;
+        Ok(())
+    }
+
+    async fn remove(&self, uri: &ResourceUri, recursive: bool) -> Result<(), VfsError> {
+        let (profile_id, sftp_session) = self.session_for(uri).await?;
+        let remote_path = Self::remote_path_for(uri)?;
+        let uri_clone = uri.clone();
+        let entry = self.stat(uri).await?;
+        tokio::task::spawn_blocking(move || match (entry.kind, recursive) {
+            (FileKind::Directory, true) => {
+                remove_sftp_tree_blocking(&sftp_session, &uri_clone, &remote_path)
+            }
+            (FileKind::Directory, false) => {
+                remove_dir_blocking(&sftp_session, &uri_clone, &remote_path)
+            }
+            _ => remove_file_blocking(&sftp_session, &uri_clone, &remote_path),
+        })
+        .await
+        .map_err(|error| VfsError::internal(&error.to_string()))??;
+        self.sessions.touch_session(&profile_id).await;
+        Ok(())
+    }
+
+    async fn copy_file(
+        &self,
+        source: &ResourceUri,
+        destination: &ResourceUri,
+        mut on_progress: Box<dyn FnMut(u64) + Send>,
+    ) -> Result<u64, VfsError> {
+        let source_authority = Self::profile_id_for_uri(source)?;
+        let dest_authority = Self::profile_id_for_uri(destination)?;
+        if source_authority != dest_authority {
+            return Err(VfsError::UnsupportedOperation {
+                scheme: "sftp".to_string(),
+                operation: "copy_file across profiles",
+            });
+        }
+        let (profile_id, sftp_session) = self.session_for(source).await?;
+        let source_path = Self::remote_path_for(source)?;
+        let dest_path = Self::remote_path_for(destination)?;
+        let source_clone = source.clone();
+        let destination_clone = destination.clone();
+        let total = tokio::task::spawn_blocking(move || {
+            copy_within_session_blocking(
+                &sftp_session,
+                &source_clone,
+                &source_path,
+                &destination_clone,
+                &dest_path,
+                &mut *on_progress,
+            )
+        })
+        .await
+        .map_err(|error| VfsError::internal(&error.to_string()))??;
+        self.sessions.touch_session(&profile_id).await;
+        Ok(total)
+    }
+
+    async fn read_file_prefix(
+        &self,
+        uri: &ResourceUri,
+        max_bytes: u64,
+    ) -> Result<Vec<u8>, VfsError> {
+        let (profile_id, sftp_session) = self.session_for(uri).await?;
+        let remote_path = Self::remote_path_for(uri)?;
+        let uri_clone = uri.clone();
+        let bytes = tokio::task::spawn_blocking(move || {
+            read_file_prefix_blocking(&sftp_session, &uri_clone, &remote_path, max_bytes)
+        })
+        .await
+        .map_err(|error| VfsError::internal(&error.to_string()))??;
+        self.sessions.touch_session(&profile_id).await;
+        Ok(bytes)
     }
 }
 
