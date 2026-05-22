@@ -9,6 +9,8 @@ use vfs::{FileOperationError, FileOperationKind, ListCancellation};
 
 use crate::emit::emit_job;
 
+const METADATA_JOB_TERMINAL_RETENTION_MAX: usize = 64;
+
 #[derive(Default)]
 pub(crate) struct WatchState {
     pub(crate) current: Mutex<Option<WatchRuntime>>,
@@ -132,8 +134,10 @@ pub(crate) fn cancel_metadata_job(
     runtime.cancel.cancel();
     runtime.snapshot.status = JobStatus::Cancelled;
     runtime.snapshot.updated_at = Utc::now();
+    let snapshot = runtime.snapshot.clone();
+    prune_terminal_metadata_jobs(&mut jobs);
 
-    Ok(Some(runtime.snapshot.clone()))
+    Ok(Some(snapshot))
 }
 
 pub(crate) fn set_metadata_job_status(
@@ -150,7 +154,37 @@ pub(crate) fn set_metadata_job_status(
             runtime.snapshot.message = message;
             runtime.snapshot.updated_at = Utc::now();
         }
+        prune_terminal_metadata_jobs(&mut jobs);
     }
+}
+
+fn prune_terminal_metadata_jobs(jobs: &mut HashMap<String, MetadataJobRuntime>) {
+    let terminal_count = jobs
+        .values()
+        .filter(|runtime| is_terminal_status(runtime.snapshot.status))
+        .count();
+    if terminal_count <= METADATA_JOB_TERMINAL_RETENTION_MAX {
+        return;
+    }
+
+    let remove_count = terminal_count - METADATA_JOB_TERMINAL_RETENTION_MAX;
+    let mut terminal_jobs: Vec<(String, chrono::DateTime<Utc>)> = jobs
+        .iter()
+        .filter(|(_, runtime)| is_terminal_status(runtime.snapshot.status))
+        .map(|(job_id, runtime)| (job_id.clone(), runtime.snapshot.updated_at))
+        .collect();
+    terminal_jobs.sort_by_key(|(_, updated_at)| *updated_at);
+
+    for (job_id, _) in terminal_jobs.into_iter().take(remove_count) {
+        jobs.remove(&job_id);
+    }
+}
+
+fn is_terminal_status(status: JobStatus) -> bool {
+    matches!(
+        status,
+        JobStatus::Cancelled | JobStatus::Completed | JobStatus::Failed
+    )
 }
 
 pub(crate) fn update_metadata_job_progress(
@@ -186,4 +220,31 @@ pub(crate) fn update_metadata_job_progress(
             updated_at,
         }),
     );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn metadata_jobs_prune_old_terminal_snapshots() {
+        let state = MetadataJobState::default();
+
+        for _ in 0..80 {
+            let snapshot = start_metadata_job(&state, FileOperationKind::FolderSize).unwrap();
+            set_metadata_job_status(
+                &state.jobs,
+                snapshot.job_id.as_str(),
+                JobStatus::Completed,
+                None,
+                None,
+            );
+        }
+
+        let job_count = state.jobs.lock().unwrap().len();
+        assert!(
+            job_count <= 64,
+            "metadata jobs should retain a bounded number of terminal snapshots, got {job_count}"
+        );
+    }
 }

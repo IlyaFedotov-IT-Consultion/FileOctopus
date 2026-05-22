@@ -10,7 +10,7 @@ static INIT: OnceLock<Result<tracing_appender::non_blocking::WorkerGuard, String
 pub fn init() -> Result<(), Box<dyn Error + Send + Sync>> {
     INIT.get_or_init(|| {
         let filter = EnvFilter::try_from_default_env()
-            .unwrap_or_else(|_| EnvFilter::new("fileoctopus=debug,info"));
+            .unwrap_or_else(|_| EnvFilter::new(default_filter_directives()));
         let log_dir = default_log_dir();
 
         std::fs::create_dir_all(&log_dir).map_err(|error| error.to_string())?;
@@ -30,6 +30,10 @@ pub fn init() -> Result<(), Box<dyn Error + Send + Sync>> {
     .as_ref()
     .map(|_| ())
     .map_err(|error| error.clone().into())
+}
+
+pub fn default_filter_directives() -> &'static str {
+    "app_core=debug,fileoctopus_desktop_lib=debug,fs_core=debug,remote_core=debug,terminal_core=debug,info"
 }
 
 pub fn default_log_dir() -> PathBuf {

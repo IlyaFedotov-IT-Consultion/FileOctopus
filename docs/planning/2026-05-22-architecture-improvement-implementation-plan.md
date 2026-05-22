@@ -1,7 +1,7 @@
 # FileOctopus Architecture Improvement Implementation Plan
 
 **Date:** 2026-05-22
-**Status:** Phases 1-3 implemented; Phases 4-6 pending
+**Status:** Phases 1-3 implemented; Phase 4 partially implemented; Phase 6 partially implemented
 **Goal:** Turn the architecture review findings into a concrete task backlog that improves correctness, contract safety, maintainability, and release readiness without changing product scope unnecessarily.
 
 ## Phase 1: Contract And Boundary Guardrails
@@ -242,7 +242,7 @@ Acceptance criteria:
 
 ### Task 4.2: Add Metadata Job Retention
 
-**Status:** Pending
+**Status:** Done
 
 Bound in-memory metadata job state for folder size and recursive search jobs.
 
@@ -277,7 +277,7 @@ Acceptance criteria:
 
 ### Task 4.4: Reuse Connect Locks For Session Acquisition
 
-**Status:** Pending
+**Status:** Done
 
 Prevent parallel connection races when generic VFS paths ask for a remote session.
 
@@ -293,7 +293,7 @@ Acceptance criteria:
 
 ### Task 4.5: Cache Owner Resolution In Large Local Listings
 
-**Status:** Pending
+**Status:** Done
 
 Avoid spawning an external owner lookup per directory entry.
 
@@ -369,7 +369,7 @@ Acceptance criteria:
 
 ### Task 6.1: Add Security And Dependency Automation
 
-**Status:** Pending
+**Status:** Done
 
 Move local pre-push audit coverage into CI or scheduled automation.
 
@@ -386,7 +386,7 @@ Acceptance criteria:
 
 ### Task 6.2: Harden Release Profile
 
-**Status:** Pending
+**Status:** Done
 
 Review Tauri devtools and CSP settings for production builds.
 
@@ -403,7 +403,7 @@ Acceptance criteria:
 
 ### Task 6.3: Fix Telemetry Default Filters
 
-**Status:** Pending
+**Status:** Done
 
 Make default debug logging match actual crate/module targets.
 

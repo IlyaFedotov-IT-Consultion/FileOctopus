@@ -39,6 +39,7 @@ struct StubConnector {
     connects: AtomicUsize,
     disconnects: AtomicUsize,
     next_failure: Mutex<Vec<Arc<Mutex<bool>>>>,
+    connect_delay: Mutex<Option<Duration>>,
 }
 
 impl StubConnector {
@@ -46,6 +47,10 @@ impl StubConnector {
         let flag = Arc::new(Mutex::new(false));
         self.next_failure.lock().unwrap().push(flag.clone());
         flag
+    }
+
+    fn delay_connects_by(&self, duration: Duration) {
+        *self.connect_delay.lock().unwrap() = Some(duration);
     }
 }
 
@@ -61,6 +66,10 @@ impl RemoteConnector for StubConnector {
         _secrets: &AuthSecrets,
     ) -> Result<Arc<dyn RemoteSession>, RemoteError> {
         self.connects.fetch_add(1, Ordering::SeqCst);
+        let delay = *self.connect_delay.lock().unwrap();
+        if let Some(delay) = delay {
+            tokio::time::sleep(delay).await;
+        }
         let flag = self
             .next_failure
             .lock()
@@ -324,5 +333,32 @@ async fn concurrent_connect_calls_share_a_single_handshake() {
         fixture.connector.connects.load(Ordering::SeqCst),
         1,
         "concurrent connects should coalesce into a single handshake"
+    );
+}
+
+#[tokio::test]
+async fn concurrent_session_for_profile_calls_share_a_single_handshake() {
+    let fixture = Fixture::new();
+    let profile_id = fixture.add_profile();
+    fixture
+        .connector
+        .delay_connects_by(Duration::from_millis(25));
+    let manager = Arc::new(fixture.manager());
+
+    let manager_a = manager.clone();
+    let id_a = profile_id.clone();
+    let task_a = tokio::spawn(async move { manager_a.session_for_profile(&id_a).await });
+
+    let manager_b = manager.clone();
+    let id_b = profile_id.clone();
+    let task_b = tokio::spawn(async move { manager_b.session_for_profile(&id_b).await });
+
+    task_a.await.unwrap().unwrap();
+    task_b.await.unwrap().unwrap();
+
+    assert_eq!(
+        fixture.connector.connects.load(Ordering::SeqCst),
+        1,
+        "concurrent lazy session acquisition should coalesce into a single handshake"
     );
 }

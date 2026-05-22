@@ -296,6 +296,9 @@ impl ConnectionSessionManager {
         &self,
         profile_id: &str,
     ) -> Result<Arc<dyn RemoteSession>, RemoteError> {
+        let lock = self.connect_lock(profile_id).await;
+        let _guard = lock.lock().await;
+
         let cached: Option<Arc<dyn RemoteSession>> = {
             let sessions = self.sessions.read().await;
             sessions

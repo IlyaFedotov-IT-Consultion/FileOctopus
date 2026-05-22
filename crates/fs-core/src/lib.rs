@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::fs::{self, Metadata};
 use std::io;
 use std::path::{Path, PathBuf};
@@ -32,7 +33,12 @@ impl LocalFsProvider {
         }
     }
 
-    fn entry_for_path(path: &Path, uri: ResourceUri, metadata: Metadata) -> FileEntry {
+    fn entry_for_path(
+        path: &Path,
+        uri: ResourceUri,
+        metadata: Metadata,
+        owner_cache: &mut OwnerLookupCache,
+    ) -> FileEntry {
         let file_type = metadata.file_type();
         let is_symlink = file_type.is_symlink();
         let kind = if is_symlink {
@@ -81,7 +87,7 @@ impl LocalFsProvider {
             provider_id: ProviderId::new("local"),
             capabilities,
             permissions: permissions_string(&metadata),
-            owner: owner_string(&metadata),
+            owner: owner_string(&metadata, owner_cache),
         }
     }
 
@@ -89,8 +95,9 @@ impl LocalFsProvider {
         let path = uri.to_local_path()?;
         let metadata =
             fs::symlink_metadata(&path).map_err(|error| Self::map_io_error(&uri, error))?;
+        let mut owner_cache = OwnerLookupCache::default();
 
-        Ok(Self::entry_for_path(&path, uri, metadata))
+        Ok(Self::entry_for_path(&path, uri, metadata, &mut owner_cache))
     }
 }
 
@@ -139,6 +146,7 @@ fn list_blocking(
     let batch_size = options.batch_size.max(1);
     let mut entries = Vec::with_capacity(batch_size);
     let mut batch_index = 0;
+    let mut owner_cache = OwnerLookupCache::default();
     let read_dir =
         fs::read_dir(&path).map_err(|error| LocalFsProvider::map_io_error(&uri, error))?;
 
@@ -164,6 +172,7 @@ fn list_blocking(
             &entry_path,
             entry_uri,
             metadata,
+            &mut owner_cache,
         ));
 
         if entries.len() >= batch_size {
@@ -242,27 +251,82 @@ fn permissions_string(_metadata: &Metadata) -> Option<String> {
 }
 
 #[cfg(unix)]
-fn owner_string(metadata: &Metadata) -> Option<String> {
+#[derive(Default)]
+struct OwnerLookupCache {
+    names: HashMap<u32, Option<String>>,
+}
+
+#[cfg(not(unix))]
+#[derive(Default)]
+struct OwnerLookupCache;
+
+#[cfg(unix)]
+impl OwnerLookupCache {
+    fn owner_for_uid(&mut self, uid: u32) -> Option<String> {
+        self.owner_for_uid_with(uid, resolve_owner_name)
+    }
+
+    fn owner_for_uid_with<F>(&mut self, uid: u32, resolver: F) -> Option<String>
+    where
+        F: FnOnce(u32) -> Option<String>,
+    {
+        if let Some(cached) = self.names.get(&uid) {
+            return cached.clone();
+        }
+
+        let owner = resolver(uid)
+            .filter(|name| !name.is_empty())
+            .unwrap_or_else(|| uid.to_string());
+        self.names.insert(uid, Some(owner.clone()));
+        Some(owner)
+    }
+}
+
+#[cfg(unix)]
+fn owner_string(metadata: &Metadata, owner_cache: &mut OwnerLookupCache) -> Option<String> {
     use std::os::unix::fs::MetadataExt;
-    let uid = metadata.uid();
-    // Try to resolve username, fall back to numeric uid
+    owner_cache.owner_for_uid(metadata.uid())
+}
+
+#[cfg(unix)]
+fn resolve_owner_name(uid: u32) -> Option<String> {
     match std::process::Command::new("id")
         .args(["-nu", &uid.to_string()])
         .output()
     {
         Ok(output) if output.status.success() => {
             let name = String::from_utf8_lossy(&output.stdout).trim().to_string();
-            if name.is_empty() {
-                Some(uid.to_string())
-            } else {
-                Some(name)
-            }
+            (!name.is_empty()).then_some(name)
         }
-        _ => Some(uid.to_string()),
+        _ => None,
     }
 }
 
 #[cfg(not(unix))]
-fn owner_string(_metadata: &Metadata) -> Option<String> {
+fn owner_string(_metadata: &Metadata, _owner_cache: &mut OwnerLookupCache) -> Option<String> {
     None
+}
+
+#[cfg(all(test, unix))]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn owner_lookup_cache_resolves_each_uid_once() {
+        let mut cache = OwnerLookupCache::default();
+        let mut calls = 0;
+
+        let first = cache.owner_for_uid_with(1000, |_| {
+            calls += 1;
+            Some("alice".to_string())
+        });
+        let second = cache.owner_for_uid_with(1000, |_| {
+            calls += 1;
+            Some("alice".to_string())
+        });
+
+        assert_eq!(first.as_deref(), Some("alice"));
+        assert_eq!(second.as_deref(), Some("alice"));
+        assert_eq!(calls, 1, "owner lookup should be cached per uid");
+    }
 }
