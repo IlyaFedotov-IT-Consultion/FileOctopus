@@ -97,19 +97,60 @@ export function FileTable({
   } | null>(null);
   const [resizeStartX, setResizeStartX] = useState(0);
   const [resizeStartWidth, setResizeStartWidth] = useState(0);
+  const ICON_ITEM_MIN_WIDTH = 96;
+  const ICON_GAP = 5;
+  const ICON_ROW_HEIGHT = 110;
+
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const viewportHeight = viewportRef.current?.clientHeight ?? 420;
-  const virtualize = viewMode !== "icons";
-  const startIndex = virtualize
-    ? Math.max(0, Math.floor(scrollTop / rowHeight) - overscan)
-    : 0;
-  const visibleCount = virtualize
-    ? Math.ceil(viewportHeight / rowHeight) + overscan * 2
-    : entries.length;
-  const visibleEntries = virtualize
-    ? entries.slice(startIndex, startIndex + visibleCount)
-    : entries;
-  const totalHeight = virtualize ? entries.length * rowHeight : undefined;
+  const [containerWidth, setContainerWidth] = useState(400);
+
+  useEffect(() => {
+    if (viewMode !== "icons") return;
+    const el = viewportRef.current;
+    if (!el) return;
+
+    if (typeof ResizeObserver === "undefined") {
+      setContainerWidth(el.clientWidth);
+      return;
+    }
+
+    const ro = new ResizeObserver((observed) => {
+      for (const entry of observed) {
+        setContainerWidth(Math.floor(entry.contentRect.width));
+      }
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [viewMode]);
+
+  const isGrid = viewMode === "icons";
+  const itemsPerRow = isGrid
+    ? Math.max(
+        1,
+        Math.floor(
+          (containerWidth + ICON_GAP) / (ICON_ITEM_MIN_WIDTH + ICON_GAP),
+        ),
+      )
+    : 1;
+  const effectiveRowHeight = isGrid ? ICON_ROW_HEIGHT : rowHeight;
+  const totalRows = Math.ceil(entries.length / itemsPerRow);
+
+  const startRow = Math.max(
+    0,
+    Math.floor(scrollTop / effectiveRowHeight) - overscan,
+  );
+  const visibleRows =
+    Math.ceil(viewportHeight / effectiveRowHeight) + overscan * 2;
+  const endRow = Math.min(totalRows, startRow + visibleRows);
+
+  const startIndex = startRow * itemsPerRow;
+  const visibleCount = (endRow - startRow) * itemsPerRow;
+  const visibleEntries = entries.slice(startIndex, startIndex + visibleCount);
+  const totalHeight = totalRows * effectiveRowHeight;
+
+  const topPadding = startRow * effectiveRowHeight;
+  const bottomPadding = (totalRows - endRow) * effectiveRowHeight;
   const loading = isPaneLoading(loadState);
   const widths = columnWidths ?? DEFAULT_WIDTHS;
   const rowGridColumns = buildVisibleGridTemplate(widths, visibleColumns);
@@ -150,7 +191,7 @@ export function FileTable({
   }, [resizingColumn, resizeStartX, resizeStartWidth, onColumnResize]);
 
   useEffect(() => {
-    if (!virtualize || !focusedId || !viewportRef.current) {
+    if (!focusedId || !viewportRef.current) {
       return;
     }
 
@@ -160,8 +201,9 @@ export function FileTable({
       return;
     }
 
-    const top = index * rowHeight;
-    const bottom = top + rowHeight;
+    const row = Math.floor(index / itemsPerRow);
+    const top = row * effectiveRowHeight;
+    const bottom = top + effectiveRowHeight;
     const viewTop = viewportRef.current.scrollTop;
     const viewBottom = viewTop + viewportRef.current.clientHeight;
 
@@ -170,7 +212,7 @@ export function FileTable({
     } else if (bottom > viewBottom) {
       viewportRef.current.scrollTop = bottom - viewportRef.current.clientHeight;
     }
-  }, [entries, focusedId, rowHeight, virtualize]);
+  }, [entries, focusedId, effectiveRowHeight, itemsPerRow]);
 
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     switch (event.key) {
@@ -184,11 +226,21 @@ export function FileTable({
         break;
       case "PageUp":
         event.preventDefault();
-        onMove(-Math.max(1, Math.floor(viewportHeight / rowHeight)));
+        onMove(
+          -Math.max(
+            1,
+            Math.floor(viewportHeight / effectiveRowHeight) * itemsPerRow,
+          ),
+        );
         break;
       case "PageDown":
         event.preventDefault();
-        onMove(Math.max(1, Math.floor(viewportHeight / rowHeight)));
+        onMove(
+          Math.max(
+            1,
+            Math.floor(viewportHeight / effectiveRowHeight) * itemsPerRow,
+          ),
+        );
         break;
       case "Home":
         event.preventDefault();
@@ -308,7 +360,9 @@ export function FileTable({
           <div
             className="fo-table-spacer"
             style={
-              totalHeight === undefined ? undefined : { height: totalHeight }
+              isGrid
+                ? { paddingTop: topPadding, paddingBottom: bottomPadding }
+                : { height: totalHeight }
             }
           >
             {visibleEntries.map((entry, offset) => (
