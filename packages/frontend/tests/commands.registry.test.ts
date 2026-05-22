@@ -5,6 +5,7 @@ import {
   getCommand,
   TOOLBAR_GROUPS,
 } from "../src/commands/registry";
+import { COMMAND_REGISTRY } from "../src/commands/registryData";
 
 describe("commands/registry", () => {
   it("defines toolbar groups in spec order", () => {
@@ -36,5 +37,16 @@ describe("commands/registry", () => {
     expect(
       COMMAND_DEFINITIONS.some((command) => command.id === "nav.addServer"),
     ).toBe(true);
+  });
+
+  it("derives CommandId from the registry", () => {
+    const idsFromRegistry = COMMAND_DEFINITIONS.map((command) => command.id);
+    expect(idsFromRegistry.length).toBeGreaterThan(0);
+    expect(new Set(idsFromRegistry).size).toBe(idsFromRegistry.length);
+  });
+
+  it("has a non-empty registry", () => {
+    expect(COMMAND_REGISTRY.length).toBeGreaterThan(0);
+    expect(COMMAND_DEFINITIONS.length).toBe(COMMAND_REGISTRY.length);
   });
 });

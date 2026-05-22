@@ -1,96 +1,14 @@
-export type CommandGroup =
-  | "navigation"
-  | "creation"
-  | "operation"
-  | "view"
-  | "clipboard"
-  | "selection"
-  | "app";
+import { COMMAND_REGISTRY } from "./registryData";
 
-export type CommandId =
-  | "nav.back"
-  | "nav.forward"
-  | "nav.up"
-  | "nav.refresh"
-  | "nav.home"
-  | "nav.root"
-  | "nav.volumePicker"
-  | "nav.networkLocations"
-  | "nav.addServer"
-  | "nav.connectServer"
-  | "nav.goToLocation"
-  | "nav.manageFavorites"
-  | "create.folder"
-  | "create.file"
-  | "op.copy"
-  | "op.cut"
-  | "op.paste"
-  | "op.copyTo"
-  | "op.moveTo"
-  | "op.rename"
-  | "op.trash"
-  | "op.deletePermanent"
-  | "op.properties"
-  | "op.reveal"
-  | "op.open"
-  | "op.view"
-  | "op.edit"
-  | "op.openDefault"
-  | "op.compress"
-  | "op.extract"
-  | "op.checksum"
-  | "op.openTerminal"
-  | "op.openTerminalExternal"
-  | "view.toggleTerminal"
-  | "op.calculateSize"
-  | "op.toggleStarred"
-  | "nav.addFavorite"
-  | "nav.openUri"
-  | "nav.revealUri"
-  | "nav.removeFavorite"
-  | "nav.renameFavorite"
-  | "view.details"
-  | "view.list"
-  | "view.compact"
-  | "view.icons"
-  | "view.columns"
-  | "view.toggleHidden"
-  | "view.toggleSidebar"
-  | "view.toggleDualPane"
-  | "view.toggleStatusBar"
-  | "view.toggleToolbar"
-  | "view.toggleActivity"
-  | "view.sort"
-  | "view.sortAscending"
-  | "view.sortDescending"
-  | "preferences.theme"
-  | "preferences.density"
-  | "layout.switchPane"
-  | "layout.equalizePanes"
-  | "layout.swapPanes"
-  | "search.recursive"
-  | "search.focusFilter"
-  | "selection.selectAll"
-  | "selection.clear"
-  | "selection.invert"
-  | "clipboard.copyPath"
-  | "clipboard.copyName"
-  | "clipboard.copyParent"
-  | "clipboard.copyUri"
-  | "clipboard.clear"
-  | "app.settings"
-  | "app.customizeToolbar"
-  | "app.shortcuts"
-  | "app.diagnostics"
-  | "app.commandPalette"
-  | "app.about"
-  | "app.operationHistory";
+export type CommandId = (typeof COMMAND_REGISTRY)[number]["id"];
+
+export type CommandGroup = (typeof COMMAND_REGISTRY)[number]["group"];
 
 export interface CommandDefinition {
-  id: CommandId;
-  label: string;
-  group: CommandGroup;
-  shortcutMac?: string;
-  shortcutWin?: string;
-  destructive?: boolean;
+  readonly id: CommandId;
+  readonly label: string;
+  readonly group: CommandGroup;
+  readonly shortcutMac?: string;
+  readonly shortcutWin?: string;
+  readonly destructive?: boolean;
 }
