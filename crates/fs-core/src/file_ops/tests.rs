@@ -674,6 +674,164 @@ fn extract_archive_rejects_path_traversal_entries() {
 }
 
 #[test]
+fn create_archive_writes_tar_gz_file() {
+    let dir = tempdir().unwrap();
+    let source = dir.path().join("source.txt");
+    let archive_path = dir.path().join("archive.tar.gz");
+
+    fs::write(&source, b"archive me").unwrap();
+
+    let plan = plan_file_operation(
+        &vfs(),
+        request(
+            FileOperationKind::CreateArchive,
+            vec![uri(&source)],
+            Some(uri(&archive_path)),
+        ),
+    )
+    .unwrap();
+
+    execute_file_operation(
+        &vfs(),
+        &plan,
+        &JobId::new("job"),
+        &CancellationToken::new(),
+        &|_| {},
+    )
+    .unwrap();
+
+    let file = File::open(&archive_path).unwrap();
+    let gz = flate2::read::GzDecoder::new(file);
+    let mut archive = tar::Archive::new(gz);
+    let entries: Vec<_> = archive.entries().unwrap().collect();
+    assert_eq!(entries.len(), 1);
+    let entry = entries[0].as_ref().unwrap();
+    assert_eq!(entry.path().unwrap().to_str().unwrap(), "source.txt");
+}
+
+#[test]
+fn create_archive_writes_tar_bz2_file() {
+    let dir = tempdir().unwrap();
+    let source = dir.path().join("source.txt");
+    let archive_path = dir.path().join("archive.tar.bz2");
+
+    fs::write(&source, b"archive me").unwrap();
+
+    let plan = plan_file_operation(
+        &vfs(),
+        request(
+            FileOperationKind::CreateArchive,
+            vec![uri(&source)],
+            Some(uri(&archive_path)),
+        ),
+    )
+    .unwrap();
+
+    execute_file_operation(
+        &vfs(),
+        &plan,
+        &JobId::new("job"),
+        &CancellationToken::new(),
+        &|_| {},
+    )
+    .unwrap();
+
+    let file = File::open(&archive_path).unwrap();
+    let bz = bzip2::read::BzDecoder::new(file);
+    let mut archive = tar::Archive::new(bz);
+    let entries: Vec<_> = archive.entries().unwrap().collect();
+    assert_eq!(entries.len(), 1);
+    let entry = entries[0].as_ref().unwrap();
+    assert_eq!(entry.path().unwrap().to_str().unwrap(), "source.txt");
+}
+
+#[test]
+fn extract_tar_gz_archive_writes_files_to_destination() {
+    let dir = tempdir().unwrap();
+    let source = dir.path().join("source.txt");
+    let archive_path = dir.path().join("archive.tar.gz");
+    let extract_dir = dir.path().join("out");
+
+    fs::write(&source, b"archive me").unwrap();
+
+    // Create a real tar.gz using tar + flate2 directly
+    let file = File::create(&archive_path).unwrap();
+    let gz = flate2::write::GzEncoder::new(file, flate2::Compression::default());
+    let mut archive = tar::Builder::new(gz);
+    archive
+        .append_path_with_name(&source, "source.txt")
+        .unwrap();
+    let gz = archive.into_inner().unwrap();
+    gz.finish().unwrap();
+
+    let extract_plan = plan_file_operation(
+        &vfs(),
+        request(
+            FileOperationKind::ExtractArchive,
+            vec![uri(&archive_path)],
+            Some(uri(&extract_dir)),
+        ),
+    )
+    .unwrap();
+    execute_file_operation(
+        &vfs(),
+        &extract_plan,
+        &JobId::new("job-extract"),
+        &CancellationToken::new(),
+        &|_| {},
+    )
+    .unwrap();
+
+    assert_eq!(
+        fs::read(extract_dir.join("source.txt")).unwrap(),
+        b"archive me"
+    );
+}
+
+#[test]
+fn extract_tar_bz2_archive_writes_files_to_destination() {
+    let dir = tempdir().unwrap();
+    let source = dir.path().join("source.txt");
+    let archive_path = dir.path().join("archive.tar.bz2");
+    let extract_dir = dir.path().join("out");
+
+    fs::write(&source, b"archive me").unwrap();
+
+    // Create a real tar.bz2 using tar + bzip2 directly
+    let file = File::create(&archive_path).unwrap();
+    let bz = bzip2::write::BzEncoder::new(file, bzip2::Compression::default());
+    let mut archive = tar::Builder::new(bz);
+    archive
+        .append_path_with_name(&source, "source.txt")
+        .unwrap();
+    let bz = archive.into_inner().unwrap();
+    bz.finish().unwrap();
+
+    let extract_plan = plan_file_operation(
+        &vfs(),
+        request(
+            FileOperationKind::ExtractArchive,
+            vec![uri(&archive_path)],
+            Some(uri(&extract_dir)),
+        ),
+    )
+    .unwrap();
+    execute_file_operation(
+        &vfs(),
+        &extract_plan,
+        &JobId::new("job-extract"),
+        &CancellationToken::new(),
+        &|_| {},
+    )
+    .unwrap();
+
+    assert_eq!(
+        fs::read(extract_dir.join("source.txt")).unwrap(),
+        b"archive me"
+    );
+}
+
+#[test]
 fn cancellation_stops_large_copy() {
     let dir = tempdir().unwrap();
     let source = dir.path().join("large.bin");

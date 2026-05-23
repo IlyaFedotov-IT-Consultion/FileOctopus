@@ -1,7 +1,92 @@
 # CRON Status — FileOctopus CI/CD Agent
 
-> Last run: 2026-05-23 21:00 UTC
-> Commit: 55e5044
+> Last run: 2026-05-23 23:00 UTC
+> Commit: TBD (RC-TAR implementation)
+
+## Health Gate
+
+| Check                         | Result                                                     |
+| ----------------------------- | ---------------------------------------------------------- |
+| TypeScript (`pnpm typecheck`) | ✅ 0 errors                                                |
+| Rust (`cargo check`)          | ✅ clean (all workspace crates)                            |
+| Rust tests (`cargo test`)     | ✅ pass (workspace + integration, 257 tests)               |
+| Frontend tests (`pnpm test`)  | ✅ 509 pass (79 files)                                     |
+| E2E tests (Playwright)        | ⏭️ skipped (dev server not running during health-check.sh) |
+| Clippy (`-D warnings`)        | ✅ clean                                                   |
+| Format (`cargo fmt --check`)  | ✅ clean                                                   |
+| Prettier (`format:check`)     | ✅ clean                                                   |
+| `pnpm rc:validate`            | ✅ full pipeline green                                     |
+
+**Gate status:** GREEN — 0 failures.
+
+## Phase 1: Spec Alignment
+
+Audited `CRON_TASKS.md` and found `RC-TAR` (tar.gz/tar.bz2 archive support) as the only remaining `pending` task in Active RC Queue.
+
+## Phase 2: Task Selection
+
+**Selected:** `RC-TAR` — Tar / non-zip archive formats: createArchive/extractArchive for tar.gz/tar.bz2. Priority P3, automatable, backend-only change in `fs-core`.
+
+## Phase 3: TDD Implementation
+
+**Micro-spec:**
+
+1. Add `tar`, `flate2`, `bzip2` dependencies to `crates/fs-core/Cargo.toml`
+2. Implement `detect_archive_format` helper in `archive.rs` to branch on file extension
+3. Extend `execute_create_archive` to handle `.tar`, `.tar.gz`, `.tar.bz2` using `tar::Builder` with `GzEncoder`/`BzEncoder`
+4. Extend `execute_extract_archive` to decode with `GzDecoder`/`BzDecoder` and iterate tar entries
+5. Extend `plan_extract_archive_items` in `planning.rs` to read tar entry lists for all formats
+6. Write tests for create + extract of tar.gz and tar.bz2
+
+### TDD Evidence
+
+- **RED:** Added 4 tests (`create_archive_writes_tar_gz_file`, `create_archive_writes_tar_bz2_file`, `extract_tar_gz_archive_writes_files_to_destination`, `extract_tar_bz2_archive_writes_files_to_destination`) — all failed because archive.rs/planning.rs only supported zip
+- **GREEN:** Refactored `archive.rs` and `planning.rs` with format detection + tar/gz/bz2 branches; fixed test archive finalization (`into_inner()` + `finish()` on encoders); all 7 archive tests pass (including existing zip tests)
+- **REFACTOR:** Replaced `append_data` with `append_file` for robust tar header sizing; removed unused `Read`/`Write` imports; ran `cargo fmt`; verified 28/28 `fs-core` lib tests pass and full workspace `cargo test` green
+
+**Files changed (5):**
+
+- `crates/fs-core/Cargo.toml` — added `tar`, `flate2`, `bzip2` dependencies
+- `crates/fs-core/src/file_ops/archive.rs` — format detection + create/extract for tar/gz/bz2
+- `crates/fs-core/src/file_ops/planning.rs` — tar-format-aware extraction planning
+- `crates/fs-core/src/file_ops/tests.rs` — 4 new tests for tar.gz/tar.bz2
+- `docs/plans/CRON_TASKS.md` — mark RC-TAR done
+
+## Phase 4: Integration Verification
+
+- `cargo test -p fs-core --lib` — ✅ 28 passed (7 archive + 21 others)
+- `cargo test --workspace` — ✅ 257 passed
+- `pnpm test` (frontend) — ✅ 509 passed (79 files)
+- `pnpm typecheck` — ✅ 0 errors
+- `cargo check --workspace` — ✅ clean
+- `cargo clippy --workspace --all-targets -- -D warnings` — ✅ clean
+- `cargo fmt --all --check` — ✅ clean
+- `pnpm rc:validate` — ✅ full pipeline green
+
+## Phase 5: Spec Compliance & Docs
+
+- `CRON_TASKS.md` — `RC-TAR` marked `done`
+- `CRON_STATUS.md` — this entry
+
+## Active RC Queue (remaining)
+
+| ID       | Pri | Status   | Owner | Commit | Started | Last Verified | Spec Ref            | Task                                                                            | Blockers | Last Verified |
+| -------- | --- | -------- | ----- | ------ | ------- | ------------- | ------------------- | ------------------------------------------------------------------------------- | -------- | ------------- |
+| RC-PAUSE | P2  | deferred | -     | -      | -       | -             | UI §6; RC spec §3.2 | Pause on jobs: backend job.pause IPC + UI pause/resume button in activity panel | None     | 2026-05-23    |
+
+**Note:** No `pending` items remain in Active RC Queue. Only `RC-PAUSE` remains as `deferred`. Next audit should backfill from `PROJECT_STATUS_AND_DOC_ALIGNMENT.md` §"Specified but not implemented" for any newly eligible P1/P2 tasks.
+
+## Recommendation
+
+Queue is empty at P1/P2 level with `RC-PAUSE` deferred. Options for next cycle:
+
+1. Re-audit `PROJECT_STATUS_AND_DOC_ALIGNMENT.md` + `UI_FEATURE_INVENTORY.md` for fresh P1/P2 gaps
+2. Resume `RC-PAUSE` if a human reprioritizes it and breaks it into smaller sub-tasks
+3. Pick a P3 polish item (e.g., column reorder, rubber-band select)
+
+---
+
+## Historical: 2026-05-23 21:00 UTC
 
 ## Health Gate
 
