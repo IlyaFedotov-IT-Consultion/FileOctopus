@@ -1,3 +1,4 @@
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc;
 use std::sync::Arc;
 use std::time::Duration;
@@ -10,11 +11,131 @@ use vfs::{ResourceUri, VfsRegistry};
 
 use super::*;
 use crate::history::SCHEMA_VERSION;
+use crate::runtime::RuntimeSettings;
 
 fn local_vfs() -> fs_core::vfs_io::VfsFilesystem {
     let registry = Arc::new(VfsRegistry::new());
     registry.register(Arc::new(LocalFsProvider::new())).unwrap();
     fs_core::vfs_io::VfsFilesystem::local_only(registry)
+}
+
+fn noop_plan() -> vfs::FileOperationPlan {
+    vfs::FileOperationPlan {
+        operation_id: uuid::Uuid::new_v4().to_string(),
+        kind: vfs::FileOperationKind::Copy,
+        sources: Vec::new(),
+        destination: None,
+        new_name: None,
+        conflict_policy: vfs::ConflictPolicy::Fail,
+        items: Vec::new(),
+        conflicts: Vec::new(),
+        warnings: Vec::new(),
+        total_items: 0,
+        total_bytes: None,
+    }
+}
+
+#[test]
+fn concurrency_is_bounded_by_worker_count() {
+    let dir = tempfile::tempdir().unwrap();
+    let runtime = OperationRuntime::with_settings(
+        local_vfs(),
+        OperationHistoryRepository::new(dir.path().join("history.sqlite")).unwrap(),
+        RuntimeSettings {
+            worker_count: 2,
+            idle_timeout: None,
+        },
+    );
+
+    let active = Arc::new(AtomicUsize::new(0));
+    let max_seen = Arc::new(AtomicUsize::new(0));
+    let (sender, receiver) = mpsc::channel();
+
+    for _ in 0..6 {
+        let active = active.clone();
+        let max_seen = max_seen.clone();
+        let sink_sender = sender.clone();
+        runtime
+            .start_with_executor(
+                noop_plan(),
+                Arc::new(move |event| {
+                    let _ = sink_sender.send(event);
+                }),
+                move |_vfs, _plan, _job, _cancel, _progress| {
+                    let current = active.fetch_add(1, Ordering::SeqCst) + 1;
+                    max_seen.fetch_max(current, Ordering::SeqCst);
+                    std::thread::sleep(Duration::from_millis(80));
+                    active.fetch_sub(1, Ordering::SeqCst);
+                    Ok(())
+                },
+            )
+            .unwrap();
+    }
+
+    let mut completed = 0;
+    while completed < 6 {
+        let event = receiver.recv_timeout(Duration::from_secs(10)).unwrap();
+        if matches!(event, JobEvent::Completed(_)) {
+            completed += 1;
+        }
+    }
+
+    let peak = max_seen.load(Ordering::SeqCst);
+    assert!(peak <= 2, "peak concurrency {peak} exceeded worker cap 2");
+}
+
+#[test]
+fn job_exceeding_idle_timeout_fails_with_timeout() {
+    let dir = tempfile::tempdir().unwrap();
+    let runtime = OperationRuntime::with_settings(
+        local_vfs(),
+        OperationHistoryRepository::new(dir.path().join("history.sqlite")).unwrap(),
+        RuntimeSettings {
+            worker_count: 2,
+            idle_timeout: Some(Duration::from_millis(150)),
+        },
+    );
+    let (sender, receiver) = mpsc::channel();
+
+    runtime
+        .start_with_executor(
+            noop_plan(),
+            Arc::new(move |event| {
+                let _ = sender.send(event);
+            }),
+            move |_vfs, _plan, job, cancel, _progress| {
+                // Stuck job: emits no progress, waits to be cancelled by the watchdog.
+                for _ in 0..200 {
+                    if cancel.is_cancelled() {
+                        return Err(vfs::FileOperationError::Cancelled {
+                            job_id: Some(job.as_str().to_string()),
+                        });
+                    }
+                    std::thread::sleep(Duration::from_millis(20));
+                }
+                Ok(())
+            },
+        )
+        .unwrap();
+
+    let terminal = loop {
+        let event = receiver.recv_timeout(Duration::from_secs(5)).unwrap();
+        if matches!(
+            event,
+            JobEvent::Failed(_) | JobEvent::Completed(_) | JobEvent::Cancelled(_)
+        ) {
+            break event;
+        }
+    };
+
+    match terminal {
+        JobEvent::Failed(failed) => assert_eq!(failed.error_code, "timeout"),
+        other => panic!("expected Failed(timeout), got {other:?}"),
+    }
+
+    let history = runtime.recent_history(10);
+    assert_eq!(history[0].status, "failed");
+    assert_eq!(history[0].error_code.as_deref(), Some("timeout"));
 }
 
 #[test]
