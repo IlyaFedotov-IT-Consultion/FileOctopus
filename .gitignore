@@ -17,5 +17,3 @@ e2e-dist/
 .hermes/
 *.tsbuildinfo
 tmp/
-
-*.tsbuildinfo

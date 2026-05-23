@@ -223,7 +223,7 @@ Folder size and recursive search support synchronous commands for small/preview 
 
 ### `get_preferences` / `set_preference`
 
-Preferences persist in SQLite (`preferences.sqlite` under the app data directory). Keys include `theme` (`system` \| `light` \| `dark`), `density` (`compact` \| `comfortable` \| `spacious`), `defaultViewMode`, `showHiddenFiles` (boolean string), `sidebarWidth`, `splitRatio`, `activityPanelVisible`, `activityPanelWidth`, `confirmDelete`, `confirmPermanentDelete`, `useTrashByDefault`, `defaultConflictPolicy`, `accentColor`, `fontScale`, `iconScale`, `confirmOverwrite`, `sidebarVisible`, `statusBarVisible`, `toolbarVisible`, `paneMode`, and `jobDrawerBehavior`.
+Preferences persist in SQLite (`preferences.sqlite` under the app data directory). Keys include `theme` (`system` \| `light` \| `dark`), `density` (`compact` \| `comfortable` \| `spacious`), `defaultViewMode`, `showHiddenFiles` (boolean string), `sidebarWidth`, `splitRatio`, `activityPanelVisible`, `activityPanelWidth`, `confirmDelete`, `confirmPermanentDelete`, `useTrashByDefault`, `defaultConflictPolicy`, `accentColor`, `fontScale`, `iconScale`, `confirmOverwrite`, `sidebarVisible`, `statusBarVisible`, `toolbarVisible`, `toolbarEntries`, `paneMode`, `jobDrawerBehavior`, `showAdvancedCopyOptions`, pane terminal settings, `terminalShell`, `terminalArgs`, `rememberLastUsedPanes`, and `diagnosticsExportPath`.
 
 ```ts
 const { preferences } = await client.preferences.get();
@@ -231,6 +231,8 @@ await client.preferences.set({ key: "theme", value: "dark" });
 ```
 
 Invalid values reject with `IpcError` code `preferences_error`.
+
+`diagnosticsExportPath` is the default host-path destination used by the diagnostics bundle dialog. It defaults to `/tmp/fileoctopus-diagnostics.zip`; empty values reset to that default, values are trimmed before storage, and values longer than 2048 bytes are rejected.
 
 ### `plan_file_operation`
 
