@@ -53,7 +53,7 @@ pub async fn fs_read_text_file(
         .map(|size| size.min(max_bytes))
         .unwrap_or(max_bytes);
 
-    let vfs = VfsFilesystem::with_sessions(state.sessions());
+    let vfs = VfsFilesystem::with_sessions(state.sessions(), state.vfs());
     let buf = vfs
         .read_file_prefix(&uri, read_len)
         .map_err(IpcError::from)?;
@@ -87,7 +87,7 @@ pub async fn fs_read_file_range(
         ));
     }
 
-    let vfs = VfsFilesystem::with_sessions(state.sessions());
+    let vfs = VfsFilesystem::with_sessions(state.sessions(), state.vfs());
     let (bytes, total) = tauri::async_runtime::spawn_blocking(move || {
         vfs.read_file_range(&uri, request.offset, request.length)
     })
@@ -360,7 +360,7 @@ pub async fn fs_read_image_as_data_uri(
         )));
     }
 
-    let vfs = VfsFilesystem::with_sessions(state.sessions());
+    let vfs = VfsFilesystem::with_sessions(state.sessions(), state.vfs());
     let read_len = entry.size.unwrap_or(MAX_IMAGE_BYTES);
     let buf = vfs
         .read_file_prefix(&uri, read_len)

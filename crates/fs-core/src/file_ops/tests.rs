@@ -1,20 +1,26 @@
 use std::fs::{self, File};
 use std::io::Write;
 use std::path::Path;
+use std::sync::Arc;
 
 use jobs::{CancellationToken, JobEvent, JobId};
 use tempfile::tempdir;
-use vfs::{ConflictPolicy, FileKind, FileOperationKind, FileOperationRequest, ResourceUri};
+use vfs::{
+    ConflictPolicy, FileKind, FileOperationKind, FileOperationRequest, ResourceUri, VfsRegistry,
+};
 use zip::write::FileOptions;
 
 use super::execution::PROGRESS_BYTE_INTERVAL;
 use super::planning::collect_copy_or_move_items;
 use crate::vfs_io::VfsFilesystem;
+use crate::LocalFsProvider;
 
 use super::{execute_file_operation, plan_file_operation};
 
 fn vfs() -> VfsFilesystem {
-    VfsFilesystem::local_only()
+    let registry = Arc::new(VfsRegistry::new());
+    registry.register(Arc::new(LocalFsProvider::new())).unwrap();
+    VfsFilesystem::local_only(registry)
 }
 
 fn uri(path: &Path) -> ResourceUri {

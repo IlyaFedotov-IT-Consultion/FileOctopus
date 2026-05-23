@@ -1,7 +1,15 @@
 use fs_core::vfs_io::VfsFilesystem;
+use fs_core::LocalFsProvider;
 use std::io::Write;
+use std::sync::Arc;
 use tempfile::NamedTempFile;
-use vfs::ResourceUri;
+use vfs::{ResourceUri, VfsRegistry};
+
+fn make_vfs() -> VfsFilesystem {
+    let registry = Arc::new(VfsRegistry::new());
+    registry.register(Arc::new(LocalFsProvider::new())).unwrap();
+    VfsFilesystem::local_only(registry)
+}
 
 #[test]
 fn read_file_range_returns_paged_bytes_and_total_size() {
@@ -10,7 +18,7 @@ fn read_file_range_returns_paged_bytes_and_total_size() {
     let path = file.path().to_path_buf();
     let uri = ResourceUri::from_local_path(&path).unwrap();
 
-    let vfs = VfsFilesystem::local_only();
+    let vfs = make_vfs();
 
     let (bytes, total) = vfs.read_file_range(&uri, 4, 8).unwrap();
     assert_eq!(bytes, b"efghijkl");
@@ -27,7 +35,7 @@ fn read_file_range_returns_paged_bytes_and_total_size() {
 
 #[test]
 fn read_file_range_rejects_non_local_scheme() {
-    let vfs = VfsFilesystem::local_only();
+    let vfs = make_vfs();
     let uri =
         ResourceUri::parse("sftp://550e8400-e29b-41d4-a716-446655440000/etc/hostname").unwrap();
 
@@ -41,7 +49,7 @@ fn write_file_atomic_creates_new_file() {
     let target = dir.path().join("hello.txt");
     let uri = ResourceUri::from_local_path(&target).unwrap();
 
-    let vfs = VfsFilesystem::local_only();
+    let vfs = make_vfs();
     vfs.write_file_atomic(&uri, b"hello world").unwrap();
 
     let content = std::fs::read(&target).unwrap();
@@ -62,7 +70,7 @@ fn write_file_atomic_replaces_existing_file() {
     let path = file.path().to_path_buf();
     let uri = ResourceUri::from_local_path(&path).unwrap();
 
-    let vfs = VfsFilesystem::local_only();
+    let vfs = make_vfs();
     vfs.write_file_atomic(&uri, b"new contents").unwrap();
 
     let content = std::fs::read(&path).unwrap();
@@ -75,14 +83,14 @@ fn write_file_atomic_rejects_missing_parent() {
     let target = dir.path().join("does-not-exist/file.txt");
     let uri = ResourceUri::from_local_path(&target).unwrap();
 
-    let vfs = VfsFilesystem::local_only();
+    let vfs = make_vfs();
     let error = vfs.write_file_atomic(&uri, b"x").unwrap_err();
     assert_eq!(error.code(), "destination_missing");
 }
 
 #[test]
 fn write_file_atomic_rejects_non_local_scheme() {
-    let vfs = VfsFilesystem::local_only();
+    let vfs = make_vfs();
     let uri =
         ResourceUri::parse("sftp://550e8400-e29b-41d4-a716-446655440000/etc/file.txt").unwrap();
 
