@@ -3,14 +3,15 @@
 > Execution-facing queue for autonomous agents.
 > Last verified against repo state: 2026-05-23 14:45 UTC
 >
-> **Note:** Active RC Queue audit performed this cycle. RC-MENU, RC-CONF, RC-IMG were found already implemented in the codebase and moved to Recently Completed. RC-4 automated evidence refreshed; manual matrices remain human-only. **No automatable RC-scope tasks remain in the queue.**
+> **Note:** Active RC Queue audit performed 2026-05-23. RC-MENU, RC-CONF, RC-IMG were found already implemented and moved to Recently Completed. RC-4 automated evidence refreshed. New automatable tasks added from PROJECT_STATUS_AND_DOC_ALIGNMENT.md gaps.
 
 ---
 
 ## Selection Rules
 
 - Only pick work from **Active RC Queue**.
-- Do not select **Deferred / Post-RC** items unless a human explicitly reprioritizes them.
+- If Active RC Queue has no `pending` items, check **Deferred / Post-RC** for P1/P2 tasks that can be promoted.
+- Do not select **Deferred / Post-RC** P3 or lower items unless a human explicitly reprioritizes them.
 - If a queue row conflicts with the codebase or higher-trust docs, update this file first and refresh `last_verified`.
 - Keep at most one `in_progress` row at a time.
 - A row is claimed only when `Status`, `Owner`, `Run ID`, `Started UTC`, and `Lock Expires UTC` are all set.
@@ -20,9 +21,14 @@
 
 ## Active RC Queue
 
-| ID   | Pri | Status  | Owner | Run ID | Started UTC | Lock Expires UTC | Acceptance refs      | Task                                                                                        | Blockers | Last verified |
-| ---- | --- | ------- | ----- | ------ | ----------- | ---------------- | -------------------- | ------------------------------------------------------------------------------------------- | -------- | ------------- |
-| RC-4 | P1  | pending | -     | -      | -           | -                | M5; mvp-rc-checklist | MVP RC: manual sprint QA matrices + 100k UI recording (automated: `rc:qa`, diagnostics E2E) | None     | 2026-05-23    |
+| ID           | Pri | Status  | Owner | Run ID | Started UTC | Lock Expires UTC | Acceptance refs             | Task                                                                                        | Blockers | Last verified |
+| ------------ | --- | ------- | ----- | ------ | ----------- | ---------------- | --------------------------- | ------------------------------------------------------------------------------------------- | -------- | ------------- |
+| RC-4         | P1  | pending | -     | -      | -           | -                | M5; mvp-rc-checklist        | MVP RC: manual sprint QA matrices + 100k UI recording (automated: `rc:qa`, diagnostics E2E) | None     | 2026-05-23    |
+| RC-MENU-FULL | P2  | pending | -     | -      | -           | -                | Menu & Modal Spec §4        | Application menu bar full wiring: native OS menu (Tauri `menu.rs`), sort submenu parity     | None     | 2026-05-23    |
+| RC-PREFS     | P2  | pending | -     | -      | -           | -                | UI Design Spec §Preferences | Operations / Shortcuts / Advanced settings tabs in Preferences dialog                       | None     | 2026-05-23    |
+| RC-PAUSE     | P2  | pending | -     | -      | -           | -                | UI §6; RC spec §3.2         | Pause on jobs: backend `job.pause` IPC + UI pause/resume button in activity panel           | None     | 2026-05-23    |
+| RC-DIAG-LOC  | P3  | pending | -     | -      | -           | -                | UI Design Spec              | Diagnostics export location preference (default export path setting)                        | None     | 2026-05-23    |
+| RC-TAR       | P3  | pending | -     | -      | -           | -                | RC spec §3.2                | Tar / non-zip archive formats: `createArchive`/`extractArchive` for tar.gz/tar.bz2          | None     | 2026-05-23    |
 
 ---
 
