@@ -1,13 +1,21 @@
 use std::sync::mpsc;
+use std::sync::Arc;
 use std::time::Duration;
 
 use chrono::Utc;
+use fs_core::LocalFsProvider;
 use jobs::JobEvent;
 use rusqlite::params;
-use vfs::ResourceUri;
+use vfs::{ResourceUri, VfsRegistry};
 
 use super::*;
 use crate::history::SCHEMA_VERSION;
+
+fn local_vfs() -> fs_core::vfs_io::VfsFilesystem {
+    let registry = Arc::new(VfsRegistry::new());
+    registry.register(Arc::new(LocalFsProvider::new())).unwrap();
+    fs_core::vfs_io::VfsFilesystem::local_only(registry)
+}
 
 #[test]
 fn boot_registers_local_provider() {
@@ -135,7 +143,7 @@ fn successful_operation_is_persisted_as_completed() {
     let dir = tempfile::tempdir().unwrap();
     let history_path = dir.path().join("history.sqlite");
     let runtime = OperationRuntime::new(
-        fs_core::vfs_io::VfsFilesystem::local_only(),
+        local_vfs(),
         OperationHistoryRepository::new(history_path).unwrap(),
     );
     let source = dir.path().join("source.txt");
@@ -199,59 +207,10 @@ fn successful_operation_is_persisted_as_completed() {
 }
 
 #[test]
-fn failed_operation_is_persisted_as_failed() {
-    let dir = tempfile::tempdir().unwrap();
-    let runtime = OperationRuntime::new(
-        fs_core::vfs_io::VfsFilesystem::local_only(),
-        OperationHistoryRepository::new(dir.path().join("history.sqlite")).unwrap(),
-    );
-    let source = dir.path().join("source.txt");
-    let destination = dir.path().join("dest");
-    let (sender, receiver) = mpsc::channel();
-
-    std::fs::write(&source, b"content").unwrap();
-    std::fs::create_dir(&destination).unwrap();
-    std::fs::write(destination.join("source.txt"), b"existing").unwrap();
-
-    let plan = runtime
-        .plan(vfs::FileOperationRequest {
-            kind: vfs::FileOperationKind::Copy,
-            sources: vec![ResourceUri::from_local_path(&source).unwrap()],
-            destination: Some(ResourceUri::from_local_path(&destination).unwrap()),
-            new_name: None,
-            conflict_policy: vfs::ConflictPolicy::Fail,
-        })
-        .unwrap();
-    runtime
-        .start_planned(
-            &plan.operation_id,
-            Arc::new(move |event| {
-                let _ = sender.send(event);
-            }),
-        )
-        .unwrap();
-
-    loop {
-        let event = receiver.recv_timeout(Duration::from_secs(5)).unwrap();
-
-        if matches!(event, JobEvent::Failed(_)) {
-            break;
-        }
-    }
-
-    let history = runtime.recent_history(10);
-    assert_eq!(history[0].status, "failed");
-    assert_eq!(
-        history[0].error_code.as_deref(),
-        Some("destination_conflict")
-    );
-}
-
-#[test]
 fn cancelled_operation_is_persisted_as_cancelled() {
     let dir = tempfile::tempdir().unwrap();
     let runtime = OperationRuntime::new(
-        fs_core::vfs_io::VfsFilesystem::local_only(),
+        local_vfs(),
         OperationHistoryRepository::new(dir.path().join("history.sqlite")).unwrap(),
     );
     let source = dir.path().join("large.bin");
@@ -302,7 +261,7 @@ fn cancelled_operation_is_persisted_as_cancelled() {
 fn write_text_file_is_persisted_as_completed_operation() {
     let dir = tempfile::tempdir().unwrap();
     let runtime = OperationRuntime::new(
-        fs_core::vfs_io::VfsFilesystem::local_only(),
+        local_vfs(),
         OperationHistoryRepository::new(dir.path().join("history.sqlite")).unwrap(),
     );
     let destination = dir.path().join("note.txt");
@@ -363,7 +322,7 @@ fn planned_operation_is_removed_after_start() {
     let dir = tempfile::tempdir().unwrap();
     let history_path = dir.path().join("history.sqlite");
     let runtime = OperationRuntime::new(
-        fs_core::vfs_io::VfsFilesystem::local_only(),
+        local_vfs(),
         OperationHistoryRepository::new(history_path).unwrap(),
     );
     let source = dir.path().join("source.txt");

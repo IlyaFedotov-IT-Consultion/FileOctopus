@@ -1,13 +1,9 @@
-// `VfsFilesystem` is the transitional VFS-aware I/O facade. It dispatches
-// per-scheme to local `std::fs` calls or to the SFTP session helpers in
-// `provider_sftp::ops`. The `VfsProvider` trait currently only declares
-// `stat` + `list`; writes are wired here rather than on the trait so the
-// runtime can mutate remote paths today.
-//
-// The roadmap's Phase 5 ("Protocol Expansion Readiness") moves these
-// write methods onto `VfsProvider` proper. When that lands, this file
-// shrinks to a thin orchestrator that resolves providers via
-// `VfsRegistry` and only owns cross-scheme copy/move composition.
+//! `VfsFilesystem` orchestrates cross-scheme file operations and exposes
+//! single-URI write helpers as thin facades over `VfsProvider` trait methods.
+//! Per-scheme write logic lives on `LocalFsProvider` and `SftpProvider`;
+//! this file only owns cross-scheme copy orchestration and a handful of
+//! local-only helpers (range reads, atomic writes) that aren't yet on the
+//! trait.
 
 use std::fs::{self, File};
 use std::io::{Read, Seek, SeekFrom, Write};
@@ -15,26 +11,33 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use provider_sftp::{
-    create_empty_file_blocking, download_file_blocking, list_directory_blocking, mkdir_blocking,
-    read_file_prefix_blocking, remove_dir_blocking, remove_file_blocking, rename_blocking,
-    stat_path_blocking, upload_file_blocking, SftpSession, TRANSFER_CHUNK_SIZE,
+    download_file_blocking, list_directory_blocking, stat_path_blocking, upload_file_blocking,
+    SftpSession,
 };
 use remote_core::ConnectionSessionManager;
-use vfs::{FileKind, FileOperationError, ResourceUri};
+use vfs::{FileKind, FileOperationError, ResourceUri, VfsRegistry};
 
 #[derive(Clone)]
 pub struct VfsFilesystem {
     sessions: Option<Arc<ConnectionSessionManager>>,
+    registry: Arc<VfsRegistry>,
 }
 
 impl VfsFilesystem {
-    pub fn local_only() -> Self {
-        Self { sessions: None }
+    pub fn local_only(registry: Arc<VfsRegistry>) -> Self {
+        Self {
+            sessions: None,
+            registry,
+        }
     }
 
-    pub fn with_sessions(sessions: Arc<ConnectionSessionManager>) -> Self {
+    pub fn with_sessions(
+        sessions: Arc<ConnectionSessionManager>,
+        registry: Arc<VfsRegistry>,
+    ) -> Self {
         Self {
             sessions: Some(sessions),
+            registry,
         }
     }
 
@@ -104,21 +107,12 @@ impl VfsFilesystem {
         uri: &ResourceUri,
         max_bytes: u64,
     ) -> Result<Vec<u8>, FileOperationError> {
-        if uri.scheme() == "local" {
-            let path = uri.to_local_path()?;
-            let mut file = File::open(&path).map_err(|error| map_local_io(uri, error))?;
-            let mut buffer = vec![0_u8; max_bytes as usize];
-            let read = file
-                .read(&mut buffer)
-                .map_err(|error| map_local_io(uri, error))?;
-            buffer.truncate(read);
-            return Ok(buffer);
-        }
-
-        let session = self.sftp_session(uri)?;
-        let remote_path = remote_path(uri)?;
-        read_file_prefix_blocking(&session, uri, &remote_path, max_bytes)
-            .map_err(FileOperationError::from)
+        let provider = self
+            .registry
+            .provider_for(uri)
+            .map_err(FileOperationError::from)?;
+        let uri_clone = uri.clone();
+        block_on_vfs(async move { provider.read_file_prefix(&uri_clone, max_bytes).await })
     }
 
     /// Read `length` bytes starting at `offset`. Returns the actual bytes read
@@ -222,41 +216,31 @@ impl VfsFilesystem {
     }
 
     pub fn mkdir(&self, uri: &ResourceUri) -> Result<(), FileOperationError> {
-        if uri.scheme() == "local" {
-            let path = uri.to_local_path()?;
-            fs::create_dir_all(&path).map_err(|error| map_local_io(uri, error))?;
-            return Ok(());
-        }
-
-        let session = self.sftp_session(uri)?;
-        let remote_path = remote_path(uri)?;
-        mkdir_blocking(&session, uri, &remote_path).map_err(FileOperationError::from)
+        let provider = self
+            .registry
+            .provider_for(uri)
+            .map_err(FileOperationError::from)?;
+        let uri_clone = uri.clone();
+        block_on_vfs(async move { provider.create_directory(&uri_clone).await })
     }
 
     pub fn create_empty_file(&self, uri: &ResourceUri) -> Result<(), FileOperationError> {
-        if uri.scheme() == "local" {
-            let path = uri.to_local_path()?;
-            if let Some(parent) = path.parent() {
-                fs::create_dir_all(parent).map_err(|error| map_local_io(uri, error))?;
-            }
-            File::create(&path).map_err(|error| map_local_io(uri, error))?;
-            return Ok(());
-        }
-
-        let session = self.sftp_session(uri)?;
-        let remote_path = remote_path(uri)?;
-        create_empty_file_blocking(&session, uri, &remote_path).map_err(FileOperationError::from)
+        let provider = self
+            .registry
+            .provider_for(uri)
+            .map_err(FileOperationError::from)?;
+        let uri_clone = uri.clone();
+        block_on_vfs(async move { provider.create_file(&uri_clone).await })
     }
 
     pub fn rename(&self, from: &ResourceUri, to: &ResourceUri) -> Result<(), FileOperationError> {
-        if from.scheme() == "local" && to.scheme() == "local" {
-            let from_path = from.to_local_path()?;
-            let to_path = to.to_local_path()?;
-            fs::rename(&from_path, &to_path).map_err(|error| map_local_io(from, error))?;
-            return Ok(());
+        if from.scheme() != to.scheme() {
+            return Err(FileOperationError::UnsupportedProvider {
+                scheme: format!("{}->{}", from.scheme(), to.scheme()),
+            });
         }
 
-        if from.scheme() == "sftp" && to.scheme() == "sftp" {
+        if from.scheme() == "sftp" {
             let from_profile = from.remote_authority().ok_or_else(|| invalid_path(from))?;
             let to_profile = to.remote_authority().ok_or_else(|| invalid_path(to))?;
             if from_profile != to_profile {
@@ -264,54 +248,24 @@ impl VfsFilesystem {
                 self.remove(from, true)?;
                 return Ok(());
             }
-            let session = self.sftp_session(from)?;
-            rename_blocking(&session, from, &remote_path(from)?, &remote_path(to)?)
-                .map_err(FileOperationError::from)?;
-            return Ok(());
         }
 
-        Err(FileOperationError::UnsupportedProvider {
-            scheme: format!("{}->{}", from.scheme(), to.scheme()),
-        })
+        let provider = self
+            .registry
+            .provider_for(from)
+            .map_err(FileOperationError::from)?;
+        let from_clone = from.clone();
+        let to_clone = to.clone();
+        block_on_vfs(async move { provider.rename(&from_clone, &to_clone).await })
     }
 
     pub fn remove(&self, uri: &ResourceUri, recursive: bool) -> Result<(), FileOperationError> {
-        let kind = self.stat_kind(uri)?;
-        match (uri.scheme(), kind) {
-            ("local", FileKind::Directory) => {
-                let path = uri.to_local_path()?;
-                if recursive {
-                    fs::remove_dir_all(&path).map_err(|error| map_local_io(uri, error))?;
-                } else {
-                    fs::remove_dir(&path).map_err(|error| map_local_io(uri, error))?;
-                }
-            }
-            ("local", _) => {
-                let path = uri.to_local_path()?;
-                fs::remove_file(&path).map_err(|error| map_local_io(uri, error))?;
-            }
-            ("sftp", FileKind::Directory) => {
-                let session = self.sftp_session(uri)?;
-                let path = remote_path(uri)?;
-                if recursive {
-                    self.remove_sftp_tree(&session, uri, &path)?;
-                } else {
-                    remove_dir_blocking(&session, uri, &path).map_err(FileOperationError::from)?;
-                }
-            }
-            ("sftp", _) => {
-                let session = self.sftp_session(uri)?;
-                remove_file_blocking(&session, uri, &remote_path(uri)?)
-                    .map_err(FileOperationError::from)?;
-            }
-            (scheme, _) => {
-                return Err(FileOperationError::UnsupportedProvider {
-                    scheme: scheme.to_string(),
-                });
-            }
-        }
-
-        Ok(())
+        let provider = self
+            .registry
+            .provider_for(uri)
+            .map_err(FileOperationError::from)?;
+        let uri_clone = uri.clone();
+        block_on_vfs(async move { provider.remove(&uri_clone, recursive).await })
     }
 
     pub fn copy_file(
@@ -320,17 +274,51 @@ impl VfsFilesystem {
         destination: &ResourceUri,
         mut on_progress: impl FnMut(u64),
     ) -> Result<u64, FileOperationError> {
-        match (source.scheme(), destination.scheme()) {
-            ("local", "local") => {
-                let from = source.to_local_path()?;
-                let to = destination.to_local_path()?;
-                if let Some(parent) = to.parent() {
-                    fs::create_dir_all(parent).map_err(|error| map_local_io(destination, error))?;
-                }
-                let bytes = fs::copy(&from, &to).map_err(|error| map_local_io(source, error))?;
+        if source.scheme() == destination.scheme() {
+            let provider = self
+                .registry
+                .provider_for(source)
+                .map_err(FileOperationError::from)?;
+            let source_clone = source.clone();
+            let destination_clone = destination.clone();
+            let (tx, rx) = std::sync::mpsc::sync_channel::<u64>(64);
+
+            let worker = std::thread::spawn(move || -> Result<u64, FileOperationError> {
+                let progress_callback: Box<dyn FnMut(u64) + Send> = Box::new(move |bytes| {
+                    let _ = tx.send(bytes);
+                });
+                tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .map_err(|error| FileOperationError::Internal {
+                        message: error.to_string(),
+                    })?
+                    .block_on(provider.copy_file(
+                        &source_clone,
+                        &destination_clone,
+                        progress_callback,
+                    ))
+                    .map_err(FileOperationError::from)
+            });
+
+            while let Ok(bytes) = rx.recv() {
                 on_progress(bytes);
-                Ok(bytes)
             }
+
+            return worker.join().map_err(|_| FileOperationError::Internal {
+                message: "copy worker thread panicked".to_string(),
+            })?;
+        }
+        self.copy_file_cross_scheme(source, destination, on_progress)
+    }
+
+    fn copy_file_cross_scheme(
+        &self,
+        source: &ResourceUri,
+        destination: &ResourceUri,
+        on_progress: impl FnMut(u64),
+    ) -> Result<u64, FileOperationError> {
+        match (source.scheme(), destination.scheme()) {
             ("local", "sftp") => {
                 let from = source.to_local_path()?;
                 let session = self.sftp_session(destination)?;
@@ -349,43 +337,6 @@ impl VfsFilesystem {
                 let file = File::create(&to).map_err(|error| map_local_io(destination, error))?;
                 download_file_blocking(&session, source, &source_path, file, on_progress)
                     .map_err(FileOperationError::from)
-            }
-            ("sftp", "sftp") => {
-                let from_session = self.sftp_session(source)?;
-                let to_session = self.sftp_session(destination)?;
-                let from_path = remote_path(source)?;
-                let to_path = remote_path(destination)?;
-                let mut buffer = vec![0_u8; TRANSFER_CHUNK_SIZE];
-                let mut total = 0_u64;
-                {
-                    let read_guard = from_session.lock_session().map_err(map_remote_error)?;
-                    let read_sftp = read_guard.sftp().map_err(map_sftp_internal)?;
-                    let mut reader = read_sftp
-                        .open(Path::new(&from_path))
-                        .map_err(|error| map_sftp_stat(source, error))?;
-                    let write_guard = to_session.lock_session().map_err(map_remote_error)?;
-                    let write_sftp = write_guard.sftp().map_err(map_sftp_internal)?;
-                    let mut writer = write_sftp
-                        .create(Path::new(&to_path))
-                        .map_err(|error| map_sftp_stat(destination, error))?;
-                    loop {
-                        let read = reader
-                            .read(&mut buffer)
-                            .map_err(|error| FileOperationError::io(error.to_string()))?;
-                        if read == 0 {
-                            break;
-                        }
-                        writer
-                            .write_all(&buffer[..read])
-                            .map_err(|error| FileOperationError::io(error.to_string()))?;
-                        total += read as u64;
-                        on_progress(total);
-                    }
-                    writer
-                        .flush()
-                        .map_err(|error| FileOperationError::io(error.to_string()))?;
-                }
-                Ok(total)
             }
             (from, to) => Err(FileOperationError::UnsupportedProvider {
                 scheme: format!("{from}->{to}"),
@@ -565,32 +516,6 @@ impl VfsFilesystem {
         Ok(())
     }
 
-    fn remove_sftp_tree(
-        &self,
-        session: &SftpSession,
-        uri: &ResourceUri,
-        path: &str,
-    ) -> Result<(), FileOperationError> {
-        let entries =
-            list_directory_blocking(session, uri, path, true).map_err(FileOperationError::from)?;
-        for entry in entries {
-            let child_path = join_remote(path, &entry.name);
-            let child_uri = ResourceUri::from_remote_profile(
-                "sftp",
-                uri.remote_authority().unwrap(),
-                &child_path,
-            )
-            .map_err(FileOperationError::from)?;
-            if entry.kind == FileKind::Directory {
-                self.remove_sftp_tree(session, &child_uri, &child_path)?;
-            } else {
-                remove_file_blocking(session, &child_uri, &child_path)
-                    .map_err(FileOperationError::from)?;
-            }
-        }
-        remove_dir_blocking(session, uri, path).map_err(FileOperationError::from)
-    }
-
     fn sftp_session(&self, uri: &ResourceUri) -> Result<SftpSession, FileOperationError> {
         let sessions =
             self.sessions
@@ -654,6 +579,34 @@ where
     }
 }
 
+fn block_on_vfs<T>(
+    future: impl std::future::Future<Output = Result<T, vfs::VfsError>> + Send + 'static,
+) -> Result<T, FileOperationError>
+where
+    T: Send + 'static,
+{
+    let run = || {
+        tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .map_err(|error| FileOperationError::Internal {
+                message: error.to_string(),
+            })?
+            .block_on(future)
+            .map_err(FileOperationError::from)
+    };
+
+    if tokio::runtime::Handle::try_current().is_ok() {
+        std::thread::spawn(run)
+            .join()
+            .map_err(|_| FileOperationError::Internal {
+                message: "vfs worker thread panicked".to_string(),
+            })?
+    } else {
+        run()
+    }
+}
+
 fn remote_path(uri: &ResourceUri) -> Result<String, FileOperationError> {
     uri.remote_path()
         .filter(|path| !path.is_empty())
@@ -696,22 +649,6 @@ fn map_local_io(uri: &ResourceUri, error: std::io::Error) -> FileOperationError 
             uri: uri.as_str().to_string(),
         },
         _ => FileOperationError::io(error.to_string()),
-    }
-}
-
-fn map_remote_error(error: remote_core::RemoteError) -> FileOperationError {
-    FileOperationError::from(vfs::VfsError::from(error))
-}
-
-fn map_sftp_internal(error: impl std::fmt::Display) -> FileOperationError {
-    FileOperationError::Internal {
-        message: error.to_string(),
-    }
-}
-
-fn map_sftp_stat(uri: &ResourceUri, error: impl std::fmt::Display) -> FileOperationError {
-    FileOperationError::Internal {
-        message: format!("{}: {}", error, uri.as_str()),
     }
 }
 

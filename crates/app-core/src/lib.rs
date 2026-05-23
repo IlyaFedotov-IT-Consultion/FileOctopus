@@ -167,7 +167,7 @@ impl AppCore {
         let startup_recovery_count = history
             .mark_interrupted_jobs()
             .map_err(|error| AppCoreError::History(error.to_string()))?;
-        let vfs_filesystem = VfsFilesystem::with_sessions(sessions.clone());
+        let vfs_filesystem = VfsFilesystem::with_sessions(sessions.clone(), vfs.clone());
         let operations = Arc::new(OperationRuntime::new(vfs_filesystem, history));
         let preferences = PreferencesRepository::new(paths.preferences_db.clone())
             .map_err(|error| AppCoreError::History(error.to_string()))?;
