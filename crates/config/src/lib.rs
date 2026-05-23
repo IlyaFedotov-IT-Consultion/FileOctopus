@@ -1082,6 +1082,37 @@ mod tests {
     }
 
     #[test]
+    fn round_trips_and_validates_diagnostics_export_path() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("preferences.sqlite");
+        let repository = PreferencesRepository::new(path.clone()).unwrap();
+        repository
+            .set(
+                "diagnosticsExportPath",
+                " /home/user/fileoctopus-diagnostics.zip ",
+            )
+            .unwrap();
+
+        let reloaded = PreferencesRepository::new(path).unwrap().get_all().unwrap();
+        assert_eq!(
+            reloaded.diagnostics_export_path,
+            "/home/user/fileoctopus-diagnostics.zip"
+        );
+
+        let updated = repository.set("diagnosticsExportPath", "   ").unwrap();
+        assert_eq!(
+            updated.diagnostics_export_path,
+            "/tmp/fileoctopus-diagnostics.zip"
+        );
+
+        let too_long = "a".repeat(2049);
+        let error = repository
+            .set("diagnosticsExportPath", too_long.as_str())
+            .unwrap_err();
+        assert!(matches!(error, PreferencesError::InvalidValue { .. }));
+    }
+
+    #[test]
     fn round_trips_toolbar_entries() {
         let dir = tempdir().unwrap();
         let path = dir.path().join("preferences.sqlite");
