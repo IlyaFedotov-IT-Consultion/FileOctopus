@@ -1,7 +1,7 @@
 # CRON Status — FileOctopus CI/CD Agent
 
-> Last run: 2026-05-25 19:30 UTC
-> Commits: f8acc08 (P1-3), 0e65e72 (P1-4)
+> Last run: 2026-05-25 21:35 UTC
+> Commits: ec61bbb (P2-12)
 
 ## Health Gate
 
@@ -11,40 +11,26 @@
 | Rust (`cargo check`)          | ✅ clean (all workspace crates) |
 | Cargo clippy (`-D warnings`)  | ✅ clean                        |
 | Cargo fmt                     | ✅ clean                        |
-| Frontend tests (`pnpm test`)  | ✅ 566 pass (91 files)          |
+| Frontend tests (`pnpm test`)  | ✅ 572 pass (92 files)          |
 | Prettier (`format:check`)     | ✅ clean                        |
 | `pnpm lint`                   | ✅ clean                        |
 
 **Gate status:** GREEN — 0 failures.
 
-## Task 1: P1-3 — Rich Copy To / Move To (tree browser)
+## Task 1: P2-12 — Symlink indicator in file list + copy/move warning
 
-**Commit:** `f8acc08` — 13 files, +624/-23
+**Commit:** `ec61bbb` — 5 files, +170/-6
 
-- Rust: `fs_list_directories` IPC command (ListDirectoriesRequest/Response DTOs)
-- TS-API: `listDirectories()` client method + commandMap entry
-- Frontend: `FolderTree.tsx` component with lazy-loaded expandable nodes
-- Frontend: `DestinationChooser.tsx` integrated FolderTree as "Browse" section
-- Frontend: `OperationDialogView.tsx` sidebar always visible with `fs` prop
-- CSS: folder tree styles + destination layout updates
-- Tests: 11 new (6 FolderTree + 5 DestinationChooser integration)
-
-## Task 2: P1-4 — Image viewer gallery navigation + metadata
-
-**Commit:** `0e65e72` — 7 files, +384/-9
-
-- ViewerDialog: prev/next gallery navigation with sibling image entries
-- ViewerImageMode: show image dimensions (W×H), file size, modified date on load
-- ShellOverlays: compute image siblings from active tab via `selectVisibleEntries` + `isImagePreviewable`
-- DialogOverlayGroup: pass `viewerSiblings` + `onViewerNavigate` props
-- CSS: gallery nav buttons (‹/›), counter display, metadata footer layout
-- Tests: 11 new (5 ViewerImageMode + 6 gallery navigation)
+- FileRow: ↗ badge for symlink entries with target tooltip (`Symlink → target`)
+- FileRow: 'symlink' in aria-label for accessibility + kind column display
+- OperationDialogView: warning callout when copy/move includes symlinks
+- CSS: `.fo-row-symlink-badge` badge style + `.fo-symlink-warning` callout style
+- Tests: 6 new (badge render, badge without target, no badge for files/dirs, aria-label, kind column)
 
 ## Remaining Active RC Queue
 
 | ID       | Pri | Status  | Description                    |
 | -------- | --- | ------- | ------------------------------ |
-| P2-12    | P2  | pending | Symlink policy                 |
 | P2-13    | P2  | pending | PDF/media/EXIF preview         |
 | P2-14    | P2  | pending | Saved searches / smart folders |
 | P2-16    | P2  | pending | Archive browsing               |
@@ -54,4 +40,4 @@
 | TAG-1    | P2  | pending | Tag/label system               |
 | RMT-1    | P2  | pending | Remote providers expansion     |
 
-**Next highest priority:** P2-12 (Symlink policy)
+**Next highest priority:** P2-13 (PDF/media/EXIF preview)
