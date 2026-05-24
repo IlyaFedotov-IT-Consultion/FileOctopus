@@ -1,5 +1,9 @@
-import type { ReactNode } from "react";
-import type { FileEntryDto, PathPropertiesDto } from "@fileoctopus/ts-api";
+import { useState, useEffect, type ReactNode } from "react";
+import type {
+  FileEntryDto,
+  FsClient,
+  PathPropertiesDto,
+} from "@fileoctopus/ts-api";
 import { Button, fileEntryIcon } from "@fileoctopus/ui";
 import type { PanelId } from "../../panelStore";
 import { propertyType, localPathFromUri } from "../../utils/paneUtils";
@@ -16,6 +20,7 @@ export interface PropertiesDialogState {
 interface PropertiesDialogProps {
   open: boolean;
   state: PropertiesDialogState;
+  fs?: FsClient;
   onCopyPath: () => void;
   onReveal: () => void;
 }
@@ -99,6 +104,7 @@ function formatFlags(properties: PathPropertiesDto): ReactNode {
 export function PropertiesDialog({
   open,
   state,
+  fs,
   onCopyPath,
   onReveal,
 }: PropertiesDialogProps) {
@@ -122,6 +128,39 @@ export function PropertiesDialog({
     ) : (
       sizeValue
     );
+
+  const [hash, setHash] = useState<string | null>(null);
+  const [hashLoading, setHashLoading] = useState(false);
+  const [hashError, setHashError] = useState<string | null>(null);
+  const [expectedHash, setExpectedHash] = useState("");
+  const [verified, setVerified] = useState<"match" | "mismatch" | null>(null);
+
+  useEffect(() => {
+    if (!fs || !state.entry || state.entry.kind === "directory") {
+      setHash(null);
+      setHashLoading(false);
+      setHashError(null);
+      setExpectedHash("");
+      setVerified(null);
+      return;
+    }
+
+    setHashLoading(true);
+    setHashError(null);
+    setHash(null);
+    setExpectedHash("");
+    setVerified(null);
+
+    fs.computeHash({ uri: state.entry.uri, algorithm: "sha256" })
+      .then((res) => {
+        setHash(res.hash);
+        setHashLoading(false);
+      })
+      .catch(() => {
+        setHashError("Failed to compute hash");
+        setHashLoading(false);
+      });
+  }, [fs, state.entry?.uri]);
 
   return (
     <div className="fo-properties">
@@ -201,6 +240,82 @@ export function PropertiesDialog({
               <PropertiesRow label="Flags" value={formatFlags(properties)} />
             </dl>
           </PropertiesSection>
+
+          {properties.kind !== "directory" ? (
+            <PropertiesSection title="Checksum">
+              <dl className="fo-properties-grid">
+                <PropertiesRow
+                  label="SHA-256"
+                  value={
+                    hashLoading ? (
+                      <span className="fo-properties-calculating">
+                        Computing…
+                      </span>
+                    ) : hashError ? (
+                      <span className="fo-properties-error">{hashError}</span>
+                    ) : hash ? (
+                      <span
+                        className="fo-properties-value fo-properties-value--mono"
+                        title={hash}
+                      >
+                        {hash}
+                      </span>
+                    ) : (
+                      "—"
+                    )
+                  }
+                />
+                {hash && !hashLoading && !hashError ? (
+                  <>
+                    <PropertiesRow
+                      label="Expected hash"
+                      value={
+                        <input
+                          type="text"
+                          className="fo-properties-input"
+                          placeholder="Paste expected SHA-256…"
+                          value={expectedHash}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            setExpectedHash(value);
+                            const trimmed = value.trim().toLowerCase();
+                            if (trimmed) {
+                              setVerified(
+                                trimmed === hash.toLowerCase()
+                                  ? "match"
+                                  : "mismatch",
+                              );
+                            } else {
+                              setVerified(null);
+                            }
+                          }}
+                        />
+                      }
+                    />
+                    {verified === "match" ? (
+                      <PropertiesRow
+                        label="Verification"
+                        value={
+                          <span className="fo-properties-badge fo-properties-badge--success">
+                            Match ✓
+                          </span>
+                        }
+                      />
+                    ) : verified === "mismatch" ? (
+                      <PropertiesRow
+                        label="Verification"
+                        value={
+                          <span className="fo-properties-badge fo-properties-badge--error">
+                            Mismatch ✗
+                          </span>
+                        }
+                      />
+                    ) : null}
+                  </>
+                ) : null}
+              </dl>
+            </PropertiesSection>
+          ) : null}
 
           {properties.warnings.length > 0 ? (
             <div className="fo-properties-warnings" role="note">

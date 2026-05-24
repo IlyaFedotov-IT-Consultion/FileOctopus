@@ -594,6 +594,7 @@ export function OperationDialogView({
         {dialog.type === "properties" ? (
           <PropertiesDialog
             open
+            fs={fs}
             state={{
               panelId: dialog.panelId,
               entry: dialog.entry,
