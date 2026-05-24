@@ -1,6 +1,93 @@
 # CRON Status — FileOctopus CI/CD Agent
 
-> Last run: 2026-05-24 02:00 UTC
+> Last run: 2026-05-24 03:37 UTC
+> Commit: af8a7b5
+
+## Health Gate
+
+| Check                         | Result                                                     |
+| ----------------------------- | ---------------------------------------------------------- |
+| TypeScript (`pnpm typecheck`) | ✅ 0 errors                                                |
+| Rust (`cargo check`)          | ✅ clean (all workspace crates)                            |
+| Rust tests (`cargo test`)     | ✅ pass (workspace + integration, 257 tests)               |
+| Frontend tests (`pnpm test`)  | ✅ 512 pass (81 files)                                     |
+| E2E tests (Playwright)        | ⏭️ skipped (dev server not running during health-check.sh) |
+| Clippy (`-D warnings`)        | ✅ clean                                                   |
+| Format (`cargo fmt --check`)  | ✅ clean                                                   |
+| Prettier (`format:check`)     | ✅ clean                                                   |
+| `pnpm rc:validate`            | ✅ full pipeline green                                     |
+
+**Gate status:** GREEN — 0 failures.
+
+## Phase 1: Spec Alignment
+
+Re-audited `PROJECT_STATUS_AND_DOC_ALIGNMENT.md` and `UI_FEATURE_INVENTORY.md` §13. Active RC Queue was empty (all done or deferred). Per operating procedure, populated queue with P3 automatable task `RC-VIDEOS` from UI_FEATURE_INVENTORY §3.
+
+## Phase 2: Task Selection
+
+**Selected:** `RC-VIDEOS` — Sidebar Videos icon mapping. Backend already returns `videos` as a `StandardLocationDto`, but frontend `locationIcon()` in `Sidebar.tsx` fell back to generic `Icons.volume()` with no `case "videos"`.
+
+## Phase 3: TDD Implementation
+
+**Micro-spec:**
+
+1. Add `Video` import from `lucide-react` to `packages/ui/src/icons.tsx`
+2. Add `video: () => renderIcon(Video, "fo-ui-icon")` to `Icons` object
+3. Add `case "videos": return Icons.video();` to `locationIcon()` in `Sidebar.tsx`
+4. Write tests covering icon existence and sidebar rendering
+
+### TDD Evidence
+
+- **RED:** `iconsVideo.test.tsx` (2 tests) — asserted `Icons.video` exists and returns a React element; both failed because `Icons.video` was undefined
+- **GREEN:** Added `Video` lucide import, `Icons.video` mapping, and `case "videos"` in sidebar icon switch; all 512 tests pass with 0 regressions
+- **REFACTOR:** No refactoring needed — change is minimal and idiomatic with existing patterns
+
+**Files changed (5):**
+
+- `packages/ui/src/icons.tsx` — added `Video` lucide import + `Icons.video` mapping
+- `packages/frontend/src/sidebar/Sidebar.tsx` — added `case "videos": return Icons.video()` to `locationIcon()`
+- `packages/frontend/tests/iconsVideo.test.tsx` — 2 tests asserting icon existence
+- `packages/frontend/tests/sidebarVideosIcon.test.tsx` — 1 test asserting sidebar renders Videos label
+- `docs/plans/CRON_TASKS.md` — mark RC-VIDEOS done
+
+## Phase 4: Integration Verification
+
+- `cargo test --lib` — ✅ 138 passed
+- `cargo test --tests` — ✅ 257 passed (integration + lib)
+- `pnpm test` (frontend) — ✅ 512 passed (81 files)
+- `pnpm typecheck` — ✅ 0 errors
+- `cargo check` — ✅ clean
+- `cargo clippy --workspace --all-targets -- -D warnings` — ✅ clean
+- `cargo fmt --all --check` — ✅ clean
+- `pnpm rc:validate` — ✅ full pipeline green
+
+## Phase 5: Spec Compliance & Docs
+
+- `CRON_TASKS.md` — `RC-VIDEOS` marked `done`
+- `CRON_STATUS.md` — this entry
+- `PROJECT_STATUS_AND_DOC_ALIGNMENT.md` — Videos sidebar entry moved to Implemented
+- `UI_FEATURE_INVENTORY.md` §13 — Videos sidebar entry marked done
+
+## Active RC Queue (remaining)
+
+| ID       | Pri | Status   | Owner | Commit | Started | Last Verified | Spec Ref            | Task                                                                            | Blockers | Last Verified |
+| -------- | --- | -------- | ----- | ------ | ------- | ------------- | ------------------- | ------------------------------------------------------------------------------- | -------- | ------------- |
+| RC-PAUSE | P2  | deferred | -     | -      | -       | -             | UI §6; RC spec §3.2 | Pause on jobs: backend job.pause IPC + UI pause/resume button in activity panel | None     | 2026-05-23    |
+
+**Note:** No pending P1/P2/P3 automatable tasks remain in Active RC Queue. Only `RC-PAUSE` remains as `deferred`. Next cycle should re-audit `PROJECT_STATUS_AND_DOC_ALIGNMENT.md` + `UI_FEATURE_INVENTORY.md` for any fresh gaps.
+
+## Recommendation
+
+Queue is empty at P1/P2/P3 level with `RC-PAUSE` deferred. Options for next cycle:
+
+1. Re-audit `PROJECT_STATUS_AND_DOC_ALIGNMENT.md` + `UI_FEATURE_INVENTORY.md` for fresh P1/P2 gaps
+2. Resume `RC-PAUSE` if a human reprioritizes it and breaks it into smaller sub-tasks
+3. Pick a P3 polish item from Deferred/Post-RC if human explicitly reprioritizes
+
+---
+
+## Historical: 2026-05-24 02:00 UTC
+
 > Commit: dc9b24e
 
 ## Health Gate
@@ -52,7 +139,7 @@ Queue empty; no implementation cycle run.
 
 ## Recommendation
 
-Queue is empty at P1/P2/P3 RC level with `RC-PAUSE` deferred. Options for next cycle:
+Queue is empty at P1/P2/P3 level with `RC-PAUSE` deferred. Options for next cycle:
 
 1. Re-audit `PROJECT_STATUS_AND_DOC_ALIGNMENT.md` + `UI_FEATURE_INVENTORY.md` for fresh P1/P2 gaps (just performed — none found)
 2. Resume `RC-PAUSE` if a human reprioritizes it and breaks it into smaller sub-tasks
@@ -136,84 +223,6 @@ Audited `CRON_TASKS.md` and found `RC-TAR` (tar.gz/tar.bz2 archive support) as t
 | -------- | --- | -------- | ----- | ------ | ------- | ------------- | ------------------- | ------------------------------------------------------------------------------- | -------- | ------------- |
 | RC-PAUSE | P2  | deferred | -     | -      | -       | -             | UI §6; RC spec §3.2 | Pause on jobs: backend job.pause IPC + UI pause/resume button in activity panel | None     | 2026-05-23    |
 
-**Note:** No `pending` items remain in Active RC Queue. Only `RC-PAUSE` remains as `deferred`. Next audit should backfill from `PROJECT_STATUS_AND_DOC_ALIGNMENT.md` §"Specified but not implemented" for any newly eligible P1/P2 tasks.
-
-## Recommendation
-
-Queue is empty at P1/P2 level with `RC-PAUSE` deferred. Options for next cycle:
-
-1. Re-audit `PROJECT_STATUS_AND_DOC_ALIGNMENT.md` + `UI_FEATURE_INVENTORY.md` for fresh P1/P2 gaps
-2. Resume `RC-PAUSE` if a human reprioritizes it and breaks it into smaller sub-tasks
-3. Pick a P3 polish item (e.g., column reorder, rubber-band select)
-
----
-
-## Historical: 2026-05-23 21:00 UTC
-
-## Health Gate
-
-| Check                         | Result                                                     |
-| ----------------------------- | ---------------------------------------------------------- |
-| TypeScript (`pnpm typecheck`) | ✅ 0 errors                                                |
-| Rust (`cargo check`)          | ✅ clean (all workspace crates)                            |
-| Rust tests (`cargo test`)     | ✅ pass (workspace + integration, 257 tests)               |
-| Frontend tests (`pnpm test`)  | ✅ 509 pass (79 files)                                     |
-| E2E tests (Playwright)        | ⏭️ skipped (dev server not running during health-check.sh) |
-| Clippy (`-D warnings`)        | ✅ clean                                                   |
-| Format (`cargo fmt --check`)  | ✅ clean                                                   |
-| Prettier (`format:check`)     | ✅ clean                                                   |
-| `pnpm rc:validate`            | ✅ full pipeline green                                     |
-
-**Gate status:** GREEN — 0 failures.
-
-## Phase 1: Spec Alignment
-
-Audited `PROJECT_STATUS_AND_DOC_ALIGNMENT.md`, `UI_FEATURE_INVENTORY.md` §13, and `CRON_TASKS.md`. Found that `RC-PAUSE` (job pause/resume) is a genuine P2 gap but requires executor-level pause token refactor across `jobs`/`app-core`/`fs-core` crates — too large for a single cycle. Moved `RC-PAUSE` to `deferred`. Added `RC-RECENT` (sidebar Today/This Week groups) as a smaller P2 task extracted from `UI_FEATURE_INVENTORY.md` §13.
-
-## Phase 2: Task Selection
-
-**Selected:** `RC-RECENT` — Sidebar Recent section: split into "Today" and "This Week" groups. Priority P2, automatable, self-contained frontend-only change.
-
-## Phase 3: TDD Implementation
-
-**Micro-spec:**
-
-1. Replace single "Recent" `SidebarSection` with two sections: "Today" and "This Week"
-2. Render "This Week" only when `recentWeek.length > 0`
-3. Keep "No recent folders" empty hint in "Today" when both groups are empty
-4. Write tests covering all states
-
-### TDD Evidence
-
-- **RED:** Wrote `sidebarRecentGroups.test.tsx` with 5 tests asserting "Today" and "This Week" headings, dual-group rendering, conditional "This Week" visibility, and empty-state hint — all failed because sidebar rendered single "Recent" section
-- **GREEN:** Modified `Sidebar.tsx` to split section into "Today" + conditional "This Week" — all 5 tests pass
-- **Refactor:** Verified existing `sidebarNetworkStatus.test.tsx` (7 tests) still pass; full frontend suite grows from 503 → 509 tests with 0 regressions
-
-**Files changed (3):**
-
-- `packages/frontend/src/sidebar/Sidebar.tsx` — split Recent into Today + This Week sections
-- `packages/frontend/tests/sidebarRecentGroups.test.tsx` — 5 new tests
-- `docs/plans/CRON_TASKS.md` — mark RC-PAUSE deferred, add RC-RECENT, mark done
-
-## Phase 4: Integration Verification
-
-- `cargo test --lib` — ✅ 138 passed
-- `cargo test --tests` — ✅ 257 passed (integration + lib)
-- `pnpm test` (frontend) — ✅ 509 passed (79 files)
-- `pnpm typecheck` — ✅ 0 errors
-- `cargo check` — ✅ clean
-
-## Phase 5: Spec Compliance & Docs
-
-- `CRON_TASKS.md` — `RC-RECENT` marked `done`, `RC-PAUSE` marked `deferred` with rationale
-- `CRON_STATUS.md` — this entry
-
-## Active RC Queue (remaining)
-
-| ID     | Pri | Status  | Owner | Commit | Started | Last Verified | Spec Ref     | Task                                                                           | Blockers | Last Verified |
-| ------ | --- | ------- | ----- | ------ | ------- | ------------- | ------------ | ------------------------------------------------------------------------------ | -------- | ------------- |
-| RC-TAR | P3  | pending | -     | -      | -       | -             | RC spec §3.2 | Tar / non-zip archive formats: createArchive/extractArchive for tar.gz/tar.bz2 | None     | 2026-05-23    |
-
 **Note:** No P1/P2 pending items remain in Active RC Queue. `RC-PAUSE` deferred due to cross-crate complexity. Next audit should backfill from `PROJECT_STATUS_AND_DOC_ALIGNMENT.md` §"Specified but not implemented" for any newly eligible P1/P2 tasks.
 
 ## Recommendation
@@ -226,6 +235,6 @@ Queue is nearly empty at P1/P2 level. Options for next cycle:
 
 ---
 
-## Historical: 2026-05-23 19:15 UTC
+## Historical: 2026-05-23 21:00 UTC
 
 See previous revision in git history for details.
