@@ -144,13 +144,10 @@ Items from the original MVP §3.1 that are **not** required for RC sign-off but 
 
 - Remote Git status.
 - Embedded terminal manual smoke and polish.
-- Tar and non-zip archive formats (RC ships zip create/extract only).
-- Native OS menu integration and remaining [Menu & Modal Spec](../plans/FileOctopus_Menu_and_Modal_Specification.md) parity work (the in-app `MenuBar` shell is present).
+- Additional archive formats beyond zip/tar/tar.gz/tar.bz2 and future archive browsing.
+- Remaining [Menu & Modal Spec](../plans/FileOctopus_Menu_and_Modal_Specification.md) polish; the in-app `MenuBar` and native Tauri menu are present.
 - Advanced session restore and tab persistence polish.
-- Last-path restore on startup.
-- Full conflict dialog parity (metadata compare and apply-to-all flow).
 - Pause/resume jobs; RC supports cancel only.
-- Checksum toolbar action parity; `fs_compute_hash` exists and hash is computed on selection.
 - Full `job` / `job_item_result` SQLite schema and per-item recovery.
 - Formal performance and RC checklist sign-off (MVP-PERF-\*, §16).
 
@@ -194,8 +191,8 @@ Items from the original MVP §3.1 that are **not** required for RC sign-off but 
 | MVP-JOB-004  | **Mostly met** | Restart persistence     | Operation history inspectable after restart; live jobs in-memory only.        |
 | MVP-GIT-001  | **Met**        | Git branch              | Active local repository panes display the current branch or detached HEAD.    |
 | MVP-GIT-002  | **Met**        | Git badges              | File rows show compact local Git status badges from `git.statusForDirectory`. |
-| MVP-ARC-001  | **Partial**    | Archive extraction      | Zip create/extract to destination; tar not implemented.                       |
-| MVP-ARC-002  | **Met**        | Archive safety          | Malicious archive path traversal is blocked (zip-slip tests).                 |
+| MVP-ARC-001  | **Mostly met** | Archive extraction      | Zip, tar, tar.gz/tgz, and tar.bz2/tbz2 create/extract to destination.         |
+| MVP-ARC-002  | **Met**        | Archive safety          | Malicious archive path traversal is blocked.                                  |
 | MVP-TERM-001 | **Partial**    | Terminal open           | External terminal plus embedded local/SSH terminal; manual smoke pending.     |
 | MVP-UI-001   | **Partial**    | Keyboard flow           | Shortcuts + command palette; menu bar shell partial.                          |
 | MVP-SEC-001  | **Met**        | No direct FS frontend   | Frontend has no unrestricted generic filesystem access (ADR-0002).            |
@@ -1792,10 +1789,10 @@ RC engineering gate: §4 criteria **Met** or **Deferred** with owner sign-off; z
 
 Ordered backlog after RC (see also [PROJECT_STATUS_AND_DOC_ALIGNMENT.md](../planning/PROJECT_STATUS_AND_DOC_ALIGNMENT.md)):
 
-1. Complete menu bar wiring per [Menu & Modal Spec](../plans/FileOctopus_Menu_and_Modal_Specification.md).
+1. Complete remaining Menu & Modal Spec polish after in-app and native menu wiring.
 2. Remote Git exploration.
 3. Embedded terminal manual-smoke polish.
-4. Tar and additional archive formats; optional `archive-core` extraction.
+4. Additional archive formats, archive browsing, and optional `archive-core` extraction.
 5. Durable `job` / `job_item_result` SQLite schema and recovery.
 6. Formal MVP-PERF-\* sign-off per `docs/testing/`.
 7. 1.0 packaging, signing, and platform QA matrix.

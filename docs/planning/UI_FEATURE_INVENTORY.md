@@ -396,18 +396,18 @@ Example: `Ready · 2 selected · 8 items · 82.3 MB selected · No errors`
 - **Overflow toolbar** — Reveal, Calculate Size, Open Terminal (external emulator), Compress/Extract/Checksum menus present
 - **Settings** — General (autostart), Appearance (theme, density, accent, font/icon scale), Files & Folders, Layout, Operations (confirm delete/overwrite, conflict policy, trash behavior), Diagnostics, Shortcuts
 - **Shortcuts** — Ctrl/Cmd+I (properties), Ctrl/Cmd+H and Ctrl/Cmd+. for hidden files
-- **Application menu bar shell** (`MenuBar` in title bar)
-- **Zip compress/extract** via toolbar and context menu (`useArchiveHandlers`)
+- **Application menu bar shell** (`MenuBar` in title bar) plus native Tauri menu bridge
+- **Zip/tar archive create/extract** via toolbar and context menu (`useArchiveHandlers`)
 - **Embedded terminal panel** — local + SSH PTY, pane bottom split, tabs, maximize/close, shell prefs (`terminal-core`)
 - **Built-in F3 viewer + F4 editor** — shared syntax highlighting
 - **SFTP network profiles** — remote VFS, sidebar badges, status events, host-key fingerprint TOFU
+- **Network sidebar deduplication** — saved SFTP/SSH profiles render in the dedicated Network section only
 - **Performance smoke** — `pnpm perf:smoke` command
 - **Command registry refactor** — derive `CommandId` from as-const registry, dispatch exhaustiveness test
 
 ### Still not implemented (specified)
 
 - **First-run overlay** — stretch, not built
-- **Videos sidebar entry, network locations, "This Week" recent group** — partial (API has `thisWeek` bucket; UI grouping done; **Videos icon mapping done** `af8a7b5`)
 - **Title bar sync/health indicator** — optional, not built
 - **PDF/media/EXIF preview expansion** — broader product expansion than current RC image-preview scope
 
@@ -418,10 +418,12 @@ Example: `Ready · 2 selected · 8 items · 82.3 MB selected · No errors`
 - **Remember last panes / last-path restore** — ✅ implemented (`layoutStore` persists pane paths and active tab IDs on startup; P2-4 `d08d97d`)
 - **VfsProvider write methods** — ✅ implemented (create_directory, create_file, rename, remove, copy_file, read_file_prefix across `vfs`/`fs-core`/`provider-sftp`; 2026-05-22)
 - **Image preview in PreviewPanel** — ✅ implemented (`fs_read_image` IPC handler, `ViewerImageMode`, `PreviewPanel` image support; RC-IMG `d74e917`)
+- **Diagnostics export location preference** — ✅ implemented (`diagnosticsExportPath` preference feeds Diagnostics dialog export destination)
+- **Tar/non-zip archive formats** — ✅ implemented for `.tar`, `.tar.gz`/`.tgz`, and `.tar.bz2`/`.tbz2` in `fs-core/file_ops/archive.rs`
 
 ### Previously listed as not implemented, now done (2026-05-17)
 
-- **Application menu bar** (File/Edit/View/Go/…) — ✅ implemented (MenuBar component with full dropdown menus)
+- **Application menu bar** (File/Edit/View/Go/…) — ✅ implemented (MenuBar component with full dropdown menus and native Tauri menu bridge)
 - **Tabs per panel** — ✅ implemented (`TabBar` plus `openTab` / `closeTab` / `switchTab`; session restore remains pending)
 - **Compress / Extract** — ✅ wired with real IPC (`useArchiveHandlers.ts` → `planOperation("createArchive"/"extractArchive")` → job system)
 - **Checksum toolbar** — ✅ wired with real IPC (`handleChecksum` → `client.fs.computeHash` → SHA-256 toast + hash column update)

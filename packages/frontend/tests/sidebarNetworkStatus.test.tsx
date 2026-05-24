@@ -66,7 +66,7 @@ describe("Sidebar network section", () => {
 
   it("marks profiles without stored credentials", () => {
     renderSidebar(baseProfile);
-    expect(screen.getAllByTitle("Prod (credentials missing)")).toHaveLength(2);
+    expect(screen.getAllByTitle("Prod (credentials missing)")).toHaveLength(1);
   });
 
   it("reflects connected status in title", () => {
@@ -77,7 +77,7 @@ describe("Sidebar network section", () => {
         message: null,
       },
     ]);
-    expect(screen.getAllByTitle("Prod (connected)")).toHaveLength(2);
+    expect(screen.getAllByTitle("Prod (connected)")).toHaveLength(1);
   });
 
   it("reflects error status in title", () => {
@@ -88,7 +88,7 @@ describe("Sidebar network section", () => {
         message: "TCP timeout",
       },
     ]);
-    expect(screen.getAllByTitle("Prod (TCP timeout)")).toHaveLength(2);
+    expect(screen.getAllByTitle("Prod (TCP timeout)")).toHaveLength(1);
   });
 
   it("sets aria-busy while a connect is in flight", () => {
@@ -97,13 +97,13 @@ describe("Sidebar network section", () => {
     const busyItems = screen
       .getAllByTitle("Prod")
       .filter((item) => item.getAttribute("aria-busy") === "true");
-    expect(busyItems).toHaveLength(2);
+    expect(busyItems).toHaveLength(1);
   });
 
-  it("shows network profiles under Devices / Volumes", () => {
+  it("keeps network profiles out of Devices / Volumes", () => {
     renderSidebar(baseProfile);
-    expect(screen.getByText("Network drives")).toBeTruthy();
-    expect(screen.getAllByTitle("Prod (credentials missing)")).toHaveLength(2);
+    expect(screen.queryByText("Network drives")).toBeNull();
+    expect(screen.getAllByTitle("Prod (credentials missing)")).toHaveLength(1);
   });
 
   it("treats ssh-only profiles as terminal entries instead of drives", () => {
@@ -157,6 +157,6 @@ describe("Sidebar network section", () => {
     const activeItems = screen
       .getAllByTitle("Prod (credentials missing)")
       .filter((item) => item.classList.contains("fo-sidebar-active"));
-    expect(activeItems).toHaveLength(2);
+    expect(activeItems).toHaveLength(1);
   });
 });

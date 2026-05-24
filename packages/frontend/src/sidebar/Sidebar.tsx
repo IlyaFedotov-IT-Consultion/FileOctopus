@@ -199,41 +199,22 @@ export function Sidebar({
       {STANDARD_SECTION_ORDER.map((section) => {
         if (section === "Devices/Volumes") {
           const localItems = grouped[section] ?? [];
-          const browseableNetworkProfiles = networkProfiles.filter(
-            (profile) => profile.scheme === "sftp",
-          );
           const hasLocal = localItems.length > 0;
-          const hasNetwork =
-            networkEnabled && browseableNetworkProfiles.length > 0;
 
           return (
             <SidebarSection key={section} title={sidebarSectionTitle(section)}>
-              {!hasLocal && !hasNetwork ? (
+              {!hasLocal ? (
                 <SidebarEmptyHint>{emptySectionHint(section)}</SidebarEmptyHint>
               ) : (
-                <>
-                  {!hasLocal ? (
-                    <SidebarEmptyHint>No local volumes</SidebarEmptyHint>
-                  ) : (
-                    localItems.map((item) => (
-                      <SidebarItem
-                        key={item.uri}
-                        icon={locationIcon(item.id)}
-                        label={item.name}
-                        active={item.uri === activeUri}
-                        onClick={() => onNavigate(item.uri)}
-                      />
-                    ))
-                  )}
-                  {hasNetwork ? (
-                    <>
-                      <p className="fo-sidebar-group-label">Network drives</p>
-                      {browseableNetworkProfiles.map((profile) =>
-                        renderNetworkProfileItem(profile),
-                      )}
-                    </>
-                  ) : null}
-                </>
+                localItems.map((item) => (
+                  <SidebarItem
+                    key={item.uri}
+                    icon={locationIcon(item.id)}
+                    label={item.name}
+                    active={item.uri === activeUri}
+                    onClick={() => onNavigate(item.uri)}
+                  />
+                ))
               )}
             </SidebarSection>
           );
