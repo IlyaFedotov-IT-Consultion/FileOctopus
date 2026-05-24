@@ -1,30 +1,30 @@
 # FileOctopus — Project Status & Documentation Alignment
 
-**As of:** 2026-05-23
+**As of:** 2026-05-24
 **Purpose:** Single source of truth for how specification documents relate to the running codebase. Use this page before trusting older audit notes, sprint release notes, or inventory “not implemented” lists.
 
 ## Document roles
 
-| Document                                                                  | Role                                          | Trust for “what exists today”                                                                                            |
-| ------------------------------------------------------------------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| [API reference](../architecture/api-reference.md)                         | Runtime IPC contract (commands, events, DTOs) | **Highest** — update with every boundary change                                                                          |
-| [RC engineering spec](../architecture/rc-engineering-spec.md)             | RC scope, milestones, crate design            | Scope & acceptance criteria; see §1 delivery matrix in spec                                                              |
-| [UI Design Spec](../FileOctopus_UI_Design_and_Layout_Specification-1.md)  | Visual/layout/UX direction post–Sprint 5      | Target UX; partial delivery                                                                                              |
-| [Menu & Modal Spec](../plans/FileOctopus_Menu_and_Modal_Specification.md) | Full desktop menu bar + modal catalog         | **Target** — `MenuBar` wired via `dispatchCommand`; some items still direct (sort, theme, favorites add, external links) |
-| [UI Feature Inventory](./UI_FEATURE_INVENTORY.md)                         | Checklist of specified UI elements            | Good for coverage matrix; §13 updated from this page                                                                     |
-| [E2E audit](../qa/e2e-audit-report.md)                                    | Manual QA snapshot (2026-05-16)               | **Partially stale** — many “missing” items fixed same day                                                                |
-| Gap analysis (`~/.hermes/.../gap-analysis-2026-05.md`)                    | Agent implementation tracker                  | Working notes; sync from this page                                                                                       |
+| Document                                                                  | Role                                          | Trust for “what exists today”                                                                               |
+| ------------------------------------------------------------------------- | --------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| [API reference](../architecture/api-reference.md)                         | Runtime IPC contract (commands, events, DTOs) | **Highest** — update with every boundary change                                                             |
+| [RC engineering spec](../architecture/rc-engineering-spec.md)             | RC scope, milestones, crate design            | Scope & acceptance criteria; see §1 delivery matrix in spec                                                 |
+| [UI Design Spec](../FileOctopus_UI_Design_and_Layout_Specification-1.md)  | Visual/layout/UX direction post–Sprint 5      | Target UX; partial delivery                                                                                 |
+| [Menu & Modal Spec](../plans/FileOctopus_Menu_and_Modal_Specification.md) | Full desktop menu bar + modal catalog         | **Target + status** — in-app `MenuBar` and native Tauri menu are wired; use for remaining modal/menu polish |
+| [UI Feature Inventory](./UI_FEATURE_INVENTORY.md)                         | Checklist of specified UI elements            | Good for coverage matrix; §13 updated from this page                                                        |
+| [E2E audit](../qa/e2e-audit-report.md)                                    | Manual QA snapshot (2026-05-16)               | **Partially stale** — many “missing” items fixed same day                                                   |
+| Gap analysis (`~/.hermes/.../gap-analysis-2026-05.md`)                    | Agent implementation tracker                  | Working notes; sync from this page                                                                          |
 
 ## Engineering milestones (RC spec §5)
 
-| Milestone                      | Status          | Evidence                                                                                                                                                                                                                     |
-| ------------------------------ | --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| M0 — Repo & build foundation   | **Done**        | Tauri v2, pnpm workspace, CI, `cargo test` / Vitest                                                                                                                                                                          |
-| M1 — Local navigation slice    | **Done**        | `fs.list_start` streaming, dual pane, virtualization, 100k perf protocol                                                                                                                                                     |
-| M2 — Durable job engine        | **Mostly done** | Plan/start copy/move/rename/mkdir/trash, progress events, SQLite operation history                                                                                                                                           |
-| M3 — Conflict & safety         | **Mostly done** | Planning, conflict policies, trash path; UI conflict dialog for planned ops                                                                                                                                                  |
-| M4 — Git, archive, terminal v1 | **Mostly done** | Zip create/extract in `fs-core/file_ops`; external terminal; embedded local + SSH PTY merged on `main` (#2); SFTP network profiles with read/write VFS; backend `git-intel` foundation plus active-pane Git branch/status UI |
-| M5 — RC hardening              | **In progress** | Diagnostics export, preferences, cross-platform QA docs, [mvp-rc-checklist](../release/mvp-rc-checklist.md)                                                                                                                  |
+| Milestone                      | Status          | Evidence                                                                                                                                                                                                                         |
+| ------------------------------ | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M0 — Repo & build foundation   | **Done**        | Tauri v2, pnpm workspace, CI, `cargo test` / Vitest                                                                                                                                                                              |
+| M1 — Local navigation slice    | **Done**        | `fs.list_start` streaming, dual pane, virtualization, 100k perf protocol                                                                                                                                                         |
+| M2 — Durable job engine        | **Mostly done** | Plan/start copy/move/rename/mkdir/trash, progress events, SQLite operation history                                                                                                                                               |
+| M3 — Conflict & safety         | **Mostly done** | Planning, conflict policies, trash path; UI conflict dialog for planned ops                                                                                                                                                      |
+| M4 — Git, archive, terminal v1 | **Mostly done** | Zip/tar create/extract in `fs-core/file_ops`; external terminal; embedded local + SSH PTY merged on `main` (#2); SFTP network profiles with read/write VFS; backend `git-intel` foundation plus active-pane Git branch/status UI |
+| M5 — RC hardening              | **In progress** | Diagnostics export, preferences, cross-platform QA docs, [mvp-rc-checklist](../release/mvp-rc-checklist.md)                                                                                                                      |
 
 ## MVP acceptance criteria (summary)
 
@@ -33,7 +33,7 @@
 | Core FS navigation & ops | MVP-FS-001–008  | **Met** (local dual-pane, large dirs, copy/move/rename/mkdir/trash, conflicts via plan)                                                                      |
 | Jobs                     | MVP-JOB-001–004 | **Mostly met** — queue UI, cancel, failures, history after restart; full job SQLite schema in spec not fully mirrored                                        |
 | Git                      | MVP-GIT-001–002 | **Mostly met** — local backend `git-intel`, `git.*` IPC/TS client, active-pane branch display, cached/watch-refreshed row status badges; remote Git deferred |
-| Archives                 | MVP-ARC-001–002 | **Partial** — zip create/extract via `createArchive`/`extractArchive`; tar not implemented; zip-slip tests pass                                              |
+| Archives                 | MVP-ARC-001–002 | **Mostly met** — zip, tar, tar.gz/tgz, and tar.bz2/tbz2 create/extract via `createArchive`/`extractArchive`; archive traversal tests pass                    |
 | Terminal                 | MVP-TERM-001    | **Partial** — external terminal plus embedded local + SSH PTY on `main`; manual remote smoke still pending                                                   |
 | UI keyboard              | MVP-UI-001      | **Partial** — palette, menu, toolbar, context menu, and global keys on `dispatchCommand`; Help shortcuts from registry via `shortcutHelp.ts`                 |
 | Security                 | MVP-SEC-001     | **Met** — ADR-0002, typed IPC only                                                                                                                           |
@@ -54,11 +54,11 @@ Performance targets (MVP-PERF-\*) and release checklist (§16) remain **not form
 - Filesystem watcher → debounced refresh
 - Command palette (Ctrl/Cmd+P) built from `COMMAND_DEFINITIONS` (`commands/paletteEntries.ts`), text preview panel (Space for text files)
 - Standalone modals: About, Go to Location, Manage Favorites, Operation History, Error Details, Properties, Conflict resolution
-- Application menu bar routed through `useMenuBarProps` → `dispatchCommand` for nav, file ops, clipboard, view modes, app dialogs
+- Application menu bar routed through `useMenuBarProps` → `dispatchCommand` for nav, file ops, clipboard, view modes, app dialogs; native Tauri menu emits the same command events
 - Context menu builders split under `menus/context/`; shell styles in `packages/frontend/src/styles/regions/`
 - Shortcuts: Ctrl/Cmd+I properties, Ctrl/Cmd+H and Ctrl/Cmd+. for hidden files
 - Application menu bar shell (`MenuBar` in title bar)
-- Zip compress/extract via toolbar and context menu (`useArchiveHandlers`)
+- Zip/tar archive create/extract via toolbar and context menu (`useArchiveHandlers`)
 - **SFTP network profiles** — remote VFS, sidebar badges, status events, host-key fingerprint TOFU (`provider-sftp`, `remote-core`)
 - **Embedded terminal** — local + SSH PTY, pane bottom split, tabs, maximize/close, shell prefs (`terminal-core`)
 - **Built-in F3 viewer + F4 editor** — shared syntax highlighting
@@ -67,28 +67,19 @@ Performance targets (MVP-PERF-\*) and release checklist (§16) remain **not form
 - **Performance smoke** — `pnpm perf:smoke` command
 - **Command registry refactor** — derive `CommandId` from as-const registry, dispatch exhaustiveness test
 - **Git branch + status badges** — local repositories show an active-pane branch pill and compact row badges from `git.statusForDirectory`
+- **Diagnostics export location preference** — Settings exposes `diagnosticsExportPath`, persisted through preferences and used by the diagnostics dialog
+- **Checksum verification UI** — Properties supports on-demand SHA-256 plus expected-hash match/mismatch state
+- **Network sidebar deduplication** — saved SFTP/SSH profiles are surfaced in the dedicated Network section instead of being duplicated under Devices/Volumes
 
 ### Specified but not implemented (or stub only)
 
-| Item                                                  | Spec source                 | Notes                                                                                                                             |
-| ----------------------------------------------------- | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| Application menu bar (full wiring)                    | Menu & Modal Spec §4        | Core File/Edit/View/Go/Tools items on dispatch; sort/theme/density/favorites-add already via `dispatchCommand`; no native OS menu |
-| Operations / Shortcuts / Advanced settings tabs       | UI Design Spec §Preferences | Merged into existing tabs or separate dialogs                                                                                     |
-| Remember last used panes (setting + restore)          | UI Design Spec              | **Partial** — pane paths/tabs restore on startup (P2-4); dedicated preference toggle not exposed                                  |
-| Diagnostics export location preference                | UI Design Spec              | Export path chosen at export time                                                                                                 |
-| Tar / non-zip archive formats                         | RC spec §3.2                | Zip only at RC (`fs-core/file_ops/archive.rs`)                                                                                    |
-| Checksum toolbar action                               | UI §4                       | **Met** — `op.checksum` wired through `useMetadataHandlers.handleChecksum` to `client.fs.computeHash` (sha256)                    |
-| **Embedded terminal panel**                           | MVP §Embedded Terminal      | **Met** — local + SSH PTY on `main` (#2); pane terminal split, tabs, maximize/close; manual remote smoke pending                  |
-| **Title bar sync/health indicator**                   | UI §1                       | Optional; not built                                                                                                               |
-| - **Sidebar: Videos shortcut, network locations**     | UI §2 / Sprint 4            | SFTP network profiles implemented; **Videos icon mapping done** (`af8a7b5`)                                                       |
-| **First-run overlay**                                 | Sprint 5 stretch            | Not built                                                                                                                         |
-| **VfsProvider write methods**                         | RC spec §3.2                | **Met** — create_directory, create_file, rename, remove, copy_file, read_file_prefix across vfs/fs-core/provider-sftp             |
-| **Image preview in PreviewPanel**                     | UI §Preview                 | **Met** — `fs_read_image` IPC + `ViewerImageMode` + `PreviewPanel` image support; PDF/media/EXIF expansion deferred               |
-| Last-path restore on startup                          | Sprint 5 FO-0243            | **Met** — last pane paths and active tab ids persist via layout store (P2-4)                                                      |
-| Tabs per panel (multiple tabs)                        | MVP §3.1                    | **Met** — `TabBar` + open/close/switch; session restore on startup (P2-4)                                                         |
-| Selection Properties (multi-select)                   | Menu spec §14.12; UI §18.2  | **Met** — `SelectionPropertiesDialog` wired from Properties when multiple items selected (P2-9)                                   |
-| Full conflict dialog (Compare metadata, Apply to all) | UI Design Spec              | **Met** — per-item actions, metadata comparison, apply-to-all checkbox (RC-CONF; 11 tests passing)                                |
-| Pause on jobs                                         | UI §6                       | Cancel only                                                                                                                       |
+| Item                                | Spec source                 | Notes                                                                             |
+| ----------------------------------- | --------------------------- | --------------------------------------------------------------------------------- |
+| Advanced settings tab               | UI Design Spec §Preferences | Operations and Shortcuts sections exist; a separate Advanced tab remains deferred |
+| **Title bar sync/health indicator** | UI §1                       | Optional; not built                                                               |
+| **First-run overlay**               | Sprint 5 stretch            | Not built                                                                         |
+| PDF/media/EXIF preview expansion    | UI §Preview                 | Image preview is implemented; broader preview modes remain deferred               |
+| Pause on jobs                       | UI §6                       | Cancel only                                                                       |
 
 ### Intentionally deferred (RC spec §3.3)
 
@@ -159,11 +150,11 @@ Legend: **Current** = matches codebase; **Target** = spec/backlog; **Stale** = o
 
 ### Product & UI specs
 
-| Document                                                                                                      | Status                                                                  |
-| ------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| [FileOctopus_UI_Design_and_Layout_Specification-1.md](../FileOctopus_UI_Design_and_Layout_Specification-1.md) | Target + status banner                                                  |
-| [Menu & Modal Spec](../plans/FileOctopus_Menu_and_Modal_Specification.md)                                     | Target; in-app `MenuBar` built; native menu (Tauri `menu.rs`) not built |
-| [UI_FEATURE_INVENTORY](./UI_FEATURE_INVENTORY.md)                                                             | Current §13                                                             |
+| Document                                                                                                      | Status                                                              |
+| ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| [FileOctopus_UI_Design_and_Layout_Specification-1.md](../FileOctopus_UI_Design_and_Layout_Specification-1.md) | Target + status banner                                              |
+| [Menu & Modal Spec](../plans/FileOctopus_Menu_and_Modal_Specification.md)                                     | Target + status; in-app `MenuBar` and native menu (`menu.rs`) built |
+| [UI_FEATURE_INVENTORY](./UI_FEATURE_INVENTORY.md)                                                             | Current §13                                                         |
 
 ### Planning & sprint backlogs
 
