@@ -142,7 +142,7 @@ Output (in status): _which acceptance refs this cycle could close_.
 1. Fix failing tests / TypeScript / Rust / lint (TDD bugfix loop).
 2. Close **RC acceptance criteria** marked `Not met` / `Partial` (highest user impact first).
 3. Items in **`docs/plans/CRON_TASKS.md` → `Active RC Queue`** (`pending`, by priority).
-4. Verified spec compliance gaps not yet in the queue; add them to `CRON_TASKS.md` before implementation.
+4. Verified spec compliance gaps not yet in the queue; report them in `CRON_STATUS.md` and wait for human reprioritization before implementation.
 5. Visual regression vs `docs/Images/` (Playwright) when the selected slice is visual.
 6. Documentation drift (implementation changed contract).
 
@@ -151,7 +151,9 @@ Pick **one primary feature slice** per cycle unless the slice is trivial (<30 mi
 ### Agent task-selection rules
 
 - Only select rows from **`Active RC Queue`**.
+- If Active RC Queue has one or more `pending` rows, automatically select the highest-priority unblocked row; do not ask for confirmation.
 - Do not select rows from **`Deferred / Post-RC`** unless a human explicitly reprioritizes them.
+- If Active RC Queue has no `pending` rows, run health/spec audit only; do not backfill, promote, or edit product code.
 - Do not select a row with a non-expired `Lock Expires UTC`.
 - If the chosen row conflicts with the codebase or higher-trust docs, update `CRON_TASKS.md` first, refresh `last_verified`, then continue.
 - Every selected slice must have explicit acceptance refs and an `RC scope` decision recorded in `CRON_STATUS.md`.
