@@ -407,7 +407,7 @@ Example: `Ready · 2 selected · 8 items · 82.3 MB selected · No errors`
 ### Still not implemented (specified)
 
 - **First-run overlay** — stretch, not built
-- **Videos sidebar entry, network locations, "This Week" recent group** — partial (API has `thisWeek` bucket; UI grouping may vary)
+- **Videos sidebar entry, network locations, "This Week" recent group** — partial (API has `thisWeek` bucket; UI grouping done; **Videos icon mapping done** `af8a7b5`)
 - **Title bar sync/health indicator** — optional, not built
 - **PDF/media/EXIF preview expansion** — broader product expansion than current RC image-preview scope
 
