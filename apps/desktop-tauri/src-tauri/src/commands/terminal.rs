@@ -155,6 +155,14 @@ async fn terminal_spawn_ssh(
             })?,
             passphrase: secrets.passphrase,
         },
+        AuthKind::AccessKey => RemoteTerminalAuth::Password {
+            password: secrets.password.ok_or_else(|| {
+                IpcError::new(
+                    error_codes::AUTHENTICATION_FAILED,
+                    remote_core::MISSING_STORED_PASSWORD,
+                )
+            })?,
+        },
     };
     let owner = window.label().to_string();
     let terminals = state.terminals();

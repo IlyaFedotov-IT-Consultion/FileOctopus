@@ -8,7 +8,7 @@ use fs_core::file_ops::{execute_file_operation, plan_file_operation, FileOperati
 use fs_core::vfs_io::VfsFilesystem;
 use jobs::{
     CancellationToken, JobCancelledEvent, JobCompletedEvent, JobEvent, JobFailedEvent, JobId,
-    JobProgressEvent, JobSnapshot, JobStartedEvent, JobStatus,
+    JobProgressEvent, JobSnapshot, JobStartedEvent, JobStatus, PauseToken,
 };
 use vfs::{
     ConflictPolicy, FileKind, FileOperationError, FileOperationItem, FileOperationKind,
@@ -170,7 +170,7 @@ impl OperationRuntime {
         self.start_with_executor(
             plan,
             sink,
-            move |vfs, plan, job_id, cancel, progress_sink| {
+            move |vfs, plan, job_id, cancel, _pause, progress_sink| {
                 if cancel.is_cancelled() {
                     return Err(FileOperationError::Cancelled {
                         job_id: Some(job_id.as_str().to_string()),
@@ -213,6 +213,7 @@ impl OperationRuntime {
                 &FileOperationPlan,
                 &JobId,
                 &CancellationToken,
+                &PauseToken,
                 &FileOperationEventSink,
             ) -> Result<(), FileOperationError>
             + Send
@@ -238,10 +239,12 @@ impl OperationRuntime {
             updated_at: now,
         };
         let token = CancellationToken::new();
+        let pause_token = PauseToken::new();
         let timed_out = Arc::new(AtomicBool::new(false));
         let state = JobRuntimeState {
             snapshot: snapshot.clone(),
             cancel: token.clone(),
+            pause: pause_token.clone(),
             timed_out: timed_out.clone(),
         };
 
@@ -287,7 +290,14 @@ impl OperationRuntime {
                 progress_base(event);
             };
             let progress_sink = Arc::new(progress_sink) as Arc<FileOperationEventSink>;
-            let result = executor(&vfs, &plan, &task_job_id, &token, &*progress_sink);
+            let result = executor(
+                &vfs,
+                &plan,
+                &task_job_id,
+                &token,
+                &pause_token,
+                &*progress_sink,
+            );
 
             match result {
                 Ok(()) => {
@@ -406,6 +416,52 @@ impl OperationRuntime {
         Ok(state.snapshot.clone())
     }
 
+    pub fn pause_job(&self, job_id: &str) -> Result<JobSnapshot, FileOperationError> {
+        let jobs = self.jobs.lock().map_err(|_| FileOperationError::Internal {
+            message: "job registry lock poisoned".to_string(),
+        })?;
+        let state = jobs
+            .get(job_id)
+            .ok_or_else(|| FileOperationError::NotFound {
+                uri: job_id.to_string(),
+            })?;
+
+        state.pause.pause();
+        update_snapshot_status(
+            &self.jobs,
+            &JobId::new(job_id.to_string()),
+            JobStatus::Paused,
+            None,
+            None,
+        );
+        telemetry::info(&format!("operation job paused job_id={job_id}"));
+
+        Ok(state.snapshot.clone())
+    }
+
+    pub fn resume_job(&self, job_id: &str) -> Result<JobSnapshot, FileOperationError> {
+        let jobs = self.jobs.lock().map_err(|_| FileOperationError::Internal {
+            message: "job registry lock poisoned".to_string(),
+        })?;
+        let state = jobs
+            .get(job_id)
+            .ok_or_else(|| FileOperationError::NotFound {
+                uri: job_id.to_string(),
+            })?;
+
+        state.pause.resume();
+        update_snapshot_status(
+            &self.jobs,
+            &JobId::new(job_id.to_string()),
+            JobStatus::Running,
+            None,
+            None,
+        );
+        telemetry::info(&format!("operation job resumed job_id={job_id}"));
+
+        Ok(state.snapshot.clone())
+    }
+
     pub fn status(&self, job_id: &str) -> Result<JobSnapshot, FileOperationError> {
         let jobs = self.jobs.lock().map_err(|_| FileOperationError::Internal {
             message: "job registry lock poisoned".to_string(),
@@ -443,6 +499,7 @@ impl OperationRuntime {
 struct JobRuntimeState {
     snapshot: JobSnapshot,
     cancel: CancellationToken,
+    pause: PauseToken,
     timed_out: Arc<AtomicBool>,
 }
 

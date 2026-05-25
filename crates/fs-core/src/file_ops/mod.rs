@@ -5,7 +5,7 @@ pub(crate) mod planning;
 mod trash;
 
 use crate::vfs_io::VfsFilesystem;
-use jobs::{CancellationToken, JobEvent, JobId};
+use jobs::{CancellationToken, JobEvent, JobId, PauseToken};
 use vfs::{
     ConflictPolicy, FileOperationError, FileOperationKind, FileOperationPlan, FileOperationRequest,
     ResourceUri, REMOTE_SCHEMES,
@@ -96,6 +96,7 @@ pub fn execute_file_operation(
     plan: &FileOperationPlan,
     job_id: &JobId,
     cancel: &CancellationToken,
+    pause: &PauseToken,
     sink: &FileOperationEventSink,
 ) -> Result<(), FileOperationError> {
     if plan.conflict_policy == ConflictPolicy::Fail && !plan.conflicts.is_empty() {
@@ -104,15 +105,19 @@ pub fn execute_file_operation(
     }
 
     match plan.kind {
-        FileOperationKind::Copy => execute_copy(vfs, plan, job_id, cancel, sink),
-        FileOperationKind::Move => execute_move(vfs, plan, job_id, cancel, sink),
+        FileOperationKind::Copy => execute_copy(vfs, plan, job_id, cancel, pause, sink),
+        FileOperationKind::Move => execute_move(vfs, plan, job_id, cancel, pause, sink),
         FileOperationKind::Rename => execute_rename(vfs, plan),
         FileOperationKind::CreateDirectory => execute_create_directory(vfs, plan),
         FileOperationKind::CreateFile => execute_create_file(vfs, plan),
         FileOperationKind::DeleteToTrash => execute_trash(vfs, plan),
         FileOperationKind::DeletePermanently => execute_delete_permanently(vfs, plan),
-        FileOperationKind::CreateArchive => execute_create_archive(plan, job_id, cancel, sink),
-        FileOperationKind::ExtractArchive => execute_extract_archive(plan, job_id, cancel, sink),
+        FileOperationKind::CreateArchive => {
+            execute_create_archive(plan, job_id, cancel, pause, sink)
+        }
+        FileOperationKind::ExtractArchive => {
+            execute_extract_archive(plan, job_id, cancel, pause, sink)
+        }
         FileOperationKind::WriteTextFile
         | FileOperationKind::FolderSize
         | FileOperationKind::RecursiveSearch => Err(FileOperationError::InvalidRequest {

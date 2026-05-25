@@ -3,7 +3,7 @@ use std::io::Write;
 use std::path::Path;
 use std::sync::Arc;
 
-use jobs::{CancellationToken, JobEvent, JobId};
+use jobs::{CancellationToken, JobEvent, JobId, PauseToken};
 use tempfile::tempdir;
 use vfs::{
     ConflictPolicy, FileKind, FileOperationKind, FileOperationRequest, ResourceUri, VfsRegistry,
@@ -194,6 +194,7 @@ fn copy_file_produces_identical_content() {
         &plan,
         &JobId::new("job"),
         &CancellationToken::new(),
+        &PauseToken::new(),
         &|_| {},
     )
     .unwrap();
@@ -225,6 +226,7 @@ fn copy_directory_preserves_structure() {
         &plan,
         &JobId::new("job"),
         &CancellationToken::new(),
+        &PauseToken::new(),
         &|_| {},
     )
     .unwrap();
@@ -258,6 +260,7 @@ fn unicode_paths_copy_move_rename_and_trash_plan_without_lossy_conversion() {
         &copy,
         &JobId::new("job"),
         &CancellationToken::new(),
+        &PauseToken::new(),
         &|_| {},
     )
     .unwrap();
@@ -275,6 +278,7 @@ fn unicode_paths_copy_move_rename_and_trash_plan_without_lossy_conversion() {
         &rename,
         &JobId::new("job"),
         &CancellationToken::new(),
+        &PauseToken::new(),
         &|_| {},
     )
     .unwrap();
@@ -311,6 +315,7 @@ fn symlink_listing_policy_does_not_recurse_or_copy_link_objects() {
         &plan,
         &JobId::new("job"),
         &CancellationToken::new(),
+        &PauseToken::new(),
         &|_| {},
     )
     .unwrap_err();
@@ -343,6 +348,7 @@ fn large_file_copy_emits_multiple_progress_updates() {
         &plan,
         &JobId::new("job"),
         &CancellationToken::new(),
+        &PauseToken::new(),
         &move |event| {
             events_for_sink.lock().unwrap().push(event);
         },
@@ -382,6 +388,7 @@ fn move_file_uses_fast_path_and_removes_source() {
         &plan,
         &JobId::new("job"),
         &CancellationToken::new(),
+        &PauseToken::new(),
         &|_| {},
     )
     .unwrap();
@@ -414,6 +421,7 @@ fn failed_move_conflict_leaves_source_intact() {
         &plan,
         &JobId::new("job"),
         &CancellationToken::new(),
+        &PauseToken::new(),
         &|_| {},
     )
     .unwrap_err();
@@ -438,6 +446,7 @@ fn rename_changes_only_basename() {
         &plan,
         &JobId::new("job"),
         &CancellationToken::new(),
+        &PauseToken::new(),
         &|_| {},
     )
     .unwrap();
@@ -462,6 +471,7 @@ fn open_file_rename_does_not_crash() {
         &plan,
         &JobId::new("job"),
         &CancellationToken::new(),
+        &PauseToken::new(),
         &|_| {},
     );
 
@@ -494,6 +504,7 @@ fn create_directory_rejects_duplicate() {
         &plan,
         &JobId::new("job"),
         &CancellationToken::new(),
+        &PauseToken::new(),
         &|_| {},
     )
     .unwrap_err();
@@ -521,6 +532,7 @@ fn create_file_creates_empty_file() {
         &plan,
         &JobId::new("job"),
         &CancellationToken::new(),
+        &PauseToken::new(),
         &|_| {},
     )
     .unwrap();
@@ -554,6 +566,7 @@ fn delete_permanently_removes_files_and_directories() {
         &plan,
         &JobId::new("job"),
         &CancellationToken::new(),
+        &PauseToken::new(),
         &|_| {},
     )
     .unwrap();
@@ -585,6 +598,7 @@ fn create_archive_writes_zip_file() {
         &plan,
         &JobId::new("job"),
         &CancellationToken::new(),
+        &PauseToken::new(),
         &|_| {},
     )
     .unwrap();
@@ -618,6 +632,7 @@ fn extract_archive_writes_files_to_destination() {
         &create_plan,
         &JobId::new("job-create"),
         &CancellationToken::new(),
+        &PauseToken::new(),
         &|_| {},
     )
     .unwrap();
@@ -636,6 +651,7 @@ fn extract_archive_writes_files_to_destination() {
         &extract_plan,
         &JobId::new("job-extract"),
         &CancellationToken::new(),
+        &PauseToken::new(),
         &|_| {},
     )
     .unwrap();
@@ -696,6 +712,7 @@ fn create_archive_writes_tar_gz_file() {
         &plan,
         &JobId::new("job"),
         &CancellationToken::new(),
+        &PauseToken::new(),
         &|_| {},
     )
     .unwrap();
@@ -732,6 +749,7 @@ fn create_archive_writes_tar_bz2_file() {
         &plan,
         &JobId::new("job"),
         &CancellationToken::new(),
+        &PauseToken::new(),
         &|_| {},
     )
     .unwrap();
@@ -778,6 +796,7 @@ fn extract_tar_gz_archive_writes_files_to_destination() {
         &extract_plan,
         &JobId::new("job-extract"),
         &CancellationToken::new(),
+        &PauseToken::new(),
         &|_| {},
     )
     .unwrap();
@@ -821,6 +840,7 @@ fn extract_tar_bz2_archive_writes_files_to_destination() {
         &extract_plan,
         &JobId::new("job-extract"),
         &CancellationToken::new(),
+        &PauseToken::new(),
         &|_| {},
     )
     .unwrap();
@@ -851,9 +871,16 @@ fn cancellation_stops_large_copy() {
     )
     .unwrap();
     let token = cancel.clone();
-    let result = execute_file_operation(&vfs(), &plan, &JobId::new("job"), &cancel, &move |_| {
-        token.cancel();
-    });
+    let result = execute_file_operation(
+        &vfs(),
+        &plan,
+        &JobId::new("job"),
+        &cancel,
+        &PauseToken::new(),
+        &move |_| {
+            token.cancel();
+        },
+    );
 
     assert_eq!(result.unwrap_err().code(), "cancelled");
 }
@@ -881,9 +908,16 @@ fn cancellation_stops_many_small_file_copy() {
     )
     .unwrap();
     let token = cancel.clone();
-    let result = execute_file_operation(&vfs(), &plan, &JobId::new("job"), &cancel, &move |_| {
-        token.cancel();
-    });
+    let result = execute_file_operation(
+        &vfs(),
+        &plan,
+        &JobId::new("job"),
+        &cancel,
+        &PauseToken::new(),
+        &move |_| {
+            token.cancel();
+        },
+    );
 
     assert_eq!(result.unwrap_err().code(), "cancelled");
 }

@@ -199,6 +199,9 @@ impl ConnectionSessionManager {
                     config::AuthKind::PrivateKey => {
                         "Private key credentials are unavailable.".to_string()
                     }
+                    config::AuthKind::AccessKey => {
+                        "Access key credentials are unavailable.".to_string()
+                    }
                 };
                 self.mark_error(profile_id, &message).await;
                 return Err(RemoteError::AuthenticationFailed {

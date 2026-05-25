@@ -26,6 +26,7 @@ pub enum NetworkError {
 pub enum AuthKind {
     Password,
     PrivateKey,
+    AccessKey,
 }
 
 impl AuthKind {
@@ -33,6 +34,7 @@ impl AuthKind {
         match self {
             Self::Password => "password",
             Self::PrivateKey => "privateKey",
+            Self::AccessKey => "accessKey",
         }
     }
 
@@ -40,6 +42,7 @@ impl AuthKind {
         match value {
             "password" => Ok(Self::Password),
             "privateKey" => Ok(Self::PrivateKey),
+            "accessKey" => Ok(Self::AccessKey),
             other => Err(NetworkError::InvalidValue {
                 field: "authKind".to_string(),
                 reason: format!("unsupported value `{other}`"),
@@ -402,6 +405,7 @@ fn stored_secret_flag_for_profile(
             }
         }
         AuthKind::PrivateKey => private_key_path.is_some_and(|path| !path.trim().is_empty()),
+        AuthKind::AccessKey => false,
     }
 }
 
@@ -436,7 +440,7 @@ fn validate_profile_fields(
     username: &str,
     port: u16,
 ) -> Result<(), NetworkError> {
-    if !matches!(scheme, "sftp" | "ssh") {
+    if !matches!(scheme, "sftp" | "ssh" | "smb" | "s3") {
         return Err(NetworkError::InvalidValue {
             field: "scheme".to_string(),
             reason: format!("unsupported scheme `{scheme}`"),
@@ -559,7 +563,7 @@ mod tests {
         let dir = tempdir().unwrap();
         let repository = NetworkProfileRepository::new(dir.path().join("network.sqlite")).unwrap();
         let mut new = sample_profile();
-        new.scheme = "smb".to_string();
+        new.scheme = "ftp".to_string();
         let error = repository.add(new).unwrap_err();
         assert!(matches!(error, NetworkError::InvalidValue { ref field, .. } if field == "scheme"));
     }

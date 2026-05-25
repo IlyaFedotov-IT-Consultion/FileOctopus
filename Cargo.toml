@@ -11,6 +11,8 @@ members = [
   "crates/jobs",
   "crates/platform",
   "crates/provider-sftp",
+  "crates/provider-smb",
+  "crates/provider-s3",
   "crates/remote-core",
   "crates/telemetry",
   "crates/terminal-core",

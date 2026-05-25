@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct ResourceUri(String);
 
-pub const REMOTE_SCHEMES: &[&str] = &["sftp"];
+pub const REMOTE_SCHEMES: &[&str] = &["sftp", "smb", "s3"];
 
 impl ResourceUri {
     pub fn parse(input: &str) -> Result<Self, VfsError> {
@@ -1000,7 +1000,7 @@ mod tests {
 
     #[test]
     fn rejects_unregistered_remote_scheme() {
-        for scheme in ["smb", "webdav", "ftp"] {
+        for scheme in ["webdav", "ftp", "nfs"] {
             let uri = format!("{scheme}://550e8400-e29b-41d4-a716-446655440000/");
             let error = ResourceUri::parse(&uri).unwrap_err();
             assert_eq!(error.code(), "unsupported_provider", "scheme = {scheme}");
