@@ -1,7 +1,7 @@
 use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 
-use jobs::{CancellationToken, JobId};
+use jobs::{CancellationToken, JobId, PauseToken};
 use vfs::{ConflictPolicy, FileOperationError, FileOperationPlan};
 use zip::write::FileOptions;
 
@@ -41,6 +41,7 @@ pub(super) fn execute_create_archive(
     plan: &FileOperationPlan,
     job_id: &JobId,
     cancel: &CancellationToken,
+    pause: &PauseToken,
     sink: &FileOperationEventSink,
 ) -> Result<(), FileOperationError> {
     let destination =
@@ -73,7 +74,7 @@ pub(super) fn execute_create_archive(
                 FileOptions::default().compression_method(zip::CompressionMethod::Deflated);
 
             for item in &plan.items {
-                check_cancelled(cancel, job_id)?;
+                check_cancelled(cancel, pause, job_id)?;
                 let source =
                     item.source
                         .as_ref()
@@ -107,7 +108,7 @@ pub(super) fn execute_create_archive(
             let mut archive = tar::Builder::new(gz);
 
             for item in &plan.items {
-                check_cancelled(cancel, job_id)?;
+                check_cancelled(cancel, pause, job_id)?;
                 let source =
                     item.source
                         .as_ref()
@@ -148,7 +149,7 @@ pub(super) fn execute_create_archive(
             let mut archive = tar::Builder::new(bz);
 
             for item in &plan.items {
-                check_cancelled(cancel, job_id)?;
+                check_cancelled(cancel, pause, job_id)?;
                 let source =
                     item.source
                         .as_ref()
@@ -188,7 +189,7 @@ pub(super) fn execute_create_archive(
             let mut archive = tar::Builder::new(file);
 
             for item in &plan.items {
-                check_cancelled(cancel, job_id)?;
+                check_cancelled(cancel, pause, job_id)?;
                 let source =
                     item.source
                         .as_ref()
@@ -225,6 +226,7 @@ pub(super) fn execute_extract_archive(
     plan: &FileOperationPlan,
     job_id: &JobId,
     cancel: &CancellationToken,
+    pause: &PauseToken,
     sink: &FileOperationEventSink,
 ) -> Result<(), FileOperationError> {
     let source = plan
@@ -258,7 +260,7 @@ pub(super) fn execute_extract_archive(
             })?;
 
             for index in 0..archive.len() {
-                check_cancelled(cancel, job_id)?;
+                check_cancelled(cancel, pause, job_id)?;
                 let mut entry = archive.by_index(index).map_err(|error| {
                     FileOperationError::io(format!("failed to read archive entry {index}: {error}"))
                 })?;
@@ -311,7 +313,7 @@ pub(super) fn execute_extract_archive(
             for entry_result in archive.entries().map_err(|error| {
                 FileOperationError::io(format!("failed to read tar.gz archive: {error}"))
             })? {
-                check_cancelled(cancel, job_id)?;
+                check_cancelled(cancel, pause, job_id)?;
                 let mut entry = entry_result.map_err(|error| {
                     FileOperationError::io(format!("failed to read tar.gz entry: {error}"))
                 })?;
@@ -367,7 +369,7 @@ pub(super) fn execute_extract_archive(
             for entry_result in archive.entries().map_err(|error| {
                 FileOperationError::io(format!("failed to read tar.bz2 archive: {error}"))
             })? {
-                check_cancelled(cancel, job_id)?;
+                check_cancelled(cancel, pause, job_id)?;
                 let mut entry = entry_result.map_err(|error| {
                     FileOperationError::io(format!("failed to read tar.bz2 entry: {error}"))
                 })?;
@@ -422,7 +424,7 @@ pub(super) fn execute_extract_archive(
             for entry_result in archive.entries().map_err(|error| {
                 FileOperationError::io(format!("failed to read tar archive: {error}"))
             })? {
-                check_cancelled(cancel, job_id)?;
+                check_cancelled(cancel, pause, job_id)?;
                 let mut entry = entry_result.map_err(|error| {
                     FileOperationError::io(format!("failed to read tar entry: {error}"))
                 })?;

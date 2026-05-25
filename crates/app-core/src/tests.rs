@@ -61,7 +61,7 @@ fn concurrency_is_bounded_by_worker_count() {
                 Arc::new(move |event| {
                     let _ = sink_sender.send(event);
                 }),
-                move |_vfs, _plan, _job, _cancel, _progress| {
+                move |_vfs, _plan, _job, _cancel, _pause, _progress| {
                     let current = active.fetch_add(1, Ordering::SeqCst) + 1;
                     max_seen.fetch_max(current, Ordering::SeqCst);
                     std::thread::sleep(Duration::from_millis(80));
@@ -103,7 +103,7 @@ fn job_exceeding_idle_timeout_fails_with_timeout() {
             Arc::new(move |event| {
                 let _ = sender.send(event);
             }),
-            move |_vfs, _plan, job, cancel, _progress| {
+            move |_vfs, _plan, job, cancel, _pause, _progress| {
                 // Stuck job: emits no progress, waits to be cancelled by the watchdog.
                 for _ in 0..200 {
                     if cancel.is_cancelled() {

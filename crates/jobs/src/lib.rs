@@ -101,6 +101,22 @@ pub struct JobCancelledEvent {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct JobPausedEvent {
+    pub job_id: JobId,
+    pub operation_kind: FileOperationKind,
+    pub paused_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct JobResumedEvent {
+    pub job_id: JobId,
+    pub operation_kind: FileOperationKind,
+    pub resumed_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", tag = "event")]
 pub enum JobEvent {
     Started(JobStartedEvent),
@@ -108,6 +124,8 @@ pub enum JobEvent {
     Completed(JobCompletedEvent),
     Failed(JobFailedEvent),
     Cancelled(JobCancelledEvent),
+    Paused(JobPausedEvent),
+    Resumed(JobResumedEvent),
 }
 
 #[derive(Clone, Default)]
@@ -126,6 +144,35 @@ impl CancellationToken {
 
     pub fn is_cancelled(&self) -> bool {
         self.cancelled.load(Ordering::SeqCst)
+    }
+}
+
+#[derive(Clone, Default)]
+pub struct PauseToken {
+    paused: Arc<AtomicBool>,
+}
+
+impl PauseToken {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn pause(&self) {
+        self.paused.store(true, Ordering::SeqCst);
+    }
+
+    pub fn resume(&self) {
+        self.paused.store(false, Ordering::SeqCst);
+    }
+
+    pub fn is_paused(&self) -> bool {
+        self.paused.load(Ordering::SeqCst)
+    }
+
+    pub fn wait_while_paused(&self, cancel: &CancellationToken) {
+        while self.paused.load(Ordering::SeqCst) && !cancel.is_cancelled() {
+            std::thread::sleep(std::time::Duration::from_millis(50));
+        }
     }
 }
 
@@ -158,5 +205,47 @@ mod tests {
 
         assert!(encoded.contains("job-1"));
         assert!(encoded.contains("progress"));
+    }
+
+    #[test]
+    fn pause_token_tracks_paused_state() {
+        let token = PauseToken::new();
+        assert!(!token.is_paused());
+        token.pause();
+        assert!(token.is_paused());
+        token.resume();
+        assert!(!token.is_paused());
+    }
+
+    #[test]
+    fn pause_token_wait_exits_on_resume() {
+        let token = PauseToken::new();
+        let cancel = CancellationToken::new();
+        token.pause();
+
+        let token_clone = token.clone();
+        let cancel_clone = cancel.clone();
+        let handle = std::thread::spawn(move || {
+            token_clone.wait_while_paused(&cancel_clone);
+        });
+
+        token.resume();
+        handle.join().expect("wait should complete");
+    }
+
+    #[test]
+    fn pause_token_wait_exits_on_cancel() {
+        let token = PauseToken::new();
+        let cancel = CancellationToken::new();
+        token.pause();
+
+        let token_clone = token.clone();
+        let cancel_clone = cancel.clone();
+        let handle = std::thread::spawn(move || {
+            token_clone.wait_while_paused(&cancel_clone);
+        });
+
+        cancel.cancel();
+        handle.join().expect("wait should exit on cancel");
     }
 }

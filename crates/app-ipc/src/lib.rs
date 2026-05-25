@@ -16,6 +16,8 @@ pub const JOB_PROGRESS_EVENT: &str = "fileOperation:job:progress";
 pub const JOB_COMPLETED_EVENT: &str = "fileOperation:job:completed";
 pub const JOB_FAILED_EVENT: &str = "fileOperation:job:failed";
 pub const JOB_CANCELLED_EVENT: &str = "fileOperation:job:cancelled";
+pub const JOB_PAUSED_EVENT: &str = "fileOperation:job:paused";
+pub const JOB_RESUMED_EVENT: &str = "fileOperation:job:resumed";
 pub const WATCH_CHANGED_EVENT: &str = "fs:watch:changed";
 pub const NETWORK_STATUS_EVENT: &str = "network:status";
 pub const FOLDER_SIZE_COMPLETED_EVENT: &str = "fs:folderSize:completed";
@@ -868,6 +870,18 @@ pub struct CancelJobRequest {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct PauseJobRequest {
+    pub job_id: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ResumeJobRequest {
+    pub job_id: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct JobStatusRequest {
     pub job_id: String,
 }
@@ -1427,6 +1441,8 @@ pub fn job_event_name(event: &JobEvent) -> &'static str {
         JobEvent::Completed(_) => JOB_COMPLETED_EVENT,
         JobEvent::Failed(_) => JOB_FAILED_EVENT,
         JobEvent::Cancelled(_) => JOB_CANCELLED_EVENT,
+        JobEvent::Paused(_) => JOB_PAUSED_EVENT,
+        JobEvent::Resumed(_) => JOB_RESUMED_EVENT,
     }
 }
 
@@ -1437,6 +1453,8 @@ pub fn job_event_payload(event: JobEvent) -> serde_json::Value {
         JobEvent::Completed(event) => serde_json::to_value(event).unwrap_or_default(),
         JobEvent::Failed(event) => serde_json::to_value(event).unwrap_or_default(),
         JobEvent::Cancelled(event) => serde_json::to_value(event).unwrap_or_default(),
+        JobEvent::Paused(event) => serde_json::to_value(event).unwrap_or_default(),
+        JobEvent::Resumed(event) => serde_json::to_value(event).unwrap_or_default(),
     }
 }
 
