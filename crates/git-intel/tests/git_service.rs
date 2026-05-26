@@ -19,7 +19,7 @@ async fn discover_returns_branch_and_dirty_state_inside_repo() {
 
     assert_eq!(
         info.root_uri,
-        ResourceUri::from_local_path(repo.path()).unwrap()
+        ResourceUri::from_local_path(&repo.path()).unwrap()
     );
     assert_eq!(info.branch.as_deref(), Some("main"));
     assert_eq!(info.head_short.as_ref().map(String::len), Some(7));
@@ -52,7 +52,7 @@ async fn status_for_directory_maps_basic_file_states() {
     repo.write(".gitignore", "ignored.txt\n");
     repo.write("ignored.txt", "ignored");
 
-    let uri = ResourceUri::from_local_path(repo.path()).unwrap();
+    let uri = ResourceUri::from_local_path(&repo.path()).unwrap();
     let status = GitService::new().status_for_directory(&uri).await.unwrap();
 
     assert_eq!(
@@ -114,8 +114,12 @@ impl TestRepo {
         repo
     }
 
-    fn path(&self) -> &std::path::Path {
-        self.dir.path()
+    fn path(&self) -> std::path::PathBuf {
+        // git resolves work-tree paths through symlinks (e.g. on macOS
+        // /var/folders/... → /private/var/folders/...), so the URIs it
+        // returns canonicalise the temp dir. Tests compare against URIs we
+        // build ourselves, so we must canonicalise here too.
+        self.dir.path().canonicalize().unwrap()
     }
 
     fn write(&self, relative: &str, content: &str) {
