@@ -1,6 +1,6 @@
 # FileOctopus — Project Status & Documentation Alignment
 
-**As of:** 2026-05-24
+**As of:** 2026-05-26
 **Purpose:** Single source of truth for how specification documents relate to the running codebase. Use this page before trusting older audit notes, sprint release notes, or inventory “not implemented” lists.
 
 ## Document roles
@@ -79,7 +79,6 @@ Performance targets (MVP-PERF-\*) and release checklist (§16) remain **not form
 | -------------------------------- | --------------------------- | --------------------------------------------------------------------------------- |
 | Advanced settings tab            | UI Design Spec §Preferences | Operations and Shortcuts sections exist; a separate Advanced tab remains deferred |
 | PDF/media/EXIF preview expansion | UI §Preview                 | Image preview is implemented; broader preview modes remain deferred               |
-| Pause on jobs                    | UI §6                       | Cancel only                                                                       |
 
 ### Intentionally deferred (RC spec §3.3)
 
@@ -202,8 +201,8 @@ Legend: **Current** = matches codebase; **Target** = spec/backlog; **Stale** = o
 4. Keep **UI Feature Inventory §13** in sync with this page (not the reverse).
 5. Use RC spec §17 and the milestone table above for planning (not the old MVP §17 list).
 
-## Test signal (2026-05-22)
+## Test signal (2026-05-26)
 
-- `pnpm --filter @fileoctopus/frontend test` — 495 tests across 77 files pass (`vitest run --environment jsdom`)
-- `cargo test --workspace` — 257 tests pass across all crates
+- `pnpm --filter @fileoctopus/frontend test` — 647 tests across 101 files pass (`vitest run --environment jsdom`)
+- `cargo test --workspace` — 333 tests pass across all crates
 - Catalog drift guards: `packages/ts-api/tests/catalogs.test.ts` keeps Rust ↔ TS command/event constants and the 57-command count aligned
