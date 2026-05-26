@@ -6,6 +6,7 @@ import type {
   FavoriteEntryDto,
   FolderSizeCompletedEventDto,
   NetworkConnectionStatusDto,
+  NetworkConnectionDraftDto,
   NetworkProfileDto,
   OperationHistoryRecordDto,
   RecentEntryDto,
@@ -60,6 +61,7 @@ export interface UseEventHandlersParams {
   setDiagnosticsMessage: Dispatch<SetStateAction<string | null>>;
   setExportingDiagnostics: Dispatch<SetStateAction<boolean>>;
   syncTerminalCwd?: (panelId: PanelId, uri: string) => void;
+  onOpenConnectionWizard?: (prefill?: NetworkConnectionDraftDto) => void;
 }
 
 export function useEventHandlers({
@@ -88,6 +90,7 @@ export function useEventHandlers({
   setDiagnosticsMessage,
   setExportingDiagnostics,
   syncTerminalCwd,
+  onOpenConnectionWizard,
 }: UseEventHandlersParams) {
   const navigation = createNavigationController({
     client,
@@ -100,6 +103,7 @@ export function useEventHandlers({
     setStarred,
     setOperationError,
     syncTerminalCwd,
+    onOpenConnectionWizard,
   });
 
   const {

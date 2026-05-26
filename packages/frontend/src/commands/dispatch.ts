@@ -51,6 +51,9 @@ export interface CommandDispatchDeps {
   setConnectServerProfile: (
     profile: import("@fileoctopus/ts-api").NetworkProfileDto | null,
   ) => void;
+  setConnectServerInitial?: (
+    profile: import("@fileoctopus/ts-api").NetworkConnectionDraftDto | null,
+  ) => void;
   setFilterFocusToken: Dispatch<SetStateAction<number>>;
   setRecursiveSearchFocusToken: Dispatch<SetStateAction<number>>;
   setPreviewOpen: (open: boolean) => void;
@@ -282,16 +285,18 @@ export function dispatchCommand(
       deps.setVolumePickerOpen(true);
       return true;
     case "nav.networkLocations":
-      deps.setNetworkLocationsOpen(true);
+      void deps.navigatePanel(panelId, "network:///");
       return true;
     case "nav.addServer":
       deps.setConnectServerProfile(null);
+      deps.setConnectServerInitial?.(null);
       deps.setConnectServerOpen(true);
       return true;
     case "nav.connectServer": {
       const profile = options?.networkProfile;
       if (profile) {
         deps.setConnectServerProfile(profile);
+        deps.setConnectServerInitial?.(null);
         deps.setConnectServerOpen(true);
         return true;
       }

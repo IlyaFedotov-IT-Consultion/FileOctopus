@@ -33,7 +33,9 @@ export function ShellOverlays() {
         onDismiss={dismissFirstRun}
         onOpenSettings={() => ctx.setSettingsOpen(true)}
         onOpenShortcuts={() => ctx.setShortcutsOpen(true)}
-        onOpenNetwork={() => ctx.setNetworkLocationsOpen(true)}
+        onOpenNetwork={() =>
+          ctx.navigatePanel(ctx.state.activePanelId, "network:///")
+        }
       />
       <ToastStack
         toasts={ctx.toasts}
@@ -74,6 +76,7 @@ export function ShellOverlays() {
         networkLocationsOpen={ctx.networkLocationsOpen}
         connectServerOpen={ctx.connectServerOpen}
         connectServerProfile={ctx.connectServerProfile}
+        connectServerInitial={ctx.connectServerInitial}
         removeServerProfile={ctx.removeServerProfile}
         networkProfiles={ctx.networkProfiles}
         networkStatuses={ctx.networkStatuses}
@@ -111,6 +114,7 @@ export function ShellOverlays() {
         setNetworkLocationsOpen={ctx.setNetworkLocationsOpen}
         setConnectServerOpen={ctx.setConnectServerOpen}
         setConnectServerProfile={ctx.setConnectServerProfile}
+        setConnectServerInitial={ctx.setConnectServerInitial}
         setRemoveServerProfile={ctx.setRemoveServerProfile}
         connectProfile={ctx.connectProfile}
         disconnectProfile={ctx.disconnectProfile}

@@ -58,6 +58,7 @@ export const commandMap: Record<string, string> = {
   "network.connect": "network_connect",
   "network.disconnect": "network_disconnect",
   "network.connectionStatus": "network_connection_status",
+  "network.discoverNeighborhood": "network_discover_neighborhood",
   "network.validateUri": "network_validate_uri",
   "terminal.spawn": "terminal_spawn",
   "terminal.write": "terminal_write",

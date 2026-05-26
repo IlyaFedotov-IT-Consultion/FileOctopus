@@ -98,7 +98,7 @@ export function useNetworkHandlers({
   const saveProfile = useCallback(
     async (payload: {
       id?: string;
-      scheme: "sftp" | "ssh" | "smb" | "s3";
+      scheme: "sftp" | "ssh" | "smb" | "s3" | "webdav";
       label: string;
       host: string;
       port: number;
@@ -159,7 +159,8 @@ export function useNetworkHandlers({
         const shouldConnect =
           (payload.scheme === "sftp" ||
             payload.scheme === "smb" ||
-            payload.scheme === "s3") &&
+            payload.scheme === "s3" ||
+            payload.scheme === "webdav") &&
           (!payload.id ||
             (payload.authKind === "password" && Boolean(payload.password)) ||
             (payload.authKind === "privateKey" &&

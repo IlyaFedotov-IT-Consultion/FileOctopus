@@ -649,4 +649,70 @@ describe("FileOctopusClient", () => {
     ]);
     expect(calls[1]?.args).toEqual({ request: { id: "profile-1" } });
   });
+
+  it("routes network.discoverNeighborhood through the network client", async () => {
+    const calls: Array<{ command: string; args?: Record<string, unknown> }> =
+      [];
+    const transport: IpcTransport = {
+      async invoke<TResponse>(command: string, args?: Record<string, unknown>) {
+        calls.push({ command, args });
+        return {
+          uri: "network:///",
+          entries: [
+            {
+              uri: "network:///cloud",
+              name: "Cloud Storage",
+              extension: null,
+              kind: "directory",
+              size: null,
+              modifiedAt: null,
+              createdAt: null,
+              accessedAt: null,
+              isHidden: false,
+              isSymlink: false,
+              symlinkTarget: null,
+              providerId: "network",
+              canRead: false,
+              canList: true,
+              canWrite: false,
+              canDelete: false,
+              canRename: false,
+              virtualKind: "group",
+            },
+          ],
+        } as TResponse;
+      },
+    };
+
+    const client = new FileOctopusClient(transport);
+    const response = await client.network.discoverNeighborhood({
+      uri: "network:///",
+    });
+
+    expect(calls.map((call) => call.command)).toEqual([
+      "network.discoverNeighborhood",
+    ]);
+    expect(calls[0]?.args).toEqual({ request: { uri: "network:///" } });
+    expect(response.entries[0].virtualKind).toBe("group");
+  });
+
+  it("normalizes IPC errors thrown by network.discoverNeighborhood", async () => {
+    const transport: IpcTransport = {
+      async invoke<TResponse>() {
+        throw {
+          code: IPC_ERROR_CODES.NOT_FOUND,
+          message: "no such uri",
+        };
+        return undefined as unknown as TResponse;
+      },
+    };
+    const client = new FileOctopusClient(transport);
+
+    await expect(
+      client.network.discoverNeighborhood({ uri: "network:///oops" }),
+    ).rejects.toEqual({
+      code: IPC_ERROR_CODES.NOT_FOUND,
+      message: "no such uri",
+    });
+  });
 });

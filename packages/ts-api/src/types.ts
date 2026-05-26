@@ -532,12 +532,28 @@ export interface NetworkProfileSetSecretRequest {
   value: string;
 }
 
+export interface NetworkConnectionDraftDto {
+  scheme?: string | null;
+  host?: string | null;
+  label?: string | null;
+  defaultPath?: string | null;
+}
+
 export interface NetworkProfileActionRequest {
   id: string;
 }
 
 export interface NetworkConnectionStatusResponse {
   statuses: NetworkConnectionStatusDto[];
+}
+
+export interface NetworkNeighborhoodRequest {
+  uri: string;
+}
+
+export interface NetworkNeighborhoodResponse {
+  uri: string;
+  entries: FileEntryDto[];
 }
 
 export interface PathRequest {
@@ -675,6 +691,11 @@ export interface FileEntryDto {
   canRename: boolean;
   permissions?: string | null;
   owner?: string | null;
+  targetUri?: string | null;
+  virtualKind?: string | null;
+  protocol?: string | null;
+  status?: string | null;
+  description?: string | null;
 }
 
 export interface DirectoryBatchEventDto {

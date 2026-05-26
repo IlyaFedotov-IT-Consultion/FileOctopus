@@ -191,6 +191,14 @@ export function createPreviewTransport(): IpcTransport {
         } as TResponse;
       }
 
+      if (command === "network.discoverNeighborhood") {
+        const request = args?.request as { uri?: string } | undefined;
+        return {
+          uri: request?.uri ?? "network:///",
+          entries: previewNetworkEntries(request?.uri ?? "network:///"),
+        } as TResponse;
+      }
+
       if (
         command === "network.profileAdd" ||
         command === "network.profileUpdate"
@@ -591,5 +599,100 @@ function previewEntriesForUri(uri: string): FileEntryDto[] {
     entry("Pictures", "directory", null),
     entry("FileOctopus", "directory", null),
     entry("README.md", "file", 8200, "md"),
+  ];
+}
+
+function previewNetworkEntries(uri: string): FileEntryDto[] {
+  const entry = (
+    uri: string,
+    name: string,
+    virtualKind: string,
+    targetUri: string | null = null,
+    protocol: string | null = null,
+    status: string | null = "available",
+    description: string | null = null,
+  ): FileEntryDto => ({
+    uri,
+    name,
+    extension: null,
+    kind: virtualKind === "addConnection" ? "virtual" : "directory",
+    size: null,
+    modifiedAt: null,
+    createdAt: null,
+    accessedAt: null,
+    isHidden: false,
+    isSymlink: false,
+    symlinkTarget: null,
+    providerId: "network",
+    canRead: targetUri !== null,
+    canList: virtualKind !== "addConnection",
+    canWrite: false,
+    canDelete: false,
+    canRename: false,
+    targetUri,
+    virtualKind,
+    protocol,
+    status,
+    description,
+  });
+
+  if (uri === "network:///cloud") {
+    return [
+      entry(
+        "network:///cloud/google-drive",
+        "Google Drive",
+        "cloudDrive",
+        "local:///Users/you/Library/CloudStorage/GoogleDrive-user@example.com",
+        "cloud",
+      ),
+      entry(
+        "network:///cloud/onedrive",
+        "OneDrive",
+        "cloudDrive",
+        "local:///Users/you/Library/CloudStorage/OneDrive-Personal",
+        "cloud",
+      ),
+      entry(
+        "network:///cloud/icloud",
+        "iCloud Drive",
+        "cloudDrive",
+        "local:///Users/you/Library/Mobile Documents/com~apple~CloudDocs",
+        "cloud",
+      ),
+    ];
+  }
+
+  if (uri === "network:///lan") {
+    return [
+      entry(
+        "network:///lan/smb/fileserver",
+        "fileserver.local",
+        "discoveredService",
+        null,
+        "smb",
+        "credentialsRequired",
+        "SMB service discovered on the local network",
+      ),
+    ];
+  }
+
+  if (uri === "network:///saved") {
+    return [
+      entry(
+        "network:///saved/550e8400-e29b-41d4-a716-446655440000",
+        "Preview SFTP",
+        "savedConnection",
+        "sftp://550e8400-e29b-41d4-a716-446655440000/home/deploy",
+        "sftp",
+        "credentialsRequired",
+      ),
+    ];
+  }
+
+  return [
+    entry("network:///cloud", "Cloud Storage", "group", null, "cloud"),
+    entry("network:///lan", "Local Network", "group", null, "lan"),
+    entry("network:///saved", "Saved Connections", "group", null, "profile"),
+    entry("network:///add", "Add Connection", "addConnection"),
   ];
 }

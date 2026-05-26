@@ -440,7 +440,7 @@ fn validate_profile_fields(
     username: &str,
     port: u16,
 ) -> Result<(), NetworkError> {
-    if !matches!(scheme, "sftp" | "ssh" | "smb" | "s3") {
+    if !matches!(scheme, "sftp" | "ssh" | "smb" | "s3" | "webdav") {
         return Err(NetworkError::InvalidValue {
             field: "scheme".to_string(),
             reason: format!("unsupported scheme `{scheme}`"),
@@ -610,5 +610,47 @@ mod tests {
         new.host = "bad\u{0001}host".to_string();
         let error = repository.add(new).unwrap_err();
         assert!(matches!(error, NetworkError::InvalidValue { ref field, .. } if field == "host"));
+    }
+
+    #[test]
+    fn accepts_webdav_scheme() {
+        let dir = tempdir().unwrap();
+        let repository = NetworkProfileRepository::new(dir.path().join("network.sqlite")).unwrap();
+        let mut new = sample_profile();
+        new.scheme = "webdav".to_string();
+        new.port = 443;
+        new.default_path = "/remote.php/dav/files/user".to_string();
+
+        let profile = repository.add(new).unwrap();
+
+        assert_eq!(profile.scheme, "webdav");
+        assert_eq!(profile.port, 443);
+        assert_eq!(profile.default_path, "/remote.php/dav/files/user");
+    }
+
+    #[test]
+    fn accepts_smb_and_s3_schemes() {
+        let dir = tempdir().unwrap();
+        let repository = NetworkProfileRepository::new(dir.path().join("network.sqlite")).unwrap();
+
+        for scheme in ["smb", "s3"] {
+            let mut new = sample_profile();
+            new.scheme = scheme.to_string();
+            new.label = format!("{scheme} test");
+            let profile = repository.add(new).unwrap();
+            assert_eq!(profile.scheme, scheme);
+        }
+    }
+
+    #[test]
+    fn rejects_webdav_previously_unsupported_alias() {
+        // Make sure that arbitrary look-alike schemes still fail even though
+        // webdav is now allowed — guards against accidental shadowing.
+        let dir = tempdir().unwrap();
+        let repository = NetworkProfileRepository::new(dir.path().join("network.sqlite")).unwrap();
+        let mut new = sample_profile();
+        new.scheme = "WEBDAV".to_string();
+        let error = repository.add(new).unwrap_err();
+        assert!(matches!(error, NetworkError::InvalidValue { ref field, .. } if field == "scheme"));
     }
 }

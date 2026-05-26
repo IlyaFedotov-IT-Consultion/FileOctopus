@@ -15,6 +15,24 @@ function createClientMock() {
     },
     network: {
       connect: vi.fn().mockResolvedValue({ ok: true }),
+      discoverNeighborhood: vi.fn().mockResolvedValue({
+        uri: "network:///",
+        entries: [
+          {
+            uri: "network:///cloud",
+            name: "Cloud Storage",
+            kind: "directory",
+            providerId: "network",
+            canRead: false,
+            canList: true,
+            canWrite: false,
+            canDelete: false,
+            canRename: false,
+            virtualKind: "group",
+            description: "Google Drive, OneDrive, and iCloud Drive",
+          },
+        ],
+      }),
       listProfiles: vi.fn().mockResolvedValue({ profiles: [] }),
       connectionStatus: vi.fn().mockResolvedValue({ statuses: [] }),
     },
@@ -60,5 +78,188 @@ describe("navigation controller remote navigation", () => {
 
     expect(client.network.connect).not.toHaveBeenCalled();
     expect(client.fs.listStart).toHaveBeenCalledTimes(1);
+  });
+
+  it("lists network neighborhood entries without calling fs.listStart", async () => {
+    const client = createClientMock();
+    let state = createInitialState();
+    const dispatch = (action: PanelAction) => {
+      state = panelReducer(state, action);
+    };
+
+    const controller = createNavigationController({
+      client,
+      state,
+      dispatch,
+      setSearch: vi.fn(),
+      setFavorites: vi.fn(),
+      setRecentToday: vi.fn(),
+      setRecentWeek: vi.fn(),
+      setStarred: vi.fn(),
+      setOperationError: vi.fn(),
+    });
+
+    await controller.navigatePanel("left", "network:///");
+
+    expect(client.network.discoverNeighborhood).toHaveBeenCalledWith({
+      uri: "network:///",
+    });
+    expect(client.fs.listStart).not.toHaveBeenCalled();
+    expect(
+      state.panels.left.tabs.main.entriesById["network:///cloud"]?.name,
+    ).toBe("Cloud Storage");
+  });
+
+  it("activating an addConnection entry opens the wizard with no prefill", () => {
+    const client = createClientMock();
+    let state = createInitialState();
+    const dispatch = (action: PanelAction) => {
+      state = panelReducer(state, action);
+    };
+    const onOpenConnectionWizard = vi.fn();
+
+    const controller = createNavigationController({
+      client,
+      state,
+      dispatch,
+      setSearch: vi.fn(),
+      setFavorites: vi.fn(),
+      setRecentToday: vi.fn(),
+      setRecentWeek: vi.fn(),
+      setStarred: vi.fn(),
+      setOperationError: vi.fn(),
+      onOpenConnectionWizard,
+    });
+
+    controller.activateEntry("left", {
+      uri: "network:///add",
+      name: "Add Connection",
+      kind: "virtual",
+      providerId: "network",
+      canRead: false,
+      canList: false,
+      canWrite: false,
+      canDelete: false,
+      canRename: false,
+      virtualKind: "addConnection",
+    } as never);
+
+    expect(onOpenConnectionWizard).toHaveBeenCalledTimes(1);
+    expect(onOpenConnectionWizard).toHaveBeenCalledWith();
+    expect(client.network.discoverNeighborhood).not.toHaveBeenCalled();
+  });
+
+  it("activating a credentialsRequired entry opens the wizard with prefill", () => {
+    const client = createClientMock();
+    let state = createInitialState();
+    const dispatch = (action: PanelAction) => {
+      state = panelReducer(state, action);
+    };
+    const onOpenConnectionWizard = vi.fn();
+
+    const controller = createNavigationController({
+      client,
+      state,
+      dispatch,
+      setSearch: vi.fn(),
+      setFavorites: vi.fn(),
+      setRecentToday: vi.fn(),
+      setRecentWeek: vi.fn(),
+      setStarred: vi.fn(),
+      setOperationError: vi.fn(),
+      onOpenConnectionWizard,
+    });
+
+    controller.activateEntry("left", {
+      uri: "network:///lan/smb/fileserver",
+      name: "fileserver.local",
+      kind: "directory",
+      providerId: "network",
+      canRead: false,
+      canList: true,
+      canWrite: false,
+      canDelete: false,
+      canRename: false,
+      virtualKind: "discoveredService",
+      protocol: "smb",
+      status: "credentialsRequired",
+    } as never);
+
+    expect(onOpenConnectionWizard).toHaveBeenCalledTimes(1);
+    expect(onOpenConnectionWizard).toHaveBeenCalledWith({
+      scheme: "smb",
+      host: "fileserver.local",
+      label: "fileserver.local",
+      defaultPath: "/",
+    });
+  });
+
+  it("activating a directory entry with targetUri navigates to the target", async () => {
+    const client = createClientMock();
+    let state = createInitialState();
+    const dispatch = (action: PanelAction) => {
+      state = panelReducer(state, action);
+    };
+
+    const controller = createNavigationController({
+      client,
+      state,
+      dispatch,
+      setSearch: vi.fn(),
+      setFavorites: vi.fn(),
+      setRecentToday: vi.fn(),
+      setRecentWeek: vi.fn(),
+      setStarred: vi.fn(),
+      setOperationError: vi.fn(),
+    });
+
+    controller.activateEntry("left", {
+      uri: "network:///cloud/icloud",
+      name: "iCloud Drive",
+      kind: "directory",
+      providerId: "network",
+      canRead: true,
+      canList: true,
+      canWrite: false,
+      canDelete: false,
+      canRename: false,
+      virtualKind: "cloudDrive",
+      targetUri: "local:///Users/me/iCloud",
+      status: "available",
+    } as never);
+
+    // Allow the dispatched navigatePanel promise to flush.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(client.fs.listStart).toHaveBeenCalled();
+    const firstCall = (client.fs.listStart as ReturnType<typeof vi.fn>).mock
+      .calls[0][0];
+    expect(firstCall.uri).toBe("local:///Users/me/iCloud");
+  });
+
+  it("does not propagate terminal cwd sync when navigating to a network:/// uri", async () => {
+    const client = createClientMock();
+    let state = createInitialState();
+    const dispatch = (action: PanelAction) => {
+      state = panelReducer(state, action);
+    };
+    const syncTerminalCwd = vi.fn();
+
+    const controller = createNavigationController({
+      client,
+      state,
+      dispatch,
+      setSearch: vi.fn(),
+      setFavorites: vi.fn(),
+      setRecentToday: vi.fn(),
+      setRecentWeek: vi.fn(),
+      setStarred: vi.fn(),
+      setOperationError: vi.fn(),
+      syncTerminalCwd,
+    });
+
+    await controller.navigatePanel("left", "network:///");
+
+    expect(syncTerminalCwd).not.toHaveBeenCalled();
   });
 });

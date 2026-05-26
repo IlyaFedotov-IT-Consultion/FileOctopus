@@ -130,4 +130,25 @@ describe("OperationToolbar", () => {
     fireEvent.keyDown(view, { key: "ArrowLeft", ctrlKey: true });
     expect(document.activeElement).toBe(back);
   });
+
+  it("exposes network neighborhood in the drives menu", async () => {
+    const onCommand = vi.fn();
+    renderToolbar(
+      createProps({
+        onCommand,
+        driveVolumes: [
+          {
+            id: "root",
+            label: "Macintosh HD",
+            uri: "local:///",
+          },
+        ],
+      }),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Drives" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Network" }));
+
+    expect(onCommand).toHaveBeenCalledWith("nav.networkLocations");
+  });
 });

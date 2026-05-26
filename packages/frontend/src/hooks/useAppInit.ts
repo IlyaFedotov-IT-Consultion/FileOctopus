@@ -6,7 +6,11 @@ import {
   type MutableRefObject,
   type SetStateAction,
 } from "react";
-import { normalizeIpcError, type FileOctopusClient } from "@fileoctopus/ts-api";
+import {
+  isNetworkUri,
+  normalizeIpcError,
+  type FileOctopusClient,
+} from "@fileoctopus/ts-api";
 import type {
   AutostartStatusDto,
   AppInfoResponse,
@@ -72,6 +76,31 @@ function markDefaultViewModeDetailsMigrationDone() {
     localStorage.setItem(DEFAULT_VIEW_MODE_DETAILS_MIGRATION_KEY, "true");
   } catch {
     return;
+  }
+}
+
+async function resolveStartupUri(
+  client: FileOctopusClient,
+  uri: string,
+  fallbackUri: string,
+): Promise<string> {
+  if (!uri.startsWith("local://") || isNetworkUri(uri)) {
+    return uri;
+  }
+
+  try {
+    await client.fs.stat({ uri });
+    return uri;
+  } catch (error) {
+    const normalized = normalizeIpcError(error);
+    if (
+      normalized.code === "not_found" ||
+      normalized.code === "folder_not_found" ||
+      normalized.code === "invalid_uri"
+    ) {
+      return fallbackUri;
+    }
+    return uri;
   }
 }
 
@@ -668,6 +697,8 @@ export function useAppInit({
         const documentsLocation = response.locations.find(
           (location) => location.id === "documents",
         );
+        const fallbackLeftUri = homeLocation?.uri ?? homeUri();
+        const fallbackRightUri = documentsLocation?.uri ?? documentsUri();
 
         if (initialLeftUri === homeUri() && homeLocation) {
           initialLeftUri = homeLocation.uri;
@@ -675,6 +706,10 @@ export function useAppInit({
         if (initialRightUri === documentsUri() && documentsLocation) {
           initialRightUri = documentsLocation.uri;
         }
+        [initialLeftUri, initialRightUri] = await Promise.all([
+          resolveStartupUri(client, initialLeftUri, fallbackLeftUri),
+          resolveStartupUri(client, initialRightUri, fallbackRightUri),
+        ]);
       } catch {
         void refreshLocations();
       }

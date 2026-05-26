@@ -621,6 +621,19 @@ pub struct NetworkConnectionStatusResponse {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct NetworkNeighborhoodRequest {
+    pub uri: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NetworkNeighborhoodResponse {
+    pub uri: String,
+    pub entries: Vec<FileEntryDto>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PathRequest {
     pub uri: String,
 }
@@ -794,6 +807,16 @@ pub struct FileEntryDto {
     pub can_rename: bool,
     pub permissions: Option<String>,
     pub owner: Option<String>,
+    #[serde(default)]
+    pub target_uri: Option<String>,
+    #[serde(default)]
+    pub virtual_kind: Option<String>,
+    #[serde(default)]
+    pub protocol: Option<String>,
+    #[serde(default)]
+    pub status: Option<String>,
+    #[serde(default)]
+    pub description: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -1054,7 +1077,7 @@ pub struct IpcError {
 
 impl From<config::NetworkProfile> for NetworkProfileDto {
     fn from(profile: config::NetworkProfile) -> Self {
-        let default_uri = if profile.scheme == "sftp" {
+        let default_uri = if matches!(profile.scheme.as_str(), "sftp" | "smb" | "s3" | "webdav") {
             ResourceUri::from_remote_profile(&profile.scheme, &profile.id, &profile.default_path)
                 .map(|uri| uri.as_str().to_string())
                 .unwrap_or_default()
@@ -1106,6 +1129,11 @@ impl From<FileEntry> for FileEntryDto {
             can_rename: entry.capabilities.can_rename,
             permissions: entry.permissions,
             owner: entry.owner,
+            target_uri: None,
+            virtual_kind: None,
+            protocol: None,
+            status: None,
+            description: None,
         }
     }
 }
@@ -1589,6 +1617,189 @@ mod tests {
 
         assert_eq!(decoded.entry.uri, "local:///tmp/file.txt");
         assert_eq!(decoded.entry.kind, FileKind::File);
+    }
+
+    #[test]
+    fn network_profile_dto_builds_default_uri_for_each_remote_scheme() {
+        for scheme in ["sftp", "smb", "s3", "webdav"] {
+            let profile = config::NetworkProfile {
+                id: "550e8400-e29b-41d4-a716-446655440000".to_string(),
+                label: format!("{scheme} test"),
+                scheme: scheme.to_string(),
+                host: "example.com".to_string(),
+                port: 22,
+                username: "deploy".to_string(),
+                auth_kind: config::AuthKind::Password,
+                private_key_path: None,
+                default_path: "/share".to_string(),
+                host_key_fingerprint: None,
+                sort_order: 0,
+                last_connected_at: None,
+                last_error: None,
+                has_stored_secret: false,
+                created_at: "1970-01-01T00:00:00Z".to_string(),
+                updated_at: "1970-01-01T00:00:00Z".to_string(),
+            };
+
+            let dto = NetworkProfileDto::from(profile);
+
+            assert_eq!(
+                dto.default_uri,
+                format!("{scheme}://550e8400-e29b-41d4-a716-446655440000/share"),
+                "scheme = {scheme}"
+            );
+        }
+    }
+
+    #[test]
+    fn network_profile_dto_leaves_default_uri_empty_for_ssh_only_profiles() {
+        let profile = config::NetworkProfile {
+            id: "550e8400-e29b-41d4-a716-446655440000".to_string(),
+            label: "Bastion".to_string(),
+            scheme: "ssh".to_string(),
+            host: "example.com".to_string(),
+            port: 22,
+            username: "deploy".to_string(),
+            auth_kind: config::AuthKind::Password,
+            private_key_path: None,
+            default_path: "".to_string(),
+            host_key_fingerprint: None,
+            sort_order: 0,
+            last_connected_at: None,
+            last_error: None,
+            has_stored_secret: false,
+            created_at: "1970-01-01T00:00:00Z".to_string(),
+            updated_at: "1970-01-01T00:00:00Z".to_string(),
+        };
+
+        let dto = NetworkProfileDto::from(profile);
+
+        assert_eq!(dto.default_uri, "");
+    }
+
+    #[test]
+    fn neighborhood_request_and_response_round_trip_as_camel_case() {
+        let request = NetworkNeighborhoodRequest {
+            uri: "network:///cloud".to_string(),
+        };
+        let encoded = serde_json::to_value(&request).unwrap();
+        assert_eq!(encoded["uri"], "network:///cloud");
+        let decoded: NetworkNeighborhoodRequest = serde_json::from_value(encoded).unwrap();
+        assert_eq!(decoded, request);
+
+        let entry = FileEntryDto {
+            uri: "network:///cloud/icloud".to_string(),
+            name: "iCloud Drive".to_string(),
+            extension: None,
+            kind: FileKind::Directory,
+            size: None,
+            modified_at: None,
+            created_at: None,
+            accessed_at: None,
+            is_hidden: false,
+            is_symlink: false,
+            symlink_target: None,
+            provider_id: "network".to_string(),
+            can_read: true,
+            can_list: true,
+            can_write: false,
+            can_delete: false,
+            can_rename: false,
+            permissions: None,
+            owner: None,
+            target_uri: Some("local:///iCloud".to_string()),
+            virtual_kind: Some("cloudDrive".to_string()),
+            protocol: Some("cloud".to_string()),
+            status: Some("available".to_string()),
+            description: None,
+        };
+        let response = NetworkNeighborhoodResponse {
+            uri: "network:///cloud".to_string(),
+            entries: vec![entry.clone()],
+        };
+        let encoded = serde_json::to_value(&response).unwrap();
+        assert_eq!(encoded["uri"], "network:///cloud");
+        assert_eq!(encoded["entries"][0]["targetUri"], "local:///iCloud");
+        let decoded: NetworkNeighborhoodResponse = serde_json::from_value(encoded).unwrap();
+        assert_eq!(decoded.entries[0], entry);
+    }
+
+    #[test]
+    fn file_entry_dto_defaults_virtual_fields_to_none_when_deserialised_legacy() {
+        // The new optional virtual-entry fields all use #[serde(default)] so a
+        // legacy payload without them must still deserialise.
+        let legacy = serde_json::json!({
+            "uri": "local:///tmp/file.txt",
+            "name": "file.txt",
+            "extension": "txt",
+            "kind": "file",
+            "size": null,
+            "modifiedAt": null,
+            "createdAt": null,
+            "accessedAt": null,
+            "isHidden": false,
+            "isSymlink": false,
+            "symlinkTarget": null,
+            "providerId": "local",
+            "canRead": true,
+            "canList": false,
+            "canWrite": false,
+            "canDelete": false,
+            "canRename": false,
+            "permissions": null,
+            "owner": null
+        });
+
+        let entry: FileEntryDto = serde_json::from_value(legacy).unwrap();
+
+        assert_eq!(entry.target_uri, None);
+        assert_eq!(entry.virtual_kind, None);
+        assert_eq!(entry.protocol, None);
+        assert_eq!(entry.status, None);
+        assert_eq!(entry.description, None);
+    }
+
+    #[test]
+    fn serializes_virtual_entry_metadata() {
+        let entry = FileEntryDto {
+            uri: "network:///cloud".to_string(),
+            name: "Cloud Storage".to_string(),
+            extension: None,
+            kind: FileKind::Directory,
+            size: None,
+            modified_at: None,
+            created_at: None,
+            accessed_at: None,
+            is_hidden: false,
+            is_symlink: false,
+            symlink_target: None,
+            provider_id: "network".to_string(),
+            can_read: false,
+            can_list: true,
+            can_write: false,
+            can_delete: false,
+            can_rename: false,
+            permissions: None,
+            owner: None,
+            target_uri: Some(
+                "local:///Users/ilya/Library/CloudStorage/OneDrive-Personal".to_string(),
+            ),
+            virtual_kind: Some("cloudDrive".to_string()),
+            protocol: Some("cloud".to_string()),
+            status: Some("available".to_string()),
+            description: Some("OneDrive local sync folder".to_string()),
+        };
+
+        let encoded = serde_json::to_value(&entry).unwrap();
+
+        assert_eq!(
+            encoded["targetUri"],
+            "local:///Users/ilya/Library/CloudStorage/OneDrive-Personal"
+        );
+        assert_eq!(encoded["virtualKind"], "cloudDrive");
+        assert_eq!(encoded["protocol"], "cloud");
+        assert_eq!(encoded["status"], "available");
+        assert_eq!(encoded["description"], "OneDrive local sync folder");
     }
 
     #[test]

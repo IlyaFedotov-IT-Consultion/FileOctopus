@@ -8,7 +8,11 @@ import {
   type SetStateAction,
 } from "react";
 import type { OperationDialog } from "../../dialogs/OperationDialogView";
-import type { FileEntryDto, NetworkProfileDto } from "@fileoctopus/ts-api";
+import type {
+  FileEntryDto,
+  NetworkConnectionDraftDto,
+  NetworkProfileDto,
+} from "@fileoctopus/ts-api";
 
 export interface ModalsContextValue {
   settingsOpen: boolean;
@@ -33,6 +37,7 @@ export interface ModalsContextValue {
   networkLocationsOpen: boolean;
   connectServerOpen: boolean;
   connectServerProfile: NetworkProfileDto | null;
+  connectServerInitial: NetworkConnectionDraftDto | null;
   removeServerProfile: NetworkProfileDto | null;
   toolbarCustomizeOpen: boolean;
   dialog: OperationDialog | null;
@@ -58,6 +63,9 @@ export interface ModalsContextValue {
   setNetworkLocationsOpen: Dispatch<SetStateAction<boolean>>;
   setConnectServerOpen: Dispatch<SetStateAction<boolean>>;
   setConnectServerProfile: Dispatch<SetStateAction<NetworkProfileDto | null>>;
+  setConnectServerInitial: Dispatch<
+    SetStateAction<NetworkConnectionDraftDto | null>
+  >;
   setRemoveServerProfile: Dispatch<SetStateAction<NetworkProfileDto | null>>;
   setToolbarCustomizeOpen: Dispatch<SetStateAction<boolean>>;
   setDialog: Dispatch<SetStateAction<OperationDialog | null>>;
@@ -99,6 +107,8 @@ export function ModalsProvider({ children }: { children: ReactNode }) {
   const [connectServerOpen, setConnectServerOpen] = useState(false);
   const [connectServerProfile, setConnectServerProfile] =
     useState<NetworkProfileDto | null>(null);
+  const [connectServerInitial, setConnectServerInitial] =
+    useState<NetworkConnectionDraftDto | null>(null);
   const [removeServerProfile, setRemoveServerProfile] =
     useState<NetworkProfileDto | null>(null);
   const [toolbarCustomizeOpen, setToolbarCustomizeOpen] = useState(false);
@@ -128,6 +138,7 @@ export function ModalsProvider({ children }: { children: ReactNode }) {
       networkLocationsOpen,
       connectServerOpen,
       connectServerProfile,
+      connectServerInitial,
       removeServerProfile,
       toolbarCustomizeOpen,
       dialog,
@@ -153,6 +164,7 @@ export function ModalsProvider({ children }: { children: ReactNode }) {
       setNetworkLocationsOpen,
       setConnectServerOpen,
       setConnectServerProfile,
+      setConnectServerInitial,
       setRemoveServerProfile,
       setToolbarCustomizeOpen,
       setDialog,
@@ -180,6 +192,7 @@ export function ModalsProvider({ children }: { children: ReactNode }) {
       networkLocationsOpen,
       connectServerOpen,
       connectServerProfile,
+      connectServerInitial,
       removeServerProfile,
       toolbarCustomizeOpen,
       dialog,

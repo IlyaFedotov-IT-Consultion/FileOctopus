@@ -117,6 +117,7 @@ pub fn run() {
             commands::network::network_connect,
             commands::network::network_disconnect,
             commands::network::network_connection_status,
+            commands::network::network_discover_neighborhood,
             commands::network::network_validate_uri,
             commands::file_operations::plan_file_operation,
             commands::file_operations::start_file_operation,

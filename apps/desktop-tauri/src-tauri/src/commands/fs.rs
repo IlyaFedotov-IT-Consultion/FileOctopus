@@ -390,7 +390,10 @@ pub async fn fs_read_image_as_data_uri(
 
 #[tauri::command]
 pub async fn fs_discover_volumes() -> Result<DiscoverVolumesResponse, IpcError> {
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(target_os = "macos")]
+    let volumes = discover_macos_volumes();
+
+    #[cfg(all(not(target_os = "linux"), not(target_os = "macos")))]
     let volumes = Vec::new();
 
     #[cfg(target_os = "linux")]
@@ -464,6 +467,55 @@ pub async fn fs_discover_volumes() -> Result<DiscoverVolumesResponse, IpcError> 
     }
 
     Ok(DiscoverVolumesResponse { volumes })
+}
+
+#[cfg(target_os = "macos")]
+fn discover_macos_volumes() -> Vec<app_ipc::VolumeDto> {
+    let mut volumes = Vec::new();
+    let mut paths = vec![std::path::PathBuf::from("/")];
+    if let Ok(read_dir) = std::fs::read_dir("/Volumes") {
+        for entry in read_dir.flatten() {
+            paths.push(entry.path());
+        }
+    }
+
+    paths.sort();
+    paths.dedup();
+
+    for path in paths {
+        if !path.exists() {
+            continue;
+        }
+        let name = if path == std::path::Path::new("/") {
+            "Macintosh HD".to_string()
+        } else {
+            path.file_name()
+                .and_then(|value| value.to_str())
+                .unwrap_or("Volume")
+                .to_string()
+        };
+        let uri = match ResourceUri::from_local_path(&path) {
+            Ok(uri) => uri.as_str().to_string(),
+            Err(_) => continue,
+        };
+        let lowered = name.to_lowercase();
+        let is_network = lowered.contains("google")
+            || lowered.contains("onedrive")
+            || lowered.contains("icloud")
+            || lowered.contains("smb")
+            || lowered.contains("share");
+        volumes.push(app_ipc::VolumeDto {
+            name,
+            mount_uri: uri,
+            total_bytes: None,
+            available_bytes: None,
+            file_system_type: Some("apfs".to_string()),
+            is_removable: false,
+            is_network,
+        });
+    }
+
+    volumes
 }
 
 #[tauri::command]
@@ -713,6 +765,11 @@ fn list_zip_entries(path: &std::path::Path) -> Result<Vec<FileEntryDto>, IpcErro
             can_rename: false,
             permissions: None,
             owner: None,
+            target_uri: None,
+            virtual_kind: None,
+            protocol: None,
+            status: None,
+            description: None,
         });
     }
 
@@ -777,6 +834,11 @@ fn list_tar_reader<R: Read>(
             can_rename: false,
             permissions: None,
             owner: None,
+            target_uri: None,
+            virtual_kind: None,
+            protocol: None,
+            status: None,
+            description: None,
         });
     }
 
