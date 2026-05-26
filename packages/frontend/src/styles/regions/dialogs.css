@@ -713,6 +713,33 @@ dialog.fo-dialog[open] {
   outline-offset: 1px;
 }
 
+.fo-connect-stepper {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 2px;
+}
+
+.fo-connect-step {
+  min-height: 26px;
+  padding: 0 6px;
+  overflow: hidden;
+  color: var(--fo-classic-text);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: var(--fo-classic-face);
+  border-width: 2px;
+  border-style: solid;
+  border-color: var(--fo-classic-light) var(--fo-classic-shadow)
+    var(--fo-classic-shadow) var(--fo-classic-light);
+}
+
+.fo-connect-step-active {
+  color: var(--fo-on-accent);
+  background: var(--fo-accent);
+  border-color: var(--fo-accent);
+}
+
 .fo-dialog-section-title {
   margin: 0;
   padding: 0 0.1rem;
@@ -1663,6 +1690,13 @@ dialog.fo-dialog[open] {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.fo-volume-name-with-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
 }
 
 .fo-volume-fs {

@@ -46,7 +46,7 @@ The desktop shell registers these commands from `apps/desktop-tauri/src-tauri/sr
 
 ### Full registry (2026-05-23)
 
-**64 commands** — verified by `packages/ts-api/tests/catalogs.test.ts`, which compares `generate_handler!`, `commandMap.ts`, and this advertised count.
+**65 commands** — verified by `packages/ts-api/tests/catalogs.test.ts`, which compares `generate_handler!`, `commandMap.ts`, and this advertised count.
 
 | Tauri command                        | TS dotted name (typical)           | Client area              |
 | ------------------------------------ | ---------------------------------- | ------------------------ |
@@ -102,6 +102,7 @@ The desktop shell registers these commands from `apps/desktop-tauri/src-tauri/sr
 | `network_connect`                    | `network.connect`                  | `NetworkClient`          |
 | `network_disconnect`                 | `network.disconnect`               | `NetworkClient`          |
 | `network_connection_status`          | `network.connectionStatus`         | `NetworkClient`          |
+| `network_discover_neighborhood`      | `network.discoverNeighborhood`     | `NetworkClient`          |
 | `network_profile_forget_fingerprint` | `network.profileForgetFingerprint` | `NetworkClient`          |
 | `network_validate_uri`               | `network.validateUri`              | `NetworkClient`          |
 | `plan_file_operation`                | `fileOperation.plan`               | `FileOperationsClient`   |
@@ -307,6 +308,7 @@ Network commands manage saved SFTP server profiles in `network.sqlite` under the
 | `network_connect`                    | `network.connect`                  | Eager connect and validate credentials for `{ id }`.                                                      |
 | `network_disconnect`                 | `network.disconnect`               | Drop active session for `{ id }`.                                                                         |
 | `network_connection_status`          | `network.connectionStatus`         | Returns `{ statuses: NetworkConnectionStatusDto[] }` with `connected`, `disconnected`, or `error`.        |
+| `network_discover_neighborhood`      | `network.discoverNeighborhood`     | Lists virtual `network:///` entries for cloud drives, LAN services, saved profiles, and add-connection.   |
 | `network_profile_forget_fingerprint` | `network.profileForgetFingerprint` | Clears pinned host-key fingerprint for `{ id }`.                                                          |
 | `network_validate_uri`               | `network.validateUri`              | Parse-check a remote `ResourceUri`.                                                                       |
 

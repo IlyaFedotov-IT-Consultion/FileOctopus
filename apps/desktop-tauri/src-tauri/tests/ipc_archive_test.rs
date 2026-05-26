@@ -123,6 +123,11 @@ fn list_zip(path: &std::path::Path) -> Result<Vec<FileEntryDto>, IpcError> {
             can_rename: false,
             permissions: None,
             owner: None,
+            target_uri: None,
+            virtual_kind: None,
+            protocol: None,
+            status: None,
+            description: None,
         });
     }
 
@@ -190,6 +195,11 @@ fn list_tar_entries<R: std::io::Read>(
             can_rename: false,
             permissions: None,
             owner: None,
+            target_uri: None,
+            virtual_kind: None,
+            protocol: None,
+            status: None,
+            description: None,
         });
     }
 

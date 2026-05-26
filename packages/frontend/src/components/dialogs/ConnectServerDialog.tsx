@@ -1,15 +1,20 @@
-import type { NetworkProfileDto } from "@fileoctopus/ts-api";
+import type {
+  NetworkConnectionDraftDto,
+  NetworkProfileDto,
+} from "@fileoctopus/ts-api";
 import { Button } from "@fileoctopus/ui";
 import { useEffect, useRef, useState } from "react";
 import { useDialogEscape } from "../../hooks/useDialogEscape";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 
-type SchemeType = "sftp" | "ssh" | "smb" | "s3";
+type SchemeType = "sftp" | "ssh" | "smb" | "s3" | "webdav";
 type AuthKindType = "password" | "privateKey" | "accessKey";
+type WizardStep = "target" | "credentials" | "test" | "save";
 
 interface ConnectServerDialogProps {
   open: boolean;
   editingProfile: NetworkProfileDto | null;
+  initialDraft?: NetworkConnectionDraftDto | null;
   onClose: () => void;
   onSave: (payload: {
     id?: string;
@@ -31,6 +36,7 @@ function defaultPort(scheme: SchemeType): number {
   if (scheme === "sftp" || scheme === "ssh") return 22;
   if (scheme === "smb") return 445;
   if (scheme === "s3") return 443;
+  if (scheme === "webdav") return 443;
   return 22;
 }
 
@@ -38,6 +44,7 @@ function defaultAuthKinds(scheme: SchemeType): AuthKindType[] {
   if (scheme === "sftp" || scheme === "ssh") return ["password", "privateKey"];
   if (scheme === "smb") return ["password"];
   if (scheme === "s3") return ["accessKey"];
+  if (scheme === "webdav") return ["password"];
   return ["password"];
 }
 
@@ -48,6 +55,7 @@ function defaultAuthKind(scheme: SchemeType): AuthKindType {
 export function ConnectServerDialog({
   open,
   editingProfile,
+  initialDraft,
   onClose,
   onSave,
   onForgetFingerprint,
@@ -65,6 +73,8 @@ export function ConnectServerDialog({
   const [defaultPath, setDefaultPath] = useState("/");
   const [password, setPassword] = useState("");
   const [passphrase, setPassphrase] = useState("");
+  const [step, setStep] = useState<WizardStep>("target");
+  const [testStatus, setTestStatus] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -72,15 +82,16 @@ export function ConnectServerDialog({
     if (!open) {
       return;
     }
+    const candidateScheme =
+      editingProfile?.scheme ?? initialDraft?.scheme ?? "sftp";
     const profileScheme = (
-      ["sftp", "ssh", "smb", "s3"].indexOf(editingProfile?.scheme ?? "sftp") !==
-      -1
-        ? editingProfile?.scheme
+      ["sftp", "ssh", "smb", "s3", "webdav"].indexOf(candidateScheme) !== -1
+        ? candidateScheme
         : "sftp"
     ) as SchemeType;
-    setLabel(editingProfile?.label ?? "");
+    setLabel(editingProfile?.label ?? initialDraft?.label ?? "");
     setScheme(profileScheme);
-    setHost(editingProfile?.host ?? "");
+    setHost(editingProfile?.host ?? initialDraft?.host ?? "");
     setPort(String(editingProfile?.port ?? defaultPort(profileScheme)));
     setUsername(editingProfile?.username ?? "");
     const profileAuth = editingProfile?.authKind;
@@ -91,11 +102,15 @@ export function ConnectServerDialog({
         : defaultAuthKind(profileScheme),
     );
     setPrivateKeyPath(editingProfile?.privateKeyPath ?? "");
-    setDefaultPath(editingProfile?.defaultPath ?? "/");
+    setDefaultPath(
+      editingProfile?.defaultPath ?? initialDraft?.defaultPath ?? "/",
+    );
     setPassword("");
     setPassphrase("");
+    setStep("target");
+    setTestStatus(null);
     setError(null);
-  }, [editingProfile, open]);
+  }, [editingProfile, initialDraft, open]);
 
   function handleSchemeChange(newScheme: SchemeType) {
     setScheme(newScheme);
@@ -103,8 +118,43 @@ export function ConnectServerDialog({
     setAuthKind(defaultAuthKind(newScheme));
     if (newScheme === "s3") {
       setDefaultPath("/");
-    } else if (newScheme === "smb") {
+    } else if (newScheme === "smb" || newScheme === "webdav") {
       setDefaultPath("/");
+    }
+  }
+
+  function handleNextStep() {
+    setError(null);
+    if (step === "target") {
+      if (!label.trim() || !host.trim()) {
+        setError("Label and host are required.");
+        return;
+      }
+      setStep("credentials");
+      return;
+    }
+    if (step === "credentials") {
+      setStep("test");
+      return;
+    }
+    if (step === "test") {
+      setTestStatus("Connection details are ready to save.");
+      setStep("save");
+    }
+  }
+
+  function handlePreviousStep() {
+    setError(null);
+    if (step === "credentials") {
+      setStep("target");
+      return;
+    }
+    if (step === "test") {
+      setStep("credentials");
+      return;
+    }
+    if (step === "save") {
+      setStep("test");
     }
   }
 
@@ -114,13 +164,18 @@ export function ConnectServerDialog({
 
   const showPasswordField = authKind === "password" || authKind === "accessKey";
   const showPrivateKeyField = authKind === "privateKey";
-  const showDefaultPath = scheme === "sftp" || scheme === "smb";
+  const showDefaultPath =
+    scheme === "sftp" || scheme === "smb" || scheme === "webdav";
   const showBucketField = scheme === "s3";
   const authKinds = defaultAuthKinds(scheme);
 
   const hostLabel = scheme === "s3" ? "Endpoint URL" : "Host";
   const hostPlaceholder =
-    scheme === "s3" ? "s3.amazonaws.com or minio.local:9000" : "example.com";
+    scheme === "s3"
+      ? "s3.amazonaws.com or minio.local:9000"
+      : scheme === "webdav"
+        ? "https://files.example.com"
+        : "example.com";
   const usernameLabel = scheme === "s3" ? "Access Key ID" : "Username";
   const usernamePlaceholder =
     scheme === "s3" ? "AKIAIOSFODNN7EXAMPLE" : "deploy";
@@ -132,7 +187,20 @@ export function ConnectServerDialog({
       ? "my-bucket"
       : scheme === "smb"
         ? "/share"
-        : "/home/deploy";
+        : scheme === "webdav"
+          ? "/remote.php/dav/files/user"
+          : "/home/deploy";
+  const stepIndex = ["target", "credentials", "test", "save"].indexOf(step);
+  const primaryLabel =
+    step === "save"
+      ? saving
+        ? "Saving…"
+        : editingProfile
+          ? "Save changes"
+          : "Save connection"
+      : step === "test"
+        ? "Test"
+        : "Next";
 
   async function handleSubmit() {
     const trimmedLabel = label.trim();
@@ -231,6 +299,28 @@ export function ConnectServerDialog({
           </Button>
         </header>
         <div className="fo-dialog-body fo-connect-server-form">
+          <div className="fo-connect-stepper" aria-label="Connection steps">
+            {["Target", "Credentials", "Test", "Save"].map((item, index) => (
+              <button
+                key={item}
+                type="button"
+                className={
+                  index === stepIndex
+                    ? "fo-connect-step fo-connect-step-active"
+                    : "fo-connect-step"
+                }
+                onClick={() =>
+                  setStep(
+                    ["target", "credentials", "test", "save"][
+                      index
+                    ] as WizardStep,
+                  )
+                }
+              >
+                {item}
+              </button>
+            ))}
+          </div>
           <label className="fo-dialog-field">
             <span>Label</span>
             <input
@@ -258,6 +348,7 @@ export function ConnectServerDialog({
               <option value="ssh">SSH terminal only</option>
               <option value="smb">SMB / CIFS share</option>
               <option value="s3">S3 object storage</option>
+              <option value="webdav">WebDAV</option>
             </select>
           </label>
           <label className="fo-dialog-field">
@@ -398,22 +489,30 @@ export function ConnectServerDialog({
               next connect will be remembered.
             </p>
           ) : null}
+          {testStatus ? <p className="fo-settings-hint">{testStatus}</p> : null}
           {error ? <p className="fo-dialog-error">{error}</p> : null}
         </div>
         <footer className="fo-dialog-footer">
           <Button type="button" variant="ghost" onClick={onClose}>
             Cancel
           </Button>
+          {step !== "target" ? (
+            <Button type="button" variant="ghost" onClick={handlePreviousStep}>
+              Back
+            </Button>
+          ) : null}
           <Button
             type="button"
             disabled={saving}
-            onClick={() => void handleSubmit()}
+            onClick={() => {
+              if (step === "save") {
+                void handleSubmit();
+              } else {
+                handleNextStep();
+              }
+            }}
           >
-            {saving
-              ? "Saving…"
-              : editingProfile
-                ? "Save changes"
-                : "Add server"}
+            {primaryLabel}
           </Button>
         </footer>
       </dialog>

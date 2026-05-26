@@ -76,11 +76,19 @@ export function FileRow({
 
   const typeLabel = entry.isSymlink
     ? "Symlink"
-    : entry.kind === "directory"
-      ? "Folder"
-      : entry.extension
-        ? entry.extension.toUpperCase()
-        : "File";
+    : entry.virtualKind === "cloudDrive"
+      ? "Cloud"
+      : entry.virtualKind === "savedConnection"
+        ? "Saved"
+        : entry.virtualKind === "discoveredService"
+          ? (entry.protocol ?? "Network").toUpperCase()
+          : entry.virtualKind === "addConnection"
+            ? "Action"
+            : entry.kind === "directory"
+              ? "Folder"
+              : entry.extension
+                ? entry.extension.toUpperCase()
+                : "File";
   const extensionLabel =
     entry.kind === "directory" ? "" : (entry.extension ?? "").toLowerCase();
   const showMetadata =
@@ -211,6 +219,15 @@ export function FileRow({
             ↗
           </span>
         ) : null}
+        {entry.status ? (
+          <span
+            className={`fo-row-network-badge fo-row-network-badge-${entry.status}`}
+            aria-label={`Network status: ${entry.status}`}
+            title={entry.description ?? entry.status}
+          >
+            {networkStatusLabel(entry.status)}
+          </span>
+        ) : null}
       </span>
       {showMetadata ? (
         viewMode === "details" ? (
@@ -271,6 +288,21 @@ export function FileRow({
       ) : null}
     </div>
   );
+}
+
+function networkStatusLabel(status: string): string {
+  switch (status) {
+    case "available":
+      return "OK";
+    case "saved":
+      return "SAVED";
+    case "credentialsRequired":
+      return "AUTH";
+    case "unavailable":
+      return "OFF";
+    default:
+      return status.toUpperCase();
+  }
 }
 
 function gitStatusLabel(status: GitFileStatusDto): string {

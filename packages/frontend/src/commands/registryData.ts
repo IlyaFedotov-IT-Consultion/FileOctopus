@@ -44,7 +44,7 @@ export const COMMAND_REGISTRY = [
   },
   {
     id: "nav.networkLocations",
-    label: "Network Locations…",
+    label: "Network",
     group: "navigation",
   },
   {

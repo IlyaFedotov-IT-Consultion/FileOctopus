@@ -4,6 +4,7 @@ import type {
   AppInfoResponse,
   AutostartStatusDto,
   FileEntryDto,
+  NetworkConnectionDraftDto,
   UserPreferencesDto,
 } from "@fileoctopus/ts-api";
 import type { PanelId } from "../panelStore";
@@ -106,6 +107,7 @@ export interface DialogOverlayGroupProps {
   networkLocationsOpen: boolean;
   connectServerOpen: boolean;
   connectServerProfile: NetworkProfileDto | null;
+  connectServerInitial: NetworkConnectionDraftDto | null;
   removeServerProfile: NetworkProfileDto | null;
   networkProfiles: NetworkProfileDto[];
   networkStatuses: NetworkConnectionStatusDto[];
@@ -147,6 +149,7 @@ export interface DialogOverlayGroupProps {
   setNetworkLocationsOpen: (open: boolean) => void;
   setConnectServerOpen: (open: boolean) => void;
   setConnectServerProfile: (profile: NetworkProfileDto | null) => void;
+  setConnectServerInitial: (profile: NetworkConnectionDraftDto | null) => void;
   setRemoveServerProfile: (profile: NetworkProfileDto | null) => void;
   connectProfile: (profileId: string) => Promise<void>;
   forgetFingerprint: (profileId: string) => Promise<void>;
@@ -154,7 +157,7 @@ export interface DialogOverlayGroupProps {
   deleteProfile: (profileId: string) => Promise<void>;
   saveProfile: (payload: {
     id?: string;
-    scheme: "sftp" | "ssh" | "smb" | "s3";
+    scheme: "sftp" | "ssh" | "smb" | "s3" | "webdav";
     label: string;
     host: string;
     port: number;
@@ -239,6 +242,7 @@ export function DialogOverlayGroup({
   networkLocationsOpen,
   connectServerOpen,
   connectServerProfile,
+  connectServerInitial,
   removeServerProfile,
   networkProfiles,
   networkStatuses,
@@ -277,6 +281,7 @@ export function DialogOverlayGroup({
   setNetworkLocationsOpen,
   setConnectServerOpen,
   setConnectServerProfile,
+  setConnectServerInitial,
   setRemoveServerProfile,
   connectProfile,
   disconnectProfile,
@@ -461,11 +466,13 @@ export function DialogOverlayGroup({
         onAddServer={() => {
           setNetworkLocationsOpen(false);
           setConnectServerProfile(null);
+          setConnectServerInitial(null);
           setConnectServerOpen(true);
         }}
         onEditServer={(profile) => {
           setNetworkLocationsOpen(false);
           setConnectServerProfile(profile);
+          setConnectServerInitial(null);
           setConnectServerOpen(true);
         }}
         onDeleteServer={(profileId) => {
@@ -479,9 +486,11 @@ export function DialogOverlayGroup({
       <ConnectServerDialog
         open={connectServerOpen}
         editingProfile={connectServerProfile}
+        initialDraft={connectServerInitial}
         onClose={() => {
           setConnectServerOpen(false);
           setConnectServerProfile(null);
+          setConnectServerInitial(null);
         }}
         onSave={saveProfile}
         onForgetFingerprint={forgetFingerprint}
@@ -504,6 +513,10 @@ export function DialogOverlayGroup({
         onSelect={(uri) => {
           setVolumePickerOpen(false);
           onNavigateActivePane(uri);
+        }}
+        onOpenNetwork={() => {
+          setVolumePickerOpen(false);
+          onNavigateActivePane("network:///");
         }}
       />
     </>

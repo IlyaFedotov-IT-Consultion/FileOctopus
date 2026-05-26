@@ -1,6 +1,8 @@
 import type {
   IpcTransport,
   NetworkConnectionStatusResponse,
+  NetworkNeighborhoodRequest,
+  NetworkNeighborhoodResponse,
   NetworkProfileActionRequest,
   NetworkProfileAddRequest,
   NetworkProfileDeleteRequest,
@@ -87,6 +89,18 @@ export class NetworkClient {
   async connectionStatus(): Promise<NetworkConnectionStatusResponse> {
     try {
       return await this.transport.invoke("network.connectionStatus");
+    } catch (error) {
+      throw normalizeIpcError(error);
+    }
+  }
+
+  async discoverNeighborhood(
+    request: NetworkNeighborhoodRequest,
+  ): Promise<NetworkNeighborhoodResponse> {
+    try {
+      return await this.transport.invoke("network.discoverNeighborhood", {
+        request,
+      });
     } catch (error) {
       throw normalizeIpcError(error);
     }

@@ -148,12 +148,14 @@ function FileOctopusAppInner({
     networkLocationsOpen,
     connectServerOpen,
     connectServerProfile,
+    connectServerInitial,
     removeServerProfile,
     setRemoveServerProfile,
     setVolumePickerOpen,
     setNetworkLocationsOpen,
     setConnectServerOpen,
     setConnectServerProfile,
+    setConnectServerInitial,
     toolbarCustomizeOpen,
     setToolbarCustomizeOpen,
     dialog,
@@ -215,6 +217,11 @@ function FileOctopusAppInner({
     setDiagnosticsMessage,
     setExportingDiagnostics,
     syncTerminalCwd,
+    onOpenConnectionWizard: (prefill) => {
+      setConnectServerProfile(null);
+      setConnectServerInitial(prefill ?? null);
+      setConnectServerOpen(true);
+    },
   });
 
   const pendingPaneModeRef = useRef<"single" | "dual" | null>(null);
@@ -428,6 +435,7 @@ function FileOctopusAppInner({
     setNetworkLocationsOpen,
     setConnectServerOpen,
     setConnectServerProfile,
+    setConnectServerInitial,
     setFilterFocusToken,
     setRecursiveSearchFocusToken,
     setPreviewOpen,
@@ -846,6 +854,7 @@ function FileOctopusAppInner({
       networkLocationsOpen={networkLocationsOpen}
       connectServerOpen={connectServerOpen}
       connectServerProfile={connectServerProfile}
+      connectServerInitial={connectServerInitial}
       removeServerProfile={removeServerProfile}
       busyProfileIds={busyProfileIds}
       toolbarCustomizeOpen={toolbarCustomizeOpen}
@@ -860,6 +869,7 @@ function FileOctopusAppInner({
       setNetworkLocationsOpen={setNetworkLocationsOpen}
       setConnectServerOpen={setConnectServerOpen}
       setConnectServerProfile={setConnectServerProfile}
+      setConnectServerInitial={setConnectServerInitial}
       setRemoveServerProfile={setRemoveServerProfile}
       connectProfile={connectProfile}
       disconnectProfile={disconnectProfile}

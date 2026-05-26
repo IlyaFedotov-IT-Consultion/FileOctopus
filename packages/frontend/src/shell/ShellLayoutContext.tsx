@@ -14,6 +14,7 @@ import type {
   JobSnapshot,
   OperationHistoryRecordDto,
   NetworkConnectionStatusDto,
+  NetworkConnectionDraftDto,
   NetworkProfileDto,
   RecentEntryDto,
   StarredEntryDto,
@@ -90,6 +91,7 @@ export interface ShellLayoutContextValue {
   networkLocationsOpen: boolean;
   connectServerOpen: boolean;
   connectServerProfile: NetworkProfileDto | null;
+  connectServerInitial: NetworkConnectionDraftDto | null;
   removeServerProfile: NetworkProfileDto | null;
   toolbarCustomizeOpen: boolean;
   busyProfileIds: Set<string>;
@@ -104,6 +106,7 @@ export interface ShellLayoutContextValue {
   setNetworkLocationsOpen: (v: boolean) => void;
   setConnectServerOpen: (v: boolean) => void;
   setConnectServerProfile: (profile: NetworkProfileDto | null) => void;
+  setConnectServerInitial: (profile: NetworkConnectionDraftDto | null) => void;
   setRemoveServerProfile: (profile: NetworkProfileDto | null) => void;
   connectProfile: (profileId: string) => Promise<void>;
   disconnectProfile: (profileId: string) => Promise<void>;
@@ -111,7 +114,7 @@ export interface ShellLayoutContextValue {
   forgetFingerprint: (profileId: string) => Promise<void>;
   saveProfile: (payload: {
     id?: string;
-    scheme: "sftp" | "ssh" | "smb" | "s3";
+    scheme: "sftp" | "ssh" | "smb" | "s3" | "webdav";
     label: string;
     host: string;
     port: number;
