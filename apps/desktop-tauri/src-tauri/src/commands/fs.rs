@@ -10,10 +10,10 @@ use app_ipc::{
     FileEntryDto, IpcError, ListArchiveRequest, ListArchiveResponse, ListDirectoriesRequest,
     ListDirectoriesResponse, ListStartRequest, ListStartResponse, OkResponse, OpenTerminalRequest,
     OpenTerminalResponse, PathPropertiesDto, PathPropertiesRequest, PathPropertiesResponse,
-    PathRequest, ReadFileRangeRequest, ReadFileRangeResponse, ReadImageAsDataUriRequest,
-    ReadImageAsDataUriResponse, ReadTextFileRequest, ReadTextFileResponse, StandardLocationDto,
-    StandardLocationsResponse, StatRequest, StatResponse, WriteTextFileRequest,
-    WriteTextFileResponse, DIRECTORY_BATCH_EVENT,
+    PathRequest, ReadFileAsDataUriRequest, ReadFileAsDataUriResponse, ReadFileRangeRequest,
+    ReadFileRangeResponse, ReadImageAsDataUriRequest, ReadImageAsDataUriResponse,
+    ReadTextFileRequest, ReadTextFileResponse, StandardLocationDto, StandardLocationsResponse,
+    StatRequest, StatResponse, WriteTextFileRequest, WriteTextFileResponse, DIRECTORY_BATCH_EVENT,
 };
 use fs_core::{external_open, locations, metadata, vfs_io::VfsFilesystem};
 use tauri::{AppHandle, State};
@@ -330,9 +330,11 @@ pub async fn fs_properties(
 }
 
 const MAX_IMAGE_BYTES: u64 = 20 * 1024 * 1024; // 20 MB
+const MAX_DATA_URI_BYTES: u64 = 20 * 1024 * 1024; // 20 MB
 
 fn mime_for_extension(ext: &str) -> &'static str {
     match ext {
+        ".pdf" => "application/pdf",
         ".png" => "image/png",
         ".jpg" | ".jpeg" => "image/jpeg",
         ".gif" => "image/gif",
@@ -340,8 +342,73 @@ fn mime_for_extension(ext: &str) -> &'static str {
         ".webp" => "image/webp",
         ".svg" => "image/svg+xml",
         ".ico" => "image/x-icon",
+        ".mp3" => "audio/mpeg",
+        ".ogg" | ".oga" => "audio/ogg",
+        ".wav" => "audio/wav",
+        ".flac" => "audio/flac",
+        ".aac" => "audio/aac",
+        ".m4a" => "audio/mp4",
+        ".opus" => "audio/opus",
+        ".mp4" | ".m4v" => "video/mp4",
+        ".webm" => "video/webm",
+        ".mkv" => "video/x-matroska",
+        ".mov" => "video/quicktime",
+        ".avi" => "video/x-msvideo",
+        ".wmv" => "video/x-ms-wmv",
+        ".mpg" | ".mpeg" => "video/mpeg",
+        ".3gp" => "video/3gpp",
         _ => "application/octet-stream",
     }
+}
+
+#[tauri::command]
+pub async fn fs_read_file_as_data_uri(
+    request: ReadFileAsDataUriRequest,
+    state: State<'_, Arc<AppState>>,
+) -> Result<ReadFileAsDataUriResponse, IpcError> {
+    let uri = ResourceUri::parse(&request.uri).map_err(IpcError::from)?;
+    let entry = state.vfs().stat(&uri).await.map_err(IpcError::from)?;
+
+    if entry.kind == FileKind::Directory {
+        return Err(IpcError::is_directory(
+            "cannot read a directory as data URI",
+        ));
+    }
+
+    let max_bytes = request
+        .max_bytes
+        .unwrap_or(MAX_DATA_URI_BYTES)
+        .min(MAX_DATA_URI_BYTES);
+
+    if entry.size.is_some_and(|size| size > max_bytes) {
+        return Err(IpcError::file_too_large(format!(
+            "file too large: {} bytes (max {} bytes)",
+            entry.size.unwrap_or(0),
+            max_bytes
+        )));
+    }
+
+    let vfs = VfsFilesystem::with_sessions(state.sessions(), state.vfs());
+    let read_len = entry.size.unwrap_or(max_bytes);
+    let buf = vfs
+        .read_file_prefix(&uri, read_len)
+        .map_err(IpcError::from)?;
+    let byte_size = entry.size.unwrap_or(buf.len() as u64);
+
+    let b64 = base64::Engine::encode(&base64::engine::general_purpose::STANDARD, &buf);
+
+    let ext = entry
+        .extension
+        .as_deref()
+        .map(|e| format!(".{}", e.to_lowercase()))
+        .unwrap_or_default();
+    let mime = mime_for_extension(&ext);
+
+    Ok(ReadFileAsDataUriResponse {
+        data_uri: format!("data:{};base64,{}", mime, b64),
+        byte_size,
+        mime_type: mime.to_string(),
+    })
 }
 
 #[tauri::command]
@@ -386,6 +453,16 @@ pub async fn fs_read_image_as_data_uri(
         byte_size,
         mime_type: mime.to_string(),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::mime_for_extension;
+
+    #[test]
+    fn mime_for_extension_maps_pdf() {
+        assert_eq!(mime_for_extension(".pdf"), "application/pdf");
+    }
 }
 
 #[tauri::command]
