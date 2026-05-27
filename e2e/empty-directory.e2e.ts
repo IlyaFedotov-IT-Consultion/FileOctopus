@@ -6,14 +6,15 @@ test.describe("Empty directory state", () => {
     await page.waitForSelector(".fo-panel");
   });
 
+  // NOTE: These two tests are unconditionally skipped because navigating to an
+  // arbitrary empty temp directory requires real filesystem setup that depends
+  // on the Tauri backend runtime (not available in Vite preview mode).
+  // To test manually: navigate the active panel to an empty directory and
+  // verify the empty state placeholder appears.
+
   test.skip("shows empty placeholder when navigating to an empty directory", async ({
     page,
   }) => {
-    // NOTE: Skipped because navigating to an arbitrary empty temp directory
-    // requires filesystem setup that depends on the Tauri backend runtime.
-    // To test manually: navigate the active panel to an empty directory and
-    // verify the empty state placeholder appears.
-
     const emptyState = page.locator(".fo-empty-directory");
     await expect(emptyState).toBeVisible();
     await expect(emptyState).toContainText("This folder is empty");
@@ -23,8 +24,6 @@ test.describe("Empty directory state", () => {
   test.skip("empty pane state shows New Folder and Refresh buttons", async ({
     page,
   }) => {
-    // NOTE: Skipped because navigating to an arbitrary empty temp directory
-    // requires filesystem setup that depends on the Tauri backend runtime.
     const paneState = page.locator(".fo-pane-state-empty");
     await expect(paneState).toBeVisible();
     await expect(

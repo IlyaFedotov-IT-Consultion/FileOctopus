@@ -16,7 +16,6 @@ const MENU_SELECTOR = ".fo-context-menu";
 const ITEM_SELECTOR = '[role="menuitem"]';
 const SEPARATOR_SELECTOR = '[role="separator"]';
 const BACKDROP_SELECTOR = ".fo-menu-backdrop";
-const SORT_SUBMENU_SELECTOR = ".fo-context-submenu";
 
 test.describe("Context Menu", () => {
   test.beforeEach(async ({ page }) => {
@@ -344,10 +343,11 @@ test.describe("Context Menu", () => {
 
     const sortTrigger = page.locator(
       `${MENU_SELECTOR} > .fo-context-menu-item--submenu`,
+      { hasText: "Sort by" },
     );
     await expect(sortTrigger).toBeVisible();
     await expect(sortTrigger).toHaveAttribute("role", "menuitem");
-    await expect(sortTrigger).toContainText("Sort by…");
+    await expect(sortTrigger).toContainText("Sort by");
   });
 
   test("Sort by… submenu has nested role=menu with sort options", async ({
@@ -355,7 +355,15 @@ test.describe("Context Menu", () => {
   }) => {
     await openContextMenuOnFileRow(page);
 
-    const submenu = page.locator(SORT_SUBMENU_SELECTOR);
+    // Hover Sort by… to reveal the nested submenu
+    const sortTrigger = page.locator(
+      `${MENU_SELECTOR} > .fo-context-menu-item--submenu`,
+      { hasText: "Sort by" },
+    );
+    await sortTrigger.hover();
+    await page.waitForTimeout(300);
+
+    const submenu = sortTrigger.locator(".fo-context-submenu");
     await expect(submenu).toHaveAttribute("role", "menu");
 
     const submenuItems = submenu.locator(ITEM_SELECTOR);
@@ -373,7 +381,15 @@ test.describe("Context Menu", () => {
   test("Sort submenu items appear in expected order", async ({ page }) => {
     await openContextMenuOnFileRow(page);
 
-    const submenu = page.locator(SORT_SUBMENU_SELECTOR);
+    // Hover Sort by… to reveal the nested submenu
+    const sortTrigger = page.locator(
+      `${MENU_SELECTOR} > .fo-context-menu-item--submenu`,
+      { hasText: "Sort by" },
+    );
+    await sortTrigger.hover();
+    await page.waitForTimeout(300);
+
+    const submenu = sortTrigger.locator(".fo-context-submenu");
     const submenuItems = submenu.locator(ITEM_SELECTOR);
     const submenuTexts = (await submenuItems.allTextContents()).map((t) =>
       t.trim(),
