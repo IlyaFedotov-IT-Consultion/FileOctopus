@@ -87,6 +87,7 @@ const appPreferences: UserPreferencesDto = {
   terminalShell: "",
   terminalArgs: "",
   tabSessions: "",
+  hotlistEntries: "",
 };
 const preferencesGet = vi.fn(async () => ({
   preferences: appPreferences,

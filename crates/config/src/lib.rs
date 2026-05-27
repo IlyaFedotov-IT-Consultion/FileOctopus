@@ -68,6 +68,8 @@ pub struct UserPreferences {
     pub file_type_color_rules: String,
     pub layout_profiles: String,
     pub column_presets: String,
+    pub tab_sessions: String,
+    pub hotlist_entries: String,
     pub log_level: String,
     pub experimental_features: bool,
     pub cache_size_limit: u32,
@@ -129,6 +131,8 @@ impl Default for UserPreferences {
             file_type_color_rules: String::new(),
             layout_profiles: String::new(),
             column_presets: String::new(),
+            tab_sessions: String::new(),
+            hotlist_entries: String::new(),
             log_level: "warn".to_string(),
             experimental_features: false,
             cache_size_limit: 256,
@@ -650,6 +654,12 @@ impl UserPreferences {
                 "diagnosticsExportPath",
                 self.diagnostics_export_path.clone(),
             ),
+            ("customShortcuts", self.custom_shortcuts.clone()),
+            ("fileTypeColorRules", self.file_type_color_rules.clone()),
+            ("layoutProfiles", self.layout_profiles.clone()),
+            ("columnPresets", self.column_presets.clone()),
+            ("tabSessions", self.tab_sessions.clone()),
+            ("hotlistEntries", self.hotlist_entries.clone()),
             ("logLevel", self.log_level.clone()),
             (
                 "experimentalFeatures",
@@ -826,6 +836,12 @@ fn apply_value(
         "columnPresets" => {
             preferences.column_presets = parse_column_presets(value)?;
         }
+        "tabSessions" => {
+            preferences.tab_sessions = parse_tab_sessions(value)?;
+        }
+        "hotlistEntries" => {
+            preferences.hotlist_entries = parse_hotlist_entries(value)?;
+        }
         "logLevel" => {
             preferences.log_level = parse_log_level(value)?;
         }
@@ -1000,6 +1016,38 @@ fn parse_column_presets(value: &str) -> Result<String, PreferencesError> {
     }
     let _: serde_json::Value = serde_json::from_str(trimmed)
         .map_err(|error| invalid_value("columnPresets", format!("invalid JSON: {}", error)))?;
+    Ok(trimmed.to_string())
+}
+
+fn parse_tab_sessions(value: &str) -> Result<String, PreferencesError> {
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        return Ok(String::new());
+    }
+    if trimmed.len() > 65536 {
+        return Err(invalid_value(
+            "tabSessions",
+            "value is too long".to_string(),
+        ));
+    }
+    let _: serde_json::Value = serde_json::from_str(trimmed)
+        .map_err(|error| invalid_value("tabSessions", format!("invalid JSON: {}", error)))?;
+    Ok(trimmed.to_string())
+}
+
+fn parse_hotlist_entries(value: &str) -> Result<String, PreferencesError> {
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        return Ok(String::new());
+    }
+    if trimmed.len() > 65536 {
+        return Err(invalid_value(
+            "hotlistEntries",
+            "value is too long".to_string(),
+        ));
+    }
+    let _: serde_json::Value = serde_json::from_str(trimmed)
+        .map_err(|error| invalid_value("hotlistEntries", format!("invalid JSON: {}", error)))?;
     Ok(trimmed.to_string())
 }
 

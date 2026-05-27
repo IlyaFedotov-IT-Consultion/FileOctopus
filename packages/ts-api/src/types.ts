@@ -345,6 +345,7 @@ export interface UserPreferencesDto {
   layoutProfiles: string;
   columnPresets: string;
   tabSessions: string;
+  hotlistEntries: string;
   logLevel: string;
   experimentalFeatures: boolean;
   cacheSizeLimit: number;

@@ -113,6 +113,10 @@ pub struct UserPreferencesDto {
     #[serde(default)]
     pub column_presets: String,
     #[serde(default)]
+    pub tab_sessions: String,
+    #[serde(default)]
+    pub hotlist_entries: String,
+    #[serde(default)]
     pub log_level: String,
     #[serde(default)]
     pub experimental_features: bool,
@@ -1306,6 +1310,8 @@ impl From<config::UserPreferences> for UserPreferencesDto {
             file_type_color_rules: value.file_type_color_rules,
             layout_profiles: value.layout_profiles,
             column_presets: value.column_presets,
+            tab_sessions: value.tab_sessions,
+            hotlist_entries: value.hotlist_entries,
             log_level: value.log_level,
             experimental_features: value.experimental_features,
             cache_size_limit: value.cache_size_limit,

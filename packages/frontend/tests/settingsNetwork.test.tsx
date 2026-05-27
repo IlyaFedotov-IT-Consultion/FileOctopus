@@ -45,6 +45,7 @@ function makePrefs(
     layoutProfiles: "",
     columnPresets: "",
     tabSessions: "",
+    hotlistEntries: "",
     logLevel: "warn",
     experimentalFeatures: false,
     cacheSizeLimit: 256,
