@@ -187,6 +187,12 @@ export function PropertiesDialog({
             <dl className="fo-properties-grid">
               <PropertiesRow label="Name" value={properties.name} />
               <PropertiesRow label="Type" value={propertyType(properties)} />
+              {state.entry?.extension ? (
+                <PropertiesRow
+                  label="Extension"
+                  value={state.entry.extension}
+                />
+              ) : null}
               <PropertiesRow label="Size" value={sizeLabel} />
               {properties.kind === "directory" ? (
                 <PropertiesRow
@@ -238,6 +244,24 @@ export function PropertiesDialog({
           <PropertiesSection title="Attributes">
             <dl className="fo-properties-grid">
               <PropertiesRow label="Flags" value={formatFlags(properties)} />
+              {state.entry?.permissions ? (
+                <PropertiesRow
+                  label="Permissions"
+                  value={state.entry.permissions}
+                />
+              ) : null}
+              {state.entry?.owner ? (
+                <PropertiesRow label="Owner" value={state.entry.owner} />
+              ) : null}
+              {state.entry?.providerId ? (
+                <PropertiesRow
+                  label="Provider"
+                  value={state.entry.providerId}
+                />
+              ) : null}
+              {state.entry?.protocol ? (
+                <PropertiesRow label="Protocol" value={state.entry.protocol} />
+              ) : null}
             </dl>
           </PropertiesSection>
 

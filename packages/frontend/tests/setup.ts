@@ -1,4 +1,5 @@
 import { JSDOM } from "jsdom";
+import { vi } from "vitest";
 
 function installWebStorage(): void {
   try {
@@ -29,3 +30,90 @@ function installWebStorage(): void {
 }
 
 installWebStorage();
+
+if (typeof HTMLCanvasElement !== "undefined") {
+  Object.defineProperty(HTMLCanvasElement.prototype, "getContext", {
+    value: () => ({
+      fillRect() {},
+      clearRect() {},
+      getImageData() {
+        return { data: new Uint8ClampedArray() };
+      },
+      putImageData() {},
+      createImageData() {
+        return [];
+      },
+      setTransform() {},
+      drawImage() {},
+      save() {},
+      fillText() {},
+      restore() {},
+      beginPath() {},
+      moveTo() {},
+      lineTo() {},
+      closePath() {},
+      stroke() {},
+      translate() {},
+      scale() {},
+      rotate() {},
+      arc() {},
+      fill() {},
+      measureText() {
+        return { width: 0 };
+      },
+      transform() {},
+      rect() {},
+      clip() {},
+    }),
+    configurable: true,
+  });
+}
+
+vi.mock("@xterm/xterm", () => {
+  class Terminal {
+    open() {}
+    dispose() {}
+    focus() {}
+    blur() {}
+    loadAddon() {}
+    write() {}
+    writeln() {}
+    clear() {}
+    reset() {}
+    resize() {}
+    onData() {
+      return { dispose() {} };
+    }
+    onResize() {
+      return { dispose() {} };
+    }
+    onTitleChange() {
+      return { dispose() {} };
+    }
+    onSelectionChange() {
+      return { dispose() {} };
+    }
+    get textarea() {
+      return null;
+    }
+  }
+
+  return { Terminal };
+});
+
+vi.mock("@xterm/addon-fit", () => {
+  class FitAddon {
+    fit() {}
+    dispose() {}
+  }
+
+  return { FitAddon };
+});
+
+vi.mock("@xterm/addon-web-links", () => {
+  class WebLinksAddon {
+    dispose() {}
+  }
+
+  return { WebLinksAddon };
+});
