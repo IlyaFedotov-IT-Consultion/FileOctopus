@@ -79,6 +79,7 @@ const FALLBACK_PREFERENCES: UserPreferencesDto = {
   fileTypeColorRules: "",
   layoutProfiles: "",
   columnPresets: "",
+  tabSessions: "",
 };
 
 export interface DialogOverlayGroupProps {

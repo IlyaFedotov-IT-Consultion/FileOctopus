@@ -86,6 +86,7 @@ const appPreferences: UserPreferencesDto = {
   confirmClosePaneWithTerminal: true,
   terminalShell: "",
   terminalArgs: "",
+  tabSessions: "",
 };
 const preferencesGet = vi.fn(async () => ({
   preferences: appPreferences,

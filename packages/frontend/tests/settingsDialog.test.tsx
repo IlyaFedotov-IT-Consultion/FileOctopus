@@ -48,6 +48,7 @@ function makePreferences(
     terminalArgs: "",
     rememberLastUsedPanes: true,
     diagnosticsExportPath: "/tmp/fileoctopus-diagnostics.zip",
+    tabSessions: "",
     ...overrides,
   };
 }
