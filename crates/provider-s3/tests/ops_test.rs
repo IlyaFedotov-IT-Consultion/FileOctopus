@@ -85,3 +85,26 @@ fn object_entry_no_extension() {
     assert_eq!(entry.name, "Makefile");
     assert_eq!(entry.extension, None);
 }
+
+#[test]
+fn object_entry_dotfile_has_no_extension() {
+    let uri = ResourceUri::from_remote_profile("s3", PROFILE_ID, "/my-bucket/.env").unwrap();
+    let entry = object_entry(&uri, PROFILE_ID, ".env", 50, "2024-01-15T10:30:00Z").unwrap();
+    assert_eq!(entry.name, ".env");
+    assert_eq!(entry.extension, None);
+}
+
+#[test]
+fn dir_entry_nested_prefix_extracts_name() {
+    let uri = ResourceUri::from_remote_profile("s3", PROFILE_ID, "/my-bucket/a/b/c/").unwrap();
+    let entry = dir_entry(&uri, PROFILE_ID, "a/b/c/").unwrap();
+    assert_eq!(entry.name, "c");
+    assert!(entry.kind == vfs::FileKind::Directory);
+}
+
+#[test]
+fn parse_bucket_key_empty_path() {
+    let (bucket, key) = parse_bucket_key("");
+    assert_eq!(bucket, "");
+    assert_eq!(key, "");
+}

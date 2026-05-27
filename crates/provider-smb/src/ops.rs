@@ -310,6 +310,7 @@ pub fn map_smb_error(uri: &ResourceUri, message: &str) -> VfsError {
     let msg = message.to_lowercase();
     if msg.contains("not found")
         || msg.contains("no such file")
+        || msg.contains("no_such_file")
         || msg.contains("object_name_not_found")
     {
         VfsError::not_found(uri)
