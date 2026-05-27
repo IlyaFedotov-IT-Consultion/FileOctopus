@@ -88,6 +88,13 @@ const FALLBACK_PREFERENCES: UserPreferencesDto = {
   networkAutoReconnect: true,
   networkDefaultProtocol: "sftp",
   networkSshKeyPath: "",
+  editorFontFamily: "monospace",
+  editorFontSize: 14,
+  editorTabSize: 4,
+  editorWordWrap: true,
+  editorAutoSave: false,
+  editorSyntaxHighlighting: true,
+  editorLineNumbers: true,
 };
 
 export interface DialogOverlayGroupProps {

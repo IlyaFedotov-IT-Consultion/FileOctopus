@@ -48,6 +48,15 @@ fn default_true() -> bool {
 fn default_network_protocol() -> String {
     "sftp".to_string()
 }
+fn default_editor_font_family() -> String {
+    "monospace".to_string()
+}
+fn default_editor_font_size() -> u32 {
+    14
+}
+fn default_editor_tab_size() -> u32 {
+    4
+}
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -110,6 +119,20 @@ pub struct UserPreferencesDto {
     pub network_default_protocol: String,
     #[serde(default)]
     pub network_ssh_key_path: String,
+    #[serde(default = "default_editor_font_family")]
+    pub editor_font_family: String,
+    #[serde(default = "default_editor_font_size")]
+    pub editor_font_size: u32,
+    #[serde(default = "default_editor_tab_size")]
+    pub editor_tab_size: u32,
+    #[serde(default = "default_true")]
+    pub editor_word_wrap: bool,
+    #[serde(default)]
+    pub editor_auto_save: bool,
+    #[serde(default = "default_true")]
+    pub editor_syntax_highlighting: bool,
+    #[serde(default = "default_true")]
+    pub editor_line_numbers: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -1274,6 +1297,13 @@ impl From<config::UserPreferences> for UserPreferencesDto {
             network_auto_reconnect: value.network_auto_reconnect,
             network_default_protocol: value.network_default_protocol,
             network_ssh_key_path: value.network_ssh_key_path,
+            editor_font_family: value.editor_font_family,
+            editor_font_size: value.editor_font_size,
+            editor_tab_size: value.editor_tab_size,
+            editor_word_wrap: value.editor_word_wrap,
+            editor_auto_save: value.editor_auto_save,
+            editor_syntax_highlighting: value.editor_syntax_highlighting,
+            editor_line_numbers: value.editor_line_numbers,
         }
     }
 }

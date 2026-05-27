@@ -76,6 +76,13 @@ pub struct UserPreferences {
     pub network_auto_reconnect: bool,
     pub network_default_protocol: String,
     pub network_ssh_key_path: String,
+    pub editor_font_family: String,
+    pub editor_font_size: u32,
+    pub editor_tab_size: u32,
+    pub editor_word_wrap: bool,
+    pub editor_auto_save: bool,
+    pub editor_syntax_highlighting: bool,
+    pub editor_line_numbers: bool,
 }
 
 impl Default for UserPreferences {
@@ -126,6 +133,13 @@ impl Default for UserPreferences {
             network_auto_reconnect: true,
             network_default_protocol: "sftp".to_string(),
             network_ssh_key_path: String::new(),
+            editor_font_family: "monospace".to_string(),
+            editor_font_size: 14,
+            editor_tab_size: 4,
+            editor_word_wrap: true,
+            editor_auto_save: false,
+            editor_syntax_highlighting: true,
+            editor_line_numbers: true,
         }
     }
 }
@@ -651,6 +665,16 @@ impl UserPreferences {
                 self.network_default_protocol.clone(),
             ),
             ("networkSshKeyPath", self.network_ssh_key_path.clone()),
+            ("editorFontFamily", self.editor_font_family.clone()),
+            ("editorFontSize", self.editor_font_size.to_string()),
+            ("editorTabSize", self.editor_tab_size.to_string()),
+            ("editorWordWrap", self.editor_word_wrap.to_string()),
+            ("editorAutoSave", self.editor_auto_save.to_string()),
+            (
+                "editorSyntaxHighlighting",
+                self.editor_syntax_highlighting.to_string(),
+            ),
+            ("editorLineNumbers", self.editor_line_numbers.to_string()),
         ]
     }
 }
@@ -813,6 +837,33 @@ fn apply_value(
         }
         "networkSshKeyPath" => {
             preferences.network_ssh_key_path = parse_file_path(value)?;
+        }
+        "editorFontFamily" => {
+            preferences.editor_font_family = parse_terminal_shell(value)?;
+        }
+        "editorFontSize" => {
+            preferences.editor_font_size = value
+                .parse::<u32>()
+                .map_err(|error| invalid_value(key, error.to_string()))?
+                .clamp(8, 72);
+        }
+        "editorTabSize" => {
+            preferences.editor_tab_size = value
+                .parse::<u32>()
+                .map_err(|error| invalid_value(key, error.to_string()))?
+                .clamp(1, 16);
+        }
+        "editorWordWrap" => {
+            preferences.editor_word_wrap = parse_bool(value, key)?;
+        }
+        "editorAutoSave" => {
+            preferences.editor_auto_save = parse_bool(value, key)?;
+        }
+        "editorSyntaxHighlighting" => {
+            preferences.editor_syntax_highlighting = parse_bool(value, key)?;
+        }
+        "editorLineNumbers" => {
+            preferences.editor_line_numbers = parse_bool(value, key)?;
         }
         _ => {}
     }

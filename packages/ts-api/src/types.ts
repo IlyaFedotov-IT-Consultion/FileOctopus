@@ -353,6 +353,13 @@ export interface UserPreferencesDto {
   networkAutoReconnect: boolean;
   networkDefaultProtocol: string;
   networkSshKeyPath: string;
+  editorFontFamily: string;
+  editorFontSize: number;
+  editorTabSize: number;
+  editorWordWrap: boolean;
+  editorAutoSave: boolean;
+  editorSyntaxHighlighting: boolean;
+  editorLineNumbers: boolean;
 }
 
 export interface AutostartStatusDto {

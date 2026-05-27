@@ -70,6 +70,13 @@ export function createPreviewTransport(): IpcTransport {
     networkAutoReconnect: true,
     networkDefaultProtocol: "sftp",
     networkSshKeyPath: "",
+    editorFontFamily: "monospace",
+    editorFontSize: 14,
+    editorTabSize: 4,
+    editorWordWrap: true,
+    editorAutoSave: false,
+    editorSyntaxHighlighting: true,
+    editorLineNumbers: true,
   };
   const batchHandlers = new Set<(payload: DirectoryBatchEventDto) => void>();
   const folderSizeHandlers = new Set<
