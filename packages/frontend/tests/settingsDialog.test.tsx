@@ -49,6 +49,7 @@ function makePreferences(
     rememberLastUsedPanes: true,
     diagnosticsExportPath: "/tmp/fileoctopus-diagnostics.zip",
     tabSessions: "",
+    hotlistEntries: "",
     ...overrides,
   };
 }

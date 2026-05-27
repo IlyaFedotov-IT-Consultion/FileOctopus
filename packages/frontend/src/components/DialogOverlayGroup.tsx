@@ -80,6 +80,7 @@ const FALLBACK_PREFERENCES: UserPreferencesDto = {
   layoutProfiles: "",
   columnPresets: "",
   tabSessions: "",
+  hotlistEntries: "",
   logLevel: "warn",
   experimentalFeatures: false,
   cacheSizeLimit: 256,

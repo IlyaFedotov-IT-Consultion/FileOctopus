@@ -62,6 +62,7 @@ export function createPreviewTransport(): IpcTransport {
     layoutProfiles: "",
     columnPresets: "",
     tabSessions: "",
+    hotlistEntries: "",
     logLevel: "warn",
     experimentalFeatures: false,
     cacheSizeLimit: 256,
