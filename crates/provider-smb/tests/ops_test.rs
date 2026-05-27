@@ -44,3 +44,25 @@ fn smb_error_generic() {
         other => panic!("expected Internal, got {:?}", other),
     }
 }
+
+#[test]
+fn smb_error_no_such_file() {
+    let uri = ResourceUri::from_remote_profile("smb", PROFILE_ID, "/nonexistent").unwrap();
+    let err = map_smb_error(&uri, "NT_STATUS_NO_SUCH_FILE");
+    assert_eq!(err.code(), "not_found");
+}
+
+#[test]
+fn smb_error_not_found_case_insensitive() {
+    let uri = ResourceUri::from_remote_profile("smb", PROFILE_ID, "/gone").unwrap();
+    let err = map_smb_error(&uri, "object_NAME_not_FOUND");
+    assert_eq!(err.code(), "not_found");
+}
+
+#[test]
+fn join_path_preserves_multiple_segments() {
+    assert_eq!(
+        join_remote_path("/share/sub", "file.txt"),
+        "/share/sub/file.txt"
+    );
+}
