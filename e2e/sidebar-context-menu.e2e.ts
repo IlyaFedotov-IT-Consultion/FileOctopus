@@ -3,6 +3,11 @@ import { expect, test } from "@playwright/test";
 /**
  * E2E tests for the sidebar context menu on pinned/favorite entries.
  *
+ * Skip category: requires runtime favorites state.
+ * These tests are conditionally skipped when no Pinned section or no favorite
+ * items exist in the sidebar (Vite preview mode has no persisted favorites).
+ * They pass when run against a Tauri app with user-pinned favorites.
+ *
  * The sidebar renders a "Pinned" section when favorites exist.
  * Right-clicking a favorite entry shows a context menu with 3 items:
  *   - Rename Favorite
