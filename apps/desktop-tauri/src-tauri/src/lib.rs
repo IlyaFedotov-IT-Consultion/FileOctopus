@@ -73,6 +73,7 @@ pub fn run() {
             commands::fs::fs_stat,
             commands::fs::fs_read_text_file,
             commands::fs::fs_read_file_range,
+            commands::fs::fs_read_file_as_data_uri,
             commands::fs::fs_read_image_as_data_uri,
             commands::fs::fs_write_text_file,
             commands::fs::fs_compute_hash,
