@@ -10,6 +10,7 @@ import {
   PreviewPanel,
   isTextPreviewable,
   isImagePreviewable,
+  isPdfPreviewable,
   isMediaPreviewable,
   isPreviewable,
 } from "../src/components/PreviewPanel";
@@ -273,6 +274,35 @@ describe("isImagePreviewable", () => {
   });
 });
 
+// ─── isPdfPreviewable ───
+
+describe("isPdfPreviewable", () => {
+  it("returns false for null", () => {
+    expect(isPdfPreviewable(null)).toBe(false);
+  });
+
+  it("returns false for directories", () => {
+    expect(
+      isPdfPreviewable(makeEntry({ kind: "directory", name: "folder" })),
+    ).toBe(false);
+  });
+
+  it("returns true for .pdf extension", () => {
+    expect(isPdfPreviewable(makeEntry({ name: "doc.pdf" }))).toBe(true);
+  });
+
+  it("is case-insensitive", () => {
+    expect(isPdfPreviewable(makeEntry({ name: "report.PDF" }))).toBe(true);
+    expect(isPdfPreviewable(makeEntry({ name: "manual.Pdf" }))).toBe(true);
+  });
+
+  it("returns false for non-PDF files", () => {
+    expect(isPdfPreviewable(makeEntry({ name: "file.txt" }))).toBe(false);
+    expect(isPdfPreviewable(makeEntry({ name: "photo.png" }))).toBe(false);
+    expect(isPdfPreviewable(makeEntry({ name: "archive.zip" }))).toBe(false);
+  });
+});
+
 // ─── isPreviewable (combined) ───
 
 describe("isPreviewable", () => {
@@ -284,6 +314,10 @@ describe("isPreviewable", () => {
   it("returns true for image files", () => {
     expect(isPreviewable(makeEntry({ name: "photo.png" }))).toBe(true);
     expect(isPreviewable(makeEntry({ name: "banner.jpg" }))).toBe(true);
+  });
+
+  it("returns true for PDF files", () => {
+    expect(isPreviewable(makeEntry({ name: "document.pdf" }))).toBe(true);
   });
 
   it("returns false for non-previewable files", () => {

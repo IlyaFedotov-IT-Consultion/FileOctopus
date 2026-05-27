@@ -46,4 +46,14 @@ describe("detectViewerMode", () => {
     expect(detectViewerMode(entry("show.mov"))).toBe("media");
     expect(detectViewerMode(entry("recording.m4v"))).toBe("media");
   });
+
+  it("returns pdf for PDF files", () => {
+    expect(detectViewerMode(entry("document.pdf"))).toBe("pdf");
+    expect(detectViewerMode(entry("report.PDF"))).toBe("pdf");
+    expect(detectViewerMode(entry("manual.Pdf"))).toBe("pdf");
+  });
+
+  it("prioritizes pdf over text for .pdf extension", () => {
+    expect(detectViewerMode(entry("readme.pdf"))).toBe("pdf");
+  });
 });

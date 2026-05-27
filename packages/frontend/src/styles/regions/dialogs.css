@@ -1849,6 +1849,81 @@ dialog.fo-dialog[open] {
   object-fit: contain;
 }
 
+.fo-viewer-pdf-wrap {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow: auto;
+}
+
+.fo-viewer-pdf {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  overflow: auto;
+}
+
+.fo-viewer-pdf canvas {
+  max-width: 100%;
+  height: auto;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.fo-viewer-pdf-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  background: var(--fo-surface);
+  border-top: 1px solid var(--fo-border);
+}
+
+.fo-viewer-pdf-prev,
+.fo-viewer-pdf-next {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--fo-border);
+  border-radius: var(--fo-radius-sm, 4px);
+  background: var(--fo-surface);
+  color: var(--fo-text);
+  cursor: pointer;
+  font-size: 16px;
+  padding: 0;
+}
+
+.fo-viewer-pdf-prev:hover:not(:disabled),
+.fo-viewer-pdf-next:hover:not(:disabled) {
+  background: var(--fo-accent, #4a9eff);
+  color: white;
+  border-color: var(--fo-accent, #4a9eff);
+}
+
+.fo-viewer-pdf-prev:disabled,
+.fo-viewer-pdf-next:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.fo-viewer-pdf-page {
+  font-size: 12px;
+  color: var(--fo-muted-text);
+  min-width: 60px;
+  text-align: center;
+}
+
+.fo-viewer-pdf-error {
+  padding: 24px;
+  color: var(--fo-muted-text);
+  font-size: 14px;
+  text-align: center;
+}
+
 .fo-viewer-media-wrap {
   flex: 1 1 auto;
   display: flex;
