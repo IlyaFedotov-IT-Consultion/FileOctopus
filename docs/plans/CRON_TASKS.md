@@ -65,7 +65,7 @@
 |              | CLOUD-1    | P2       | done  | cron     | 917d772     | 2026-05-28       | 2026-05-28                            | RC spec §3.3                                                                                                                                        | Cloud providers: Google Drive, Dropbox, OneDrive — backend connector crates + VFS registration + frontend sidebar UI wiring                                 | None          | 2026-05-28 |
 | PLUG-1       | P2         | done     | cron  | 64f87a7  | 2026-05-28  | 2026-05-28       | RC spec §3.3                          | Plugin marketplace: plugin loader, manifest schema, sandboxed execution, UI marketplace browser                                                     | None                                                                                                                                                        | 2026-05-28    |
 | DIFF-1       | P2         | done     | cron  | bb87696  | 2026-05-28  | 2026-05-28       | RC spec §3.3                          | File content diff/merge: side-by-side diff view, merge conflict resolution UI, inline change markers                                                | None                                                                                                                                                        | 2026-05-28    |
-| ACL-1        | P3         | pending  | -     | -        | -           | -                | RC spec §3.3                          | Advanced ACL editing: POSIX/NTFS ACL viewer + editor, permission matrix UI, recursive apply                                                         | None                                                                                                                                                        | 2026-05-28    |
+|              | ACL-1      | P3       | done  | cron     | 24a9271     | 2026-05-28       | 2026-05-28                            | RC spec §3.3                                                                                                                                        | Advanced ACL editing: POSIX permission matrix UI, recursive apply, 11 Rust + 18 frontend tests                                                              | None          | 2026-05-28 |
 
 ---
 
@@ -98,7 +98,7 @@
 | PLUG-1   | **Done** — plugin marketplace with install/uninstall/toggle + UI (`64f87a7`)                    |
 | CLOUD-1  | Done — Google Drive, Dropbox, OneDrive providers (`917d772`)                                    |
 | DIFF-1   | **Promoted to Active RC Queue** (2026-05-28) — file diff/merge                                  |
-| ACL-1    | **Promoted to Active RC Queue** (2026-05-28) — ACL editing                                      |
+| ACL-1    | **Done** — POSIX ACL viewer/editor with permission matrix + recursive apply (`24a9271`)         |
 
 ---
 
@@ -106,8 +106,9 @@
 
 || ID | Result | Commit |
 || ----------- | ------------------------------------------------------------------------------------------------------------ | ---------- |
-|| SET-POLISH | Settings dialog polish: search/filter bar, section descriptions, consistent aria-labels (27 tests) | a54576c ||
-|| CLOUD-1 | Cloud providers: Google Drive, Dropbox, OneDrive connector crates + VFS registration + OAuth auth (20 tests) | 917d772 ||
+||| SET-POLISH | Settings dialog polish: search/filter bar, section descriptions, consistent aria-labels (27 tests) | a54576c ||
+||| ACL-1 | Advanced ACL editing: POSIX permission matrix UI, recursive apply, 11 Rust + 18 frontend tests | 24a9271 ||
+||| CLOUD-1 | Cloud providers: Google Drive, Dropbox, OneDrive connector crates + VFS registration + OAuth auth (20 tests) | 917d772 ||
 || PDF-1 | PDF preview: pdf.js canvas rendering, page navigation, error fallback, 13 tests | 3aa5615 |
 | TEST-1 | Test coverage audit: 22 new tests (16 frontend, 6 Rust), 1 SMB bug fix for NT_STATUS mapping | 8b75ab7 |
 | E2E-1 | E2E reliability audit: 165 pass, 27 conditional skips, 0 failures; sort submenu, selectors, retry, snapshots | 02bd975 |
