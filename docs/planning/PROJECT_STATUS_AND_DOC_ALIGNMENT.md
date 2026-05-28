@@ -88,18 +88,19 @@ Performance targets (MVP-PERF-\*) and release checklist (§16) remain **not form
 - **Storage gauge** — disk usage bar in status bar (P3-5)
 - **Column reorder** — drag column headers, persisted in localStorage (P3-1)
 - **E2E reliability** — 165 pass, 27 conditional skips, 0 failures (E2E-1)
+- **ACL editor** — POSIX permission matrix UI with recursive apply (ACL-1)
 
 ### Specified but not implemented (or stub only)
 
-| Item                       | Spec source       | Notes                                                                   |
-| -------------------------- | ----------------- | ----------------------------------------------------------------------- |
-| EXIF metadata display      | UI §Preview       | Properties dialog EXIF tab — post-RC visual expansion                   |
-| Rubber-band (lasso) select | UI Design Spec    | Requires virtual-scroll-aware coordinate math; deferred (P3-6)          |
-| Keyboard-navigable menus   | UI Design Spec §5 | Arrow-key navigation in dropdown menus (context menu sort submenu done) |
+|| Item | Spec source | Notes |
+|| -------------------------- | ----------------- | ----------------------------------------------------------------------- |
+|| EXIF metadata display | UI §Preview | Properties dialog EXIF tab — post-RC visual expansion |
+|| Rubber-band (lasso) select | UI Design Spec | Requires virtual-scroll-aware coordinate math; deferred (P3-6) |
+|| Keyboard-navigable menus | UI Design Spec §5 | Arrow-key navigation in dropdown menus (context menu sort submenu done) |
 
 ### Intentionally deferred (RC spec §3.3)
 
-P2P sync, AI search, cloud providers, plugins, diff/merge, mobile, ACL editor, etc.
+P2P sync, AI search, mobile, etc. Cloud providers, plugins, diff/merge, and ACL editor are now implemented.
 
 ## IPC surface vs RC spec §8
 
@@ -220,6 +221,6 @@ Legend: **Current** = matches codebase; **Target** = spec/backlog; **Stale** = o
 
 ## Test signal (2026-05-28)
 
-- `pnpm --filter @fileoctopus/frontend test` — 781 tests across 111 files pass (`vitest run --environment jsdom`)
-- `cargo test --workspace` — 401 tests pass across all crates
+- `pnpm --filter @fileoctopus/frontend test` — 810 tests across 114 files pass (`vitest run --environment jsdom`)
+- `cargo test --workspace` — 432 tests pass across all crates
 - Catalog drift guards: `packages/ts-api/tests/catalogs.test.ts` keeps Rust ↔ TS command/event constants and the 57-command count aligned
