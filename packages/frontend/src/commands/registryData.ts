@@ -488,4 +488,11 @@ export const COMMAND_REGISTRY = [
     label: "Operation History…",
     group: "app",
   },
+  {
+    id: "tools.multiRename",
+    label: "Multi-Rename…",
+    group: "tools",
+    shortcutMac: "⌘M",
+    shortcutWin: "Ctrl+M",
+  },
 ] as const;

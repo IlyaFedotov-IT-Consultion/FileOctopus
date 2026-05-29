@@ -33,6 +33,7 @@ import { VolumePickerDialog } from "./dialogs/VolumePickerDialog";
 import { NetworkLocationsDialog } from "./dialogs/NetworkLocationsDialog";
 import { ConnectServerDialog } from "./dialogs/ConnectServerDialog";
 import { RemoveServerDialog } from "./dialogs/RemoveServerDialog";
+import { MultiRenameDialog } from "./MultiRenameDialog";
 import type {
   FavoriteEntryDto,
   NetworkConnectionStatusDto,
@@ -184,6 +185,9 @@ export interface DialogOverlayGroupProps {
   diffLeftName: string;
   diffRightName: string;
   setDiffOpen: (open: boolean) => void;
+  multiRenameOpen: boolean;
+  setMultiRenameOpen: (open: boolean) => void;
+  multiRenameEntries: FileEntryDto[];
   connectProfile: (profileId: string) => Promise<void>;
   forgetFingerprint: (profileId: string) => Promise<void>;
   disconnectProfile: (profileId: string) => Promise<void>;
@@ -323,6 +327,9 @@ export function DialogOverlayGroup({
   diffLeftName,
   diffRightName,
   setDiffOpen,
+  multiRenameOpen,
+  setMultiRenameOpen,
+  multiRenameEntries,
   connectProfile,
   disconnectProfile,
   deleteProfile,
@@ -414,6 +421,12 @@ export function DialogOverlayGroup({
         rightName={diffRightName}
         fs={fs}
         onClose={() => setDiffOpen(false)}
+      />
+      <MultiRenameDialog
+        open={multiRenameOpen}
+        entries={multiRenameEntries}
+        onClose={() => setMultiRenameOpen(false)}
+        onExecute={() => setMultiRenameOpen(false)}
       />
       <AboutDialog
         open={aboutOpen}

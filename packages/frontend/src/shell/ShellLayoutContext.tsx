@@ -140,6 +140,7 @@ export interface ShellLayoutContextValue {
   diagnosticsMessage: string | null;
   exportingDiagnostics: boolean;
   isProductionBuild: boolean;
+  multiRenameOpen: boolean;
   setSettingsOpen: (v: boolean) => void;
   setShortcutsOpen: (v: boolean) => void;
   setCommandPaletteOpen: (v: boolean) => void;
@@ -158,6 +159,7 @@ export interface ShellLayoutContextValue {
   setDiffRightUri: (v: string) => void;
   setDiffLeftName: (v: string) => void;
   setDiffRightName: (v: string) => void;
+  setMultiRenameOpen: (v: boolean) => void;
   isTextEditable: (entry: FileEntryDto | null) => boolean;
   refreshActivePane: () => void;
   setDiagnosticsOpen: (v: boolean) => void;

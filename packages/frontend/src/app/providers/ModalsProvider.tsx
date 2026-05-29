@@ -46,6 +46,7 @@ export interface ModalsContextValue {
   diffLeftName: string;
   diffRightName: string;
   dialog: OperationDialog | null;
+  multiRenameOpen: boolean;
   setSettingsOpen: Dispatch<SetStateAction<boolean>>;
   setShortcutsOpen: Dispatch<SetStateAction<boolean>>;
   setCommandPaletteOpen: Dispatch<SetStateAction<boolean>>;
@@ -79,6 +80,7 @@ export interface ModalsContextValue {
   setDiffLeftName: Dispatch<SetStateAction<string>>;
   setDiffRightName: Dispatch<SetStateAction<string>>;
   setDialog: Dispatch<SetStateAction<OperationDialog | null>>;
+  setMultiRenameOpen: Dispatch<SetStateAction<boolean>>;
 }
 
 const ModalsContext = createContext<ModalsContextValue | null>(null);
@@ -128,6 +130,7 @@ export function ModalsProvider({ children }: { children: ReactNode }) {
   const [diffLeftName, setDiffLeftName] = useState("");
   const [diffRightName, setDiffRightName] = useState("");
   const [dialog, setDialog] = useState<OperationDialog | null>(null);
+  const [multiRenameOpen, setMultiRenameOpen] = useState(false);
 
   const value = useMemo<ModalsContextValue>(
     () => ({
@@ -162,6 +165,7 @@ export function ModalsProvider({ children }: { children: ReactNode }) {
       diffLeftName,
       diffRightName,
       dialog,
+      multiRenameOpen,
       setSettingsOpen,
       setShortcutsOpen,
       setCommandPaletteOpen,
@@ -193,6 +197,7 @@ export function ModalsProvider({ children }: { children: ReactNode }) {
       setDiffLeftName,
       setDiffRightName,
       setDialog,
+      setMultiRenameOpen,
     }),
     [
       settingsOpen,
@@ -226,6 +231,7 @@ export function ModalsProvider({ children }: { children: ReactNode }) {
       diffLeftName,
       diffRightName,
       dialog,
+      multiRenameOpen,
     ],
   );
 
