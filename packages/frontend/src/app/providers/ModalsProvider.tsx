@@ -47,6 +47,7 @@ export interface ModalsContextValue {
   diffRightName: string;
   dialog: OperationDialog | null;
   multiRenameOpen: boolean;
+  syncDirectoriesOpen: boolean;
   setSettingsOpen: Dispatch<SetStateAction<boolean>>;
   setShortcutsOpen: Dispatch<SetStateAction<boolean>>;
   setCommandPaletteOpen: Dispatch<SetStateAction<boolean>>;
@@ -81,6 +82,7 @@ export interface ModalsContextValue {
   setDiffRightName: Dispatch<SetStateAction<string>>;
   setDialog: Dispatch<SetStateAction<OperationDialog | null>>;
   setMultiRenameOpen: Dispatch<SetStateAction<boolean>>;
+  setSyncDirectoriesOpen: Dispatch<SetStateAction<boolean>>;
 }
 
 const ModalsContext = createContext<ModalsContextValue | null>(null);
@@ -131,6 +133,7 @@ export function ModalsProvider({ children }: { children: ReactNode }) {
   const [diffRightName, setDiffRightName] = useState("");
   const [dialog, setDialog] = useState<OperationDialog | null>(null);
   const [multiRenameOpen, setMultiRenameOpen] = useState(false);
+  const [syncDirectoriesOpen, setSyncDirectoriesOpen] = useState(false);
 
   const value = useMemo<ModalsContextValue>(
     () => ({
@@ -166,6 +169,7 @@ export function ModalsProvider({ children }: { children: ReactNode }) {
       diffRightName,
       dialog,
       multiRenameOpen,
+      syncDirectoriesOpen,
       setSettingsOpen,
       setShortcutsOpen,
       setCommandPaletteOpen,
@@ -198,6 +202,7 @@ export function ModalsProvider({ children }: { children: ReactNode }) {
       setDiffRightName,
       setDialog,
       setMultiRenameOpen,
+      setSyncDirectoriesOpen,
     }),
     [
       settingsOpen,
@@ -232,6 +237,7 @@ export function ModalsProvider({ children }: { children: ReactNode }) {
       diffRightName,
       dialog,
       multiRenameOpen,
+      syncDirectoriesOpen,
     ],
   );
 

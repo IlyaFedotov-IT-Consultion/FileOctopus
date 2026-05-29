@@ -495,4 +495,9 @@ export const COMMAND_REGISTRY = [
     shortcutMac: "⌘M",
     shortcutWin: "Ctrl+M",
   },
+  {
+    id: "tools.syncDirectories",
+    label: "Synchronize Directories…",
+    group: "tools",
+  },
 ] as const;

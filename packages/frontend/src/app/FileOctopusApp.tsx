@@ -85,6 +85,7 @@ function FileOctopusAppInner({
     setClipboard,
     setContextMenu,
     setSearch,
+    setContentSearch,
     setPathFocusToken,
     setRenameFocusToken,
     setFilterFocusToken,
@@ -183,6 +184,8 @@ function FileOctopusAppInner({
     setDialog,
     multiRenameOpen,
     setMultiRenameOpen,
+    syncDirectoriesOpen,
+    setSyncDirectoriesOpen,
   } = useModals();
 
   const {
@@ -202,6 +205,8 @@ function FileOctopusAppInner({
     applyFolderSizeCompleted,
     applyRecursiveSearchMatch,
     applyRecursiveSearchCompleted,
+    applyContentSearchMatch,
+    applyContentSearchCompleted,
     clearHistory,
     exportDiagnostics,
   } = useEventHandlers({
@@ -215,6 +220,7 @@ function FileOctopusAppInner({
     setActivityCollapsed,
     setOperationError,
     setSearch,
+    setContentSearch,
     setAutostart,
     setFavorites,
     setRecentToday,
@@ -320,6 +326,8 @@ function FileOctopusAppInner({
     applyFolderSizeCompleted,
     applyRecursiveSearchMatch,
     applyRecursiveSearchCompleted,
+    applyContentSearchMatch,
+    applyContentSearchCompleted,
     setAutostart,
     setSettingsOpen,
     setShortcutsOpen,
@@ -376,6 +384,7 @@ function FileOctopusAppInner({
     state,
     dispatch,
     setSearch,
+    setContentSearch,
     setDialog,
     setClipboard,
     clipboard,
@@ -566,6 +575,7 @@ function FileOctopusAppInner({
       void updatePreference("toolbarVisible", String(!toolbarVisible));
     },
     setMultiRenameOpen,
+    setSyncDirectoriesOpen,
     removeRecentEntry: async (uri: string) => {
       try {
         await client.navigation.removeRecent({ uri });
@@ -836,6 +846,8 @@ function FileOctopusAppInner({
       }}
       state={state}
       activeTabUri={activeTab(state.panels[state.activePanelId]).uri}
+      leftPanelUri={activeTab(state.panels.left).uri}
+      rightPanelUri={activeTab(state.panels.right).uri}
       locations={locations}
       favorites={favorites}
       recentToday={recentToday}
@@ -933,6 +945,8 @@ function FileOctopusAppInner({
       setDiffLeftName={setDiffLeftName}
       setDiffRightName={setDiffRightName}
       setMultiRenameOpen={setMultiRenameOpen}
+      syncDirectoriesOpen={syncDirectoriesOpen}
+      setSyncDirectoriesOpen={setSyncDirectoriesOpen}
       isTextEditable={isTextEditable}
       refreshActivePane={() => refreshPanel(state.activePanelId)}
       setDiagnosticsOpen={setDiagnosticsOpen}

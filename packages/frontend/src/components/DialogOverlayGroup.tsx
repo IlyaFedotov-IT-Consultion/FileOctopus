@@ -34,6 +34,7 @@ import { NetworkLocationsDialog } from "./dialogs/NetworkLocationsDialog";
 import { ConnectServerDialog } from "./dialogs/ConnectServerDialog";
 import { RemoveServerDialog } from "./dialogs/RemoveServerDialog";
 import { MultiRenameDialog } from "./MultiRenameDialog";
+import { SyncDirectoriesDialog } from "./dialogs/SyncDirectoriesDialog";
 import type {
   FavoriteEntryDto,
   NetworkConnectionStatusDto,
@@ -139,6 +140,8 @@ export interface DialogOverlayGroupProps {
   networkProfiles: NetworkProfileDto[];
   networkStatuses: NetworkConnectionStatusDto[];
   goToLocationInitialUri: string;
+  leftPanelUri: string;
+  rightPanelUri: string;
   favorites: FavoriteEntryDto[];
   history: OperationHistoryRecordDto[];
   operationError: string | null;
@@ -187,6 +190,8 @@ export interface DialogOverlayGroupProps {
   setDiffOpen: (open: boolean) => void;
   multiRenameOpen: boolean;
   setMultiRenameOpen: (open: boolean) => void;
+  syncDirectoriesOpen: boolean;
+  setSyncDirectoriesOpen: (open: boolean) => void;
   multiRenameEntries: FileEntryDto[];
   connectProfile: (profileId: string) => Promise<void>;
   forgetFingerprint: (profileId: string) => Promise<void>;
@@ -284,6 +289,8 @@ export function DialogOverlayGroup({
   networkProfiles,
   networkStatuses,
   goToLocationInitialUri,
+  leftPanelUri,
+  rightPanelUri,
   favorites,
   history,
   operationError,
@@ -329,6 +336,8 @@ export function DialogOverlayGroup({
   setDiffOpen,
   multiRenameOpen,
   setMultiRenameOpen,
+  syncDirectoriesOpen,
+  setSyncDirectoriesOpen,
   multiRenameEntries,
   connectProfile,
   disconnectProfile,
@@ -427,6 +436,13 @@ export function DialogOverlayGroup({
         entries={multiRenameEntries}
         onClose={() => setMultiRenameOpen(false)}
         onExecute={() => setMultiRenameOpen(false)}
+      />
+      <SyncDirectoriesDialog
+        open={syncDirectoriesOpen}
+        leftUri={leftPanelUri}
+        rightUri={rightPanelUri}
+        fs={fs}
+        onClose={() => setSyncDirectoriesOpen(false)}
       />
       <AboutDialog
         open={aboutOpen}
