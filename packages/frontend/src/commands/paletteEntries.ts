@@ -10,6 +10,7 @@ const GROUP_LABELS: Record<CommandGroup, string> = {
   clipboard: "Clipboard",
   selection: "Selection",
   app: "App",
+  tools: "Tools",
 };
 
 const PALETTE_EXCLUDED = new Set<string>([

@@ -120,6 +120,7 @@ export interface CommandDispatchDeps {
   equalizePanes: () => void;
   toggleStatusBar: () => void;
   toggleToolbar: () => void;
+  setMultiRenameOpen: (open: boolean) => void;
 }
 
 function resolveCommandId(id: string): string {
@@ -511,6 +512,9 @@ export function dispatchCommand(
       return true;
     case "selection.clear":
       deps.dispatch({ type: "clearSelection", panelId });
+      return true;
+    case "tools.multiRename":
+      deps.setMultiRenameOpen(true);
       return true;
     default:
       return false;

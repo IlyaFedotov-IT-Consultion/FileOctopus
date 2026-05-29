@@ -26,6 +26,18 @@ export function ShellOverlays() {
     return selectVisibleEntries(tab).filter(isImagePreviewable);
   }, [ctx.state, ctx.viewerEntry]);
 
+  const multiRenameEntries = useMemo(() => {
+    const tab = activeTab(ctx.state.panels[ctx.state.activePanelId]);
+    const selectedIds = tab.selectedIds;
+    if (selectedIds.length === 0) {
+      const focused = tab.selectedId ? tab.entriesById[tab.selectedId] : null;
+      return focused ? [focused] : [];
+    }
+    return selectedIds
+      .map((id) => tab.entriesById[id])
+      .filter(Boolean) as import("@fileoctopus/ts-api").FileEntryDto[];
+  }, [ctx.state]);
+
   return (
     <>
       <FirstRunOverlay
@@ -64,6 +76,9 @@ export function ShellOverlays() {
         diffLeftName={ctx.diffLeftName}
         diffRightName={ctx.diffRightName}
         setDiffOpen={ctx.setDiffOpen}
+        multiRenameOpen={ctx.multiRenameOpen}
+        setMultiRenameOpen={ctx.setMultiRenameOpen}
+        multiRenameEntries={multiRenameEntries}
         diagnosticsOpen={ctx.diagnosticsOpen}
         aboutOpen={ctx.aboutOpen}
         goToLocationOpen={ctx.goToLocationOpen}

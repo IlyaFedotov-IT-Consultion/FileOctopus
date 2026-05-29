@@ -181,6 +181,8 @@ function FileOctopusAppInner({
     setDiagnosticsOpen,
     setHelpOpen,
     setDialog,
+    multiRenameOpen,
+    setMultiRenameOpen,
   } = useModals();
 
   const {
@@ -563,6 +565,7 @@ function FileOctopusAppInner({
     toggleToolbar: () => {
       void updatePreference("toolbarVisible", String(!toolbarVisible));
     },
+    setMultiRenameOpen,
     removeRecentEntry: async (uri: string) => {
       try {
         await client.navigation.removeRecent({ uri });
@@ -910,6 +913,7 @@ function FileOctopusAppInner({
       diagnosticsMessage={diagnosticsMessage}
       exportingDiagnostics={exportingDiagnostics}
       isProductionBuild={isProductionBuild}
+      multiRenameOpen={multiRenameOpen}
       setSettingsOpen={setSettingsOpen}
       setShortcutsOpen={setShortcutsOpen}
       setCommandPaletteOpen={setCommandPaletteOpen}
@@ -928,6 +932,7 @@ function FileOctopusAppInner({
       setDiffRightUri={setDiffRightUri}
       setDiffLeftName={setDiffLeftName}
       setDiffRightName={setDiffRightName}
+      setMultiRenameOpen={setMultiRenameOpen}
       isTextEditable={isTextEditable}
       refreshActivePane={() => refreshPanel(state.activePanelId)}
       setDiagnosticsOpen={setDiagnosticsOpen}
