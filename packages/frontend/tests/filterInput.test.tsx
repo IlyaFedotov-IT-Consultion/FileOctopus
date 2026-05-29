@@ -163,6 +163,8 @@ vi.mock("@fileoctopus/ts-api", async (importOriginal) => {
         computeHash,
         openTerminal,
         discoverVolumes: vi.fn(async () => ({ volumes: [] })),
+        onContentSearchMatch: vi.fn(async () => () => {}),
+        onContentSearchCompleted: vi.fn(async () => () => {}),
       },
       terminal: mockTerminalClient(),
       fileOperations: {
