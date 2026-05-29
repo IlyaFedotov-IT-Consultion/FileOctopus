@@ -18,6 +18,21 @@
   --fo-commander-input-bg: var(--fo-classic-window);
   --fo-commander-input-border: var(--fo-classic-shadow);
   --fo-commander-keycap: var(--fo-classic-title);
+  /* Commander / status-bar surface tokens. Defaults preserve the existing
+     dark-styled status bar (also shown under the light theme); the
+     commander-blue theme overrides them below. */
+  --fo-statusbar-bg: #007acc;
+  --fo-path-rail-bg: #252526;
+  --fo-path-rail-field-bg: #1e1e1e;
+  --fo-path-rail-field-border: #3c3c3c;
+  --fo-commander-bar-bg: #2d2d30;
+  --fo-commander-key-bg: #2d2d30;
+  --fo-commander-key-border: #3c3c3c;
+  --fo-commander-key-hover-bg: #37373d;
+  --fo-commander-key-hover-border: #505050;
+  --fo-commander-keycap-bg: #1e1e1e;
+  --fo-commander-keycap-fg: #3794ff;
+  --fo-commander-keycap-border: #505050;
   position: relative;
   height: 100vh;
   padding: 0;
@@ -533,8 +548,8 @@
 .fo-shell-status-stack {
   display: grid;
   min-width: 0;
-  border-top: 1px solid #1e1e1e;
-  background: #007acc;
+  border-top: 1px solid var(--fo-path-rail-field-bg);
+  background: var(--fo-statusbar-bg);
 }
 
 .fo-bottom-path-rail {
@@ -543,17 +558,17 @@
   min-width: 0;
   min-height: var(--fo-statusbar-height);
   padding: 3px 6px;
-  border-bottom: 1px solid #252526;
-  background: #252526;
+  border-bottom: 1px solid var(--fo-path-rail-bg);
+  background: var(--fo-path-rail-bg);
 }
 
 .fo-bottom-path-rail span {
   width: 100%;
   min-width: 0;
   padding: 2px 8px;
-  border: 1px solid #3c3c3c;
+  border: 1px solid var(--fo-path-rail-field-border);
   border-radius: 2px;
-  background: #1e1e1e;
+  background: var(--fo-path-rail-field-bg);
   color: var(--fo-commander-text);
   font-family:
     ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
@@ -567,12 +582,12 @@
 
 .fo-commander-bar {
   display: grid;
-  grid-template-columns: repeat(8, minmax(0, 1fr));
+  grid-template-columns: repeat(10, minmax(0, 1fr));
   gap: 0;
   min-width: 0;
   padding: 0;
-  border-bottom: 1px solid #252526;
-  background: #2d2d30;
+  border-bottom: 1px solid var(--fo-path-rail-bg);
+  background: var(--fo-commander-bar-bg);
 }
 
 .fo-commander-key {
@@ -584,9 +599,9 @@
   min-height: 30px;
   padding: 0 7px;
   border: 0;
-  border-right: 1px solid #3c3c3c;
+  border-right: 1px solid var(--fo-commander-key-border);
   border-radius: 0;
-  background: #2d2d30;
+  background: var(--fo-commander-key-bg);
   color: var(--fo-commander-text);
   font-size: 12px;
   font-weight: 650;
@@ -595,8 +610,8 @@
 
 .fo-commander-key:hover:not(:disabled),
 .fo-commander-key:focus-visible {
-  border-color: #505050;
-  background: #37373d;
+  border-color: var(--fo-commander-key-hover-border);
+  background: var(--fo-commander-key-hover-bg);
   color: #ffffff;
 }
 
@@ -610,10 +625,10 @@
   place-items: center;
   min-width: 27px;
   min-height: 18px;
-  border: 1px solid #505050;
+  border: 1px solid var(--fo-commander-keycap-border);
   border-radius: 2px;
-  background: #1e1e1e;
-  color: #3794ff;
+  background: var(--fo-commander-keycap-bg);
+  color: var(--fo-commander-keycap-fg);
   font-family:
     ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
     sans-serif;
@@ -737,6 +752,33 @@
 
 :root[data-toolbar-hidden] .fo-operation-toolbar {
   display: none;
+}
+
+/* ── Commander Blue: retro skin for the shell chrome ── */
+:root[data-theme="commander-blue"] .fo-shell {
+  --fo-classic-face: #0000a8;
+  --fo-classic-window: #000080;
+  --fo-classic-light: #2a2ad6;
+  --fo-classic-shadow: #000050;
+  --fo-classic-dark: #000050;
+  --fo-classic-black: #000028;
+  --fo-classic-title: #00b8b8;
+  --fo-classic-title-end: #00b8b8;
+  --fo-classic-text: #d6f7f7;
+  --fo-classic-muted: #7bc4d4;
+
+  --fo-statusbar-bg: #00b8b8;
+  --fo-path-rail-bg: #000080;
+  --fo-path-rail-field-bg: #0000a8;
+  --fo-path-rail-field-border: #2a2ad6;
+  --fo-commander-bar-bg: #000080;
+  --fo-commander-key-bg: #000080;
+  --fo-commander-key-border: #2a2ad6;
+  --fo-commander-key-hover-bg: #0000c4;
+  --fo-commander-key-hover-border: #00d8d8;
+  --fo-commander-keycap-bg: #00b8b8;
+  --fo-commander-keycap-fg: #00102a;
+  --fo-commander-keycap-border: #5fefef;
 }
 
 :root[data-theme="dark"] .fo-shell {
