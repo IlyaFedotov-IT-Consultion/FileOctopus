@@ -417,6 +417,13 @@ Example: `Ready · 2 selected · 8 items · 82.3 MB selected · No errors`
 - **Rubber-band (lasso) select** — requires virtual-scroll-aware coordinate math; deferred (P3-6)
 - **Keyboard-navigable dropdown menus** — arrow-key navigation in toolbar/MenuBar dropdowns (context menu sort submenu done)
 
+### In progress (2026-05-29) — Commander Visual Identity
+
+- **Theme registry** — data-driven `THEMES` replacing hardcoded `system/light/dark`
+- **Commander Blue theme** — opt-in retro skin (token overrides; core surfaces)
+- **Function-key bar F1–F10** — extend existing F2–F9 commander bar with F1 Help + F10 Menu, theme-aware retro skin
+- Design: `docs/superpowers/specs/2026-05-29-commander-visual-identity-design.md`; plan: `docs/plans/2026-05-26-commander-features-expansion.md` Task 12
+
 ### Delivered since last snapshot (2026-05-23 → 2026-05-27)
 
 - **PDF preview** — pdf.js canvas rendering with page navigation, zoom, and error fallback (PDF-1)

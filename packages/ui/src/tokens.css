@@ -1,3 +1,55 @@
+:root[data-theme="commander-blue"] {
+  color-scheme: dark;
+  --fo-app-bg: #000050;
+  --fo-workspace-bg: #000050;
+  --fo-surface: #0000a8;
+  --fo-surface-elevated: #0000c4;
+  --fo-panel-bg: #0000a8;
+  --fo-editor-bg: #000080;
+  --fo-titlebar-bg: #000050;
+  --fo-text: #d6f7f7;
+  --fo-muted-text: #7bc4d4;
+  --fo-secondary-text: #7bc4d4;
+  --fo-body-muted: #7bc4d4;
+  --fo-disabled-text: #4f8fa0;
+  --fo-icon-muted: #9fe0e0;
+  --fo-border: #2a2ad6;
+  --fo-strong-border: #3a3ae0;
+  --fo-control-border: #3a3ae0;
+  --fo-subtle-border: #1a1a8c;
+  --fo-divider: #2a2ad6;
+  --fo-control-bg: #0000c4;
+  --fo-accent: #00d8d8;
+  --fo-accent-soft: #00b8b8;
+  --fo-on-accent: #00102a;
+  --fo-focus: #5fefef;
+  --fo-success: #5fef9f;
+  --fo-warning: #ffd75f;
+  --fo-danger: #ff8a8a;
+  --fo-danger-text: #ff9d9d;
+  --fo-danger-bg: #3a0a1a;
+  --fo-danger-border: #7a2030;
+  --fo-tab-bg: #000080;
+  --fo-tab-hover-bg: #0000c4;
+  --fo-selection-inactive-bg: #1a1a8c;
+  --fo-row-hover-bg: #1414a0;
+  --fo-strip-bg: #0a0a90;
+  --fo-dialog-border: #2a2ad6;
+  --fo-menu-shadow: rgb(0 0 40 / 55%);
+  --fo-dialog-shadow: rgb(0 0 40 / 55%);
+  --fo-backdrop: rgb(0 0 40 / 60%);
+  --fo-tag-red: #ff8a8a;
+  --fo-tag-orange: #ffa860;
+  --fo-tag-amber: #ffc94d;
+  --fo-tag-yellow: #ffe14d;
+  --fo-tag-green: #5fef9f;
+  --fo-tag-teal: #4fe0e0;
+  --fo-tag-blue: #6fb0ff;
+  --fo-tag-indigo: #8a9bff;
+  --fo-tag-violet: #b89bff;
+  --fo-tag-pink: #ff8ad6;
+}
+
 :root {
   --fo-text: #cccccc;
   --fo-app-bg: #1e1e1e;

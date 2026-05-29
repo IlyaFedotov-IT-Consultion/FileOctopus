@@ -833,6 +833,63 @@ Compare two directories and offer synchronization actions (copy newer, copy miss
 
 ---
 
+## Task 12: Commander Visual Identity (added 2026-05-29)
+
+**Priority:** High
+**Dependencies:** None
+**Design:** `docs/superpowers/specs/2026-05-29-commander-visual-identity-design.md`
+
+### Goal
+
+Give the app a distinct Norton/Total Commander look and finish the function-key
+bar, without changing the existing dark/light themes.
+
+### Subtasks
+
+1. **Theme registry** — new `packages/frontend/src/themeRegistry.ts` (`THEMES`,
+   `isKnownTheme`, `themeById`, `selectableThemes`); `applyThemePreference` in
+   `applyPreferences.ts` validates against it; `SettingsDisplay.tsx` theme
+   `<select>` renders from it.
+2. **Commander Blue theme** — additive `[data-theme="commander-blue"]` token
+   overrides in `packages/ui/src/tokens.css` (core palette + tabs/tags/dialog)
+   and `styles/regions/shell.css` (`--fo-classic-*` + commander/status-bar
+   surface tokens). Core surfaces only; dialogs inherit palette. `components.css`
+   needs no change — its dark rules are scoped to `[data-theme="dark"]` and fall
+   back to the base tokens that commander-blue overrides.
+3. **Function-key bar F1–F10** — extend `COMMANDER_FUNCTION_ITEMS` and
+   `createCommanderActions` in `shell/commanderActions.ts` with `F1 Help`
+   (`app.shortcuts`) and `F10 Menu` (`app.commandPalette`); grid `repeat(8)` →
+   `repeat(10)`; tokenize the hardcoded commander/status-bar hex; add F1/F10
+   combos in `commands/defaultBindings.ts` (restating registry combos so the
+   merge does not drop `Ctrl+/` / `Ctrl+P`).
+
+### Files
+
+- Create: `packages/frontend/src/themeRegistry.ts`,
+  `packages/frontend/tests/themeRegistry.test.ts`
+- Modify: `packages/frontend/src/applyPreferences.ts`,
+  `packages/frontend/src/components/settings/SettingsDisplay.tsx`,
+  `packages/frontend/src/shell/commanderActions.ts`,
+  `packages/frontend/src/commands/defaultBindings.ts`,
+  `packages/ui/src/tokens.css`,
+  `packages/frontend/src/styles/regions/shell.css`,
+  `packages/frontend/tests/commanderActions.test.ts`,
+  `packages/frontend/tests/themeTokens.test.ts`
+
+### Success criteria
+
+- Settings → Display lists Commander Blue; selecting it persists and reskins
+  core surfaces; dark/light render unchanged.
+- Function-key bar shows F1–F10; F1 opens help/shortcuts, F10 opens the palette.
+
+### Status
+
+- [x] Theme registry
+- [x] Commander Blue theme
+- [x] Function-key bar F1–F10 + tokenization
+
+---
+
 ## Notes
 
 - All new preferences follow the existing pattern: Rust-side validation, SQLite persistence, TypeScript DTO mirroring

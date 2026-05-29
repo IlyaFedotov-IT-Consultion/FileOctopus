@@ -1,13 +1,15 @@
 import type { UserPreferencesDto } from "@fileoctopus/ts-api";
 import type { ViewMode } from "./panelStore";
+import { isKnownTheme } from "./themeRegistry";
 
-export type ThemePreference = "system" | "light" | "dark";
+export type ThemePreference = string;
 export type DensityPreference = "compact" | "comfortable" | "spacious";
 
 export function applyThemePreference(theme: string) {
   const root = document.documentElement;
-  const resolved: ThemePreference =
-    theme === "light" || theme === "dark" ? theme : "system";
+  // Known, explicitly-selectable themes set their own data-theme. "system" and
+  // anything unrecognized fall through to prefers-color-scheme via "system".
+  const resolved = theme !== "system" && isKnownTheme(theme) ? theme : "system";
 
   root.dataset.theme = resolved;
 }

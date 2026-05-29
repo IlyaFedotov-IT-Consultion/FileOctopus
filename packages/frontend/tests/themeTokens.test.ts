@@ -180,6 +180,30 @@ describe("Design token architecture", () => {
     }
   });
 
+  it("defines the commander-blue theme across token layers", () => {
+    expect(
+      tokensContent.indexOf('[data-theme="commander-blue"]') !== -1,
+      "tokens.css missing commander-blue block",
+    ).toBe(true);
+    expect(
+      shellContent.indexOf('[data-theme="commander-blue"] .fo-shell') !== -1,
+      "shell.css missing commander-blue chrome block",
+    ).toBe(true);
+  });
+
+  it("tokenizes the commander bar / status bar surfaces", () => {
+    for (const token of [
+      "--fo-statusbar-bg",
+      "--fo-commander-bar-bg",
+      "--fo-commander-keycap-bg",
+    ]) {
+      expect(
+        shellContent.indexOf(token) !== -1,
+        `shell.css missing commander surface token ${token}`,
+      ).toBe(true);
+    }
+  });
+
   it("accent color variants are defined", () => {
     const accents = [
       "indigo",

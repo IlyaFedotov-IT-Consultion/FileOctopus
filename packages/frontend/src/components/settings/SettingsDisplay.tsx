@@ -1,4 +1,5 @@
 import type { UserPreferencesDto } from "@fileoctopus/ts-api";
+import { selectableThemes } from "../../themeRegistry";
 
 interface SettingsDisplayProps {
   preferences: UserPreferencesDto;
@@ -25,9 +26,11 @@ export function SettingsDisplay({
           value={preferences.theme}
           onChange={(event) => onChange("theme", event.target.value)}
         >
-          <option value="system">System</option>
-          <option value="light">Light</option>
-          <option value="dark">Dark</option>
+          {selectableThemes().map((theme) => (
+            <option key={theme.id} value={theme.id}>
+              {theme.label}
+            </option>
+          ))}
         </select>
       </label>
       <label className="fo-settings-field">

@@ -102,6 +102,8 @@ export function createCommanderActions(deps: CommanderActionsDeps) {
       handleTrash(panelId);
     },
     terminal: () => handleCommandSelect("op.openTerminal", panelId),
+    help: () => handleCommandSelect("app.shortcuts", panelId),
+    menu: () => handleCommandSelect("app.commandPalette", panelId),
     canEdit: mutation.canEdit,
     canRename: mutation.canRename,
     canCopy: mutation.canCopy,
@@ -114,6 +116,7 @@ export function createCommanderActions(deps: CommanderActionsDeps) {
 export type CommanderActions = ReturnType<typeof createCommanderActions>;
 
 export const COMMANDER_FUNCTION_ITEMS = [
+  { key: "F1", label: "Help", action: "help" as const },
   { key: "F2", label: "Rename", action: "rename" as const },
   { key: "F3", label: "View", action: "view" as const },
   { key: "F4", label: "Edit", action: "edit" as const },
@@ -122,6 +125,7 @@ export const COMMANDER_FUNCTION_ITEMS = [
   { key: "F7", label: "New Folder", action: "newFolder" as const },
   { key: "F8", label: "Delete", action: "delete" as const },
   { key: "F9", label: "Terminal", action: "terminal" as const },
+  { key: "F10", label: "Menu", action: "menu" as const },
 ];
 
 export function commanderItemDisabled(
@@ -131,6 +135,8 @@ export function commanderItemDisabled(
   switch (action) {
     case "view":
     case "terminal":
+    case "help":
+    case "menu":
       return false;
     case "newFolder":
       return !commander.canNewFolder;

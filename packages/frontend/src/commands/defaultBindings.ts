@@ -23,6 +23,25 @@ function parseShortcutString(str: string | undefined): KeyCombo[] {
   return combos;
 }
 
+function addOrExtendBinding(
+  bindings: KeyBinding[],
+  commandId: string,
+  comboStrings: string[],
+): void {
+  const combos: KeyCombo[] = [];
+  for (const str of comboStrings) {
+    const combo = parseKeyCombo(str);
+    if (combo) combos.push(combo);
+  }
+  if (combos.length === 0) return;
+  const existing = bindings.find((b) => b.commandId === commandId);
+  if (existing) {
+    existing.combos = combos;
+  } else {
+    bindings.push({ commandId, combos });
+  }
+}
+
 export function buildDefaultBindings(): KeyBinding[] {
   const bindings: KeyBinding[] = [];
 
@@ -50,6 +69,16 @@ export function buildDefaultBindings(): KeyBinding[] {
     commandId: "op.trash",
     combos: parseKeyCombo("Delete") ? [parseKeyCombo("Delete")!] : [],
   });
+
+  // Commander function-key bar: F1 Help and F10 Menu close the Norton layout.
+  // mergeBindings (and the registry loop) dedupe by commandId with last-wins,
+  // so these entries restate the registry combos alongside the new F-keys.
+  addOrExtendBinding(bindings, "app.shortcuts", ["Ctrl+/", "F1"]);
+  addOrExtendBinding(bindings, "app.commandPalette", [
+    "Ctrl+P",
+    "Ctrl+Shift+P",
+    "F10",
+  ]);
 
   return bindings;
 }
