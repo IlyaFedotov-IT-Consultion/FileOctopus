@@ -121,6 +121,7 @@ export interface CommandDispatchDeps {
   toggleStatusBar: () => void;
   toggleToolbar: () => void;
   setMultiRenameOpen: (open: boolean) => void;
+  setSyncDirectoriesOpen: (open: boolean) => void;
 }
 
 function resolveCommandId(id: string): string {
@@ -515,6 +516,9 @@ export function dispatchCommand(
       return true;
     case "tools.multiRename":
       deps.setMultiRenameOpen(true);
+      return true;
+    case "tools.syncDirectories":
+      deps.setSyncDirectoriesOpen(true);
       return true;
     default:
       return false;

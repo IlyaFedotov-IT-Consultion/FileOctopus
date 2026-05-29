@@ -78,6 +78,8 @@ export function ShellOverlays() {
         setDiffOpen={ctx.setDiffOpen}
         multiRenameOpen={ctx.multiRenameOpen}
         setMultiRenameOpen={ctx.setMultiRenameOpen}
+        syncDirectoriesOpen={ctx.syncDirectoriesOpen}
+        setSyncDirectoriesOpen={ctx.setSyncDirectoriesOpen}
         multiRenameEntries={multiRenameEntries}
         diagnosticsOpen={ctx.diagnosticsOpen}
         aboutOpen={ctx.aboutOpen}
@@ -90,6 +92,8 @@ export function ShellOverlays() {
         settingsPreferenceChange={ctx.settingsPreferenceChange}
         onConfirmClosePaneWithTerminal={ctx.onConfirmClosePaneWithTerminal}
         goToLocationInitialUri={ctx.activeTabUri}
+        leftPanelUri={ctx.leftPanelUri}
+        rightPanelUri={ctx.rightPanelUri}
         favorites={ctx.favorites}
         operationError={ctx.operationError}
         operationHistoryOpen={ctx.operationHistoryOpen}

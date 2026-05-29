@@ -40,6 +40,8 @@ export interface ShellLayoutContextValue {
   windowControls?: WindowControlHandlers;
   state: FileOctopusState;
   activeTabUri: string;
+  leftPanelUri: string;
+  rightPanelUri: string;
   locations: StandardLocationDto[];
   favorites: FavoriteEntryDto[];
   recentToday: RecentEntryDto[];
@@ -141,6 +143,7 @@ export interface ShellLayoutContextValue {
   exportingDiagnostics: boolean;
   isProductionBuild: boolean;
   multiRenameOpen: boolean;
+  syncDirectoriesOpen: boolean;
   setSettingsOpen: (v: boolean) => void;
   setShortcutsOpen: (v: boolean) => void;
   setCommandPaletteOpen: (v: boolean) => void;
@@ -160,6 +163,7 @@ export interface ShellLayoutContextValue {
   setDiffLeftName: (v: string) => void;
   setDiffRightName: (v: string) => void;
   setMultiRenameOpen: (v: boolean) => void;
+  setSyncDirectoriesOpen: (v: boolean) => void;
   isTextEditable: (entry: FileEntryDto | null) => boolean;
   refreshActivePane: () => void;
   setDiagnosticsOpen: (v: boolean) => void;
