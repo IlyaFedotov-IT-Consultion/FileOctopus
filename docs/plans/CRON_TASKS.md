@@ -1,7 +1,7 @@
 # FileOctopus — Cron Task Queue
 
 > Execution-facing queue for autonomous agents.
-> Last verified against repo state: 2026-05-29 01:09 UTC
+> Last verified against repo state: 2026-05-30 02:30 UTC
 >
 > **Note:** If Active RC Queue has fewer than 3 `pending` tasks, the agent MUST read `PROJECT_STATUS_AND_DOC_ALIGNMENT.md` §"Specified but not implemented" + `UI_FEATURE_INVENTORY.md` §13 and backfill immediately. Never stop with "queue empty" while deferred items exist.
 
@@ -71,7 +71,7 @@
 |              | CMD-4      | P2       | done    | cron     | 781ca75     | 2026-05-29       | 2026-05-29                            | commander-features-expansion Task 10                                                                                                                                  | File Compare: LCS diff engine + binary compare + fs_compare_files IPC + TS types + mock (11 Rust tests, backend only; frontend dialog deferred)             | None          | 2026-05-29 |
 | CMD-5        | P2         | done     | cron    | 9018ac4  | 2026-05-29  | 2026-05-29       | commander-features-expansion Task 11  | Directory Sync: compare two directories by name/size/date, propose sync plan, execute via job pipeline, SyncDirectoriesDialog, `crates/fs-core/src/sync.rs`           | None                                                                                                                                                        | 2026-05-29    |
 | CMD-6        | P2         | done     | cron    | 0bd8e91  | 2026-05-29  | 2026-05-29       | commander-features-expansion Task 9   | Directory Hotlist: Ctrl+D popup, numbered entries 1-9, HotlistDialog + ManageHotlistDialog, `hotlist` SQLite table, navigation commands                               | None                                                                                                                                                        | 2026-05-29    |
-| CMD-7        | P2         | pending  | -       | -        | -           | -                | commander-features-expansion Task 5   | Per-Pane Layout Settings: independent view mode/sort/columns per pane, column presets with save/load, Settings > File List > Per-Pane section                         | None                                                                                                                                                        | 2026-05-29    |
+| CMD-7        | P2         | done     | cron    | 24eedde  | 2026-05-30  | 2026-05-30       | commander-features-expansion Task 5   | Per-Pane Layout Settings: independent sort/viewMode/showHidden/columns per pane, per-pane localStorage persistence, hydratePreferences fallback                       | None                                                                                                                                                        | 2026-05-30    |
 |              | TEST-CMD   | P1       | done    | cron     | 3260a03     | 2026-05-29       | 2026-05-29                            | testing/README.md; 85% target                                                                                                                                         | Test coverage for new commander features: multi-rename engine tests, content search unit tests, compare/sync Rust tests, hotlist integration tests          | None          | 2026-05-29 |
 
 ---
@@ -113,7 +113,8 @@
 
 || ID | Result | Commit |
 || ----------- | ------------------------------------------------------------------------------------------------------------ | ---------- |
-||| SET-POLISH | Settings dialog polish: search/filter bar, section descriptions, consistent aria-labels (27 tests) | a54576c ||
+|||| SET-POLISH | Settings dialog polish: search/filter bar, section descriptions, consistent aria-labels (27 tests) | a54576c ||
+|||| CMD-7 | Per-Pane Layout Settings: independent sort/viewMode/showHidden/columns per pane, per-pane localStorage keys, hydratePreferences fallback, 8 tests | 24eedde ||
 ||| ACL-1 | Advanced ACL editing: POSIX permission matrix UI, recursive apply, 11 Rust + 18 frontend tests | 24a9271 ||
 ||| CLOUD-1 | Cloud providers: Google Drive, Dropbox, OneDrive connector crates + VFS registration + OAuth auth (20 tests) | 917d772 ||
 || PDF-1 | PDF preview: pdf.js canvas rendering, page navigation, error fallback, 13 tests | 3aa5615 |
