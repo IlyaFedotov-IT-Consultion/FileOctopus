@@ -93,8 +93,9 @@ export function buildVisibleHeaderGridTemplate(
   return parts.join(" ");
 }
 
-export function storedColumnWidths(): ColumnWidths {
-  const raw = readStorage(STORAGE_KEY);
+export function storedColumnWidths(panelId?: string): ColumnWidths {
+  const key = panelId ? `${STORAGE_KEY}.${panelId}` : STORAGE_KEY;
+  const raw = readStorage(key);
   if (!raw) return { ...DEFAULT_COLUMN_WIDTHS };
 
   try {
@@ -106,9 +107,13 @@ export function storedColumnWidths(): ColumnWidths {
   }
 }
 
-export function persistColumnWidths(widths: ColumnWidths): void {
+export function persistColumnWidths(
+  widths: ColumnWidths,
+  panelId?: string,
+): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(widths));
+    const key = panelId ? `${STORAGE_KEY}.${panelId}` : STORAGE_KEY;
+    localStorage.setItem(key, JSON.stringify(widths));
   } catch {
     // quota or security errors — silently ignore
   }
@@ -159,8 +164,11 @@ export function reorderVisibleColumns(
   return normalizeVisibleColumns(next);
 }
 
-export function storedVisibleColumns(): VisibleColumns {
-  const raw = readStorage(VISIBLE_STORAGE_KEY);
+export function storedVisibleColumns(panelId?: string): VisibleColumns {
+  const key = panelId
+    ? `${VISIBLE_STORAGE_KEY}.${panelId}`
+    : VISIBLE_STORAGE_KEY;
+  const raw = readStorage(key);
   if (!raw) return [...DEFAULT_VISIBLE_COLUMNS];
 
   try {
@@ -173,9 +181,15 @@ export function storedVisibleColumns(): VisibleColumns {
   }
 }
 
-export function persistVisibleColumns(visible: VisibleColumns): void {
+export function persistVisibleColumns(
+  visible: VisibleColumns,
+  panelId?: string,
+): void {
   try {
-    localStorage.setItem(VISIBLE_STORAGE_KEY, JSON.stringify(visible));
+    const key = panelId
+      ? `${VISIBLE_STORAGE_KEY}.${panelId}`
+      : VISIBLE_STORAGE_KEY;
+    localStorage.setItem(key, JSON.stringify(visible));
   } catch {
     // quota or security errors — silently ignore
   }
