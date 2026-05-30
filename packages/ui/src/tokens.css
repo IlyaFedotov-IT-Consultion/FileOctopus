@@ -33,6 +33,8 @@
   --fo-tab-hover-bg: #0000c4;
   --fo-selection-inactive-bg: #1a1a8c;
   --fo-row-hover-bg: #1414a0;
+  --fo-chrome-hover-bg: #0000c4;
+  --fo-chrome-hover-text: #ffffff;
   --fo-strip-bg: #0a0a90;
   --fo-dialog-border: #2a2ad6;
   --fo-menu-shadow: rgb(0 0 40 / 55%);
@@ -253,6 +255,8 @@
   --fo-row-hover-bg: #f3f3f3;
   --fo-selection-inactive-bg: #e4e6f1;
   --fo-icon-muted: #424242;
+  --fo-chrome-hover-bg: #e0e0e0;
+  --fo-chrome-hover-text: #1f1f1f;
 
   --fo-syntax-keyword: #0000ff;
   --fo-syntax-string: #a31515;
@@ -376,15 +380,19 @@
   --fo-spacing-xl: 16px;
   --fo-spacing-2xl: 24px;
 
-  /* Radius tokens (§20.2) */
+  /* Radius tokens (§20.2; UPP-H2)
+     xs = crisp commander content/inputs/keycaps; sm = popovers/dialogs. */
+  --fo-radius-xs: 2px;
   --fo-radius-sm: 6px;
   --fo-radius-md: 10px;
   --fo-radius-lg: 14px;
 
-  /* Elevation tokens (§20.2) */
-  --fo-elevation-popover: 0 8px 24px rgba(0, 0, 0, 0.12);
-  --fo-elevation-modal: 0 14px 36px rgba(0, 0, 0, 0.18);
-  --fo-elevation-drawer: 0 12px 32px rgba(0, 0, 0, 0.14);
+  /* Elevation tokens (§20.2; UPP-D1) — theme-aware: the shadow colour comes
+     from the per-theme --fo-menu-shadow / --fo-dialog-shadow so popovers and
+     modals get the right shadow weight in light, dark, and commander-blue. */
+  --fo-elevation-popover: 0 8px 24px var(--fo-menu-shadow);
+  --fo-elevation-modal: 0 14px 36px var(--fo-dialog-shadow);
+  --fo-elevation-drawer: 0 12px 32px var(--fo-menu-shadow);
 
   /* Component-height tokens (§5.3) */
   --fo-toolbar-height: 26px;
@@ -393,6 +401,47 @@
   --fo-splitter-width: 6px;
   --fo-toast-width: 360px;
   --fo-job-drawer-width: 420px;
+
+  /* Typography scale (UPP-H1) — see docs/ui-premium-polish-improvement-plan.md §8.2 */
+  --fo-font-size-xs: 10px;
+  --fo-font-size-sm: 11px;
+  --fo-font-size-md: 12px;
+  --fo-font-size-lg: 13px;
+  --fo-font-size-xl: 15px;
+  --fo-line-tight: 1.2;
+  --fo-line-normal: 1.4;
+
+  /* Chrome interaction tokens (UPP-A1) — dark defaults; overridden per theme.
+     These drive titlebar/menubar/toolbar hover so chrome follows the theme
+     instead of being pinned to dark values. */
+  --fo-chrome-hover-bg: #505050;
+  --fo-chrome-hover-text: #ffffff;
+
+  /* Focus ring (UPP-A2) — single standard ring for every interactive element */
+  --fo-focus-ring-width: 2px;
+  --fo-focus-ring-offset: 2px;
+  --fo-focus-ring: 0 0 0 var(--fo-focus-ring-width) var(--fo-focus);
+
+  /* Motion tokens (UPP-J1) — all transitions gated by prefers-reduced-motion */
+  --fo-motion-fast: 120ms;
+  --fo-motion-med: 200ms;
+  --fo-motion-ease: cubic-bezier(0.2, 0, 0.2, 1);
+
+  /* Status surface tokens (UPP-H1) — derived from the theme's status color +
+     surface so success/warning chips adapt to every theme automatically,
+     mirroring the explicit --fo-danger-bg/-border pair. */
+  --fo-success-bg: color-mix(in srgb, var(--fo-success) 16%, var(--fo-surface));
+  --fo-success-border: color-mix(
+    in srgb,
+    var(--fo-success) 55%,
+    var(--fo-surface)
+  );
+  --fo-warning-bg: color-mix(in srgb, var(--fo-warning) 16%, var(--fo-surface));
+  --fo-warning-border: color-mix(
+    in srgb,
+    var(--fo-warning) 55%,
+    var(--fo-surface)
+  );
 }
 
 :root[data-density="compact"] {

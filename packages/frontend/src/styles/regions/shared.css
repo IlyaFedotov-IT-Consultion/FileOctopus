@@ -72,7 +72,7 @@ button:disabled {
 .fo-shortcuts-group h3 {
   margin: 0 0 8px;
   color: var(--fo-muted-text);
-  font-size: 11px;
+  font-size: var(--fo-font-size-sm);
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -89,7 +89,7 @@ button:disabled {
 
 .fo-pane-badge {
   flex: 0 0 auto;
-  font-size: 13px;
+  font-size: var(--fo-font-size-lg);
   font-weight: 700;
 }
 
@@ -97,8 +97,8 @@ button:disabled {
   flex: 0 0 auto;
   border-radius: 999px;
   background: var(--fo-accent);
-  color: #fff;
-  font-size: 10px;
+  color: var(--fo-on-accent);
+  font-size: var(--fo-font-size-xs);
   font-weight: 700;
   padding: 4px 8px;
 }
@@ -106,7 +106,7 @@ button:disabled {
 .fo-pane-status {
   border-top: 1px solid var(--fo-border);
   color: var(--fo-muted-text);
-  font-size: 11px;
+  font-size: var(--fo-font-size-sm);
   padding: 4px 8px;
   text-align: center;
 }
@@ -211,7 +211,7 @@ button:disabled {
 .fo-segmented span {
   display: block;
   padding: 0.35rem 0.85rem;
-  font-size: 12px;
+  font-size: var(--fo-font-size-md);
   font-weight: 600;
   color: var(--fo-muted-text);
   transition:
@@ -287,11 +287,11 @@ button:disabled {
 }
 
 .fo-command-palette-label {
-  font-size: 13px;
+  font-size: var(--fo-font-size-lg);
 }
 
 .fo-command-palette-shortcut {
-  font-size: 11px;
+  font-size: var(--fo-font-size-sm);
   opacity: 0.5;
   font-family: var(--fo-mono, monospace);
 }
@@ -300,7 +300,7 @@ button:disabled {
   padding: 16px;
   text-align: center;
   opacity: 0.5;
-  font-size: 13px;
+  font-size: var(--fo-font-size-lg);
 }
 
 @keyframes fo-preview-slide-in {
