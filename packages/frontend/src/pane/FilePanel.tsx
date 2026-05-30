@@ -173,44 +173,49 @@ export function FilePanel({
   const selectedEntry =
     displayedEntries.find((entry) => entry.uri === tab.selectedId) ?? null;
   const [inlineRenameUri, setInlineRenameUri] = useState<string | null>(null);
-  const [columnWidths, setColumnWidths] =
-    useState<ColumnWidths>(storedColumnWidths);
-  const [visibleColumns, setVisibleColumns] =
-    useState<VisibleColumns>(storedVisibleColumns);
+  const [columnWidths, setColumnWidths] = useState<ColumnWidths>(() =>
+    storedColumnWidths(panelId),
+  );
+  const [visibleColumns, setVisibleColumns] = useState<VisibleColumns>(() =>
+    storedVisibleColumns(panelId),
+  );
 
   const handleColumnReorder = useCallback(
     (fromIndex: number, toIndex: number) => {
       setVisibleColumns((prev) => {
         const next = reorderVisibleColumns(prev, fromIndex, toIndex);
-        persistVisibleColumns(next);
+        persistVisibleColumns(next, panelId);
         return next;
       });
     },
-    [],
+    [panelId],
   );
 
-  const handleToggleColumn = useCallback((columnId: ColumnId) => {
-    if (columnId === "name") return;
-    setVisibleColumns((prev) => {
-      const next =
-        prev.indexOf(columnId) !== -1
-          ? (prev.filter((id) => id !== columnId) as VisibleColumns)
-          : ([...prev, columnId] as VisibleColumns);
-      persistVisibleColumns(next);
-      return next;
-    });
-  }, []);
+  const handleToggleColumn = useCallback(
+    (columnId: ColumnId) => {
+      if (columnId === "name") return;
+      setVisibleColumns((prev) => {
+        const next =
+          prev.indexOf(columnId) !== -1
+            ? (prev.filter((id) => id !== columnId) as VisibleColumns)
+            : ([...prev, columnId] as VisibleColumns);
+        persistVisibleColumns(next, panelId);
+        return next;
+      });
+    },
+    [panelId],
+  );
   const { dragOver, reset, dragTargetProps } = useFileOctopusDragTarget();
 
   const handleColumnResize = useCallback(
     (columnId: ColumnId, newWidth: number) => {
       setColumnWidths((prev) => {
         const next = { ...prev, [columnId]: Math.max(30, newWidth) };
-        persistColumnWidths(next);
+        persistColumnWidths(next, panelId);
         return next;
       });
     },
-    [],
+    [panelId],
   );
 
   useEffect(() => {
