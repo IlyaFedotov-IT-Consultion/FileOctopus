@@ -1095,7 +1095,7 @@ The subsections below retain illustrative DTO samples. Dotted names map through 
 
 The frontend consumes `@fileoctopus/ts-api` rather than raw Tauri invokes.
 
-**As implemented (RC, 2026-05-17):**
+**As implemented (2026-05-30):**
 
 ```text
 packages/ts-api/src/
@@ -1105,11 +1105,12 @@ packages/ts-api/src/
   normalizeError.ts
   types.ts
   clients/               # fs, fileOperations, jobs, history, diagnostics,
-                         # preferences, navigation, autostart
+                         # preferences, navigation, autostart, git,
+                         # terminal, network, plugin
   transports/            # tauri.ts, preview.ts
 ```
 
-**Post-RC** — optional `clients/git.ts`, `clients/terminal.ts` when embedded Git/PTY land. Archives stay on `FileOperationsClient` at RC.
+**Post-RC** — additional clients may be added as new IPC domains land. Archives stay on `FileOperationsClient` at RC.
 
 ### Client Example
 
