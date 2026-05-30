@@ -91,7 +91,7 @@
   border: 1px solid var(--fo-divider);
   background: var(--fo-control-bg);
   padding: 8px;
-  font-size: 12px;
+  font-size: var(--fo-font-size-md);
 }
 
 .fo-dialog-summary span {
@@ -124,12 +124,12 @@
 }
 
 .fo-first-run-grid strong {
-  font-size: 13px;
+  font-size: var(--fo-font-size-lg);
 }
 
 .fo-first-run-grid span {
   color: var(--fo-muted-text);
-  font-size: 12px;
+  font-size: var(--fo-font-size-md);
   line-height: 1.35;
 }
 
@@ -157,7 +157,7 @@
   border: 1px solid var(--fo-border);
   background: var(--fo-control-bg);
   padding: 6px;
-  font-size: 12px;
+  font-size: var(--fo-font-size-md);
 }
 
 .fo-search-results header,
@@ -213,7 +213,7 @@
   content: "▸";
   margin-left: auto;
   padding-left: 1rem;
-  font-size: 10px;
+  font-size: var(--fo-font-size-xs);
   color: var(--fo-muted-text);
 }
 
@@ -276,7 +276,7 @@
 .fo-properties-heading strong {
   overflow: hidden;
   color: var(--fo-classic-text);
-  font-size: 15px;
+  font-size: var(--fo-font-size-xl);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -284,7 +284,7 @@
 .fo-properties-heading span {
   overflow: hidden;
   color: var(--fo-classic-muted);
-  font-size: 12px;
+  font-size: var(--fo-font-size-md);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -298,7 +298,7 @@
   border-radius: 0;
   background: var(--fo-classic-face);
   color: var(--fo-classic-text);
-  font-size: 12px;
+  font-size: var(--fo-font-size-md);
   font-weight: 700;
   white-space: nowrap;
 }
@@ -326,7 +326,7 @@
   border-bottom: 1px solid var(--fo-classic-shadow);
   background: var(--fo-classic-face);
   color: var(--fo-classic-text);
-  font-size: 11px;
+  font-size: var(--fo-font-size-sm);
   font-weight: 750;
   text-transform: uppercase;
   align-self: center;
@@ -340,7 +340,7 @@
   border-bottom: 1px solid var(--fo-classic-shadow);
   overflow-wrap: anywhere;
   background: var(--fo-classic-window);
-  font-size: 12px;
+  font-size: var(--fo-font-size-md);
   align-self: center;
 }
 
@@ -353,7 +353,7 @@
 
 .fo-detail-grid dd.fo-detail-mono {
   font-family: var(--fo-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
-  font-size: 11px;
+  font-size: var(--fo-font-size-sm);
   line-height: 1.45;
 }
 
@@ -369,7 +369,7 @@
   border-radius: 0;
   background: var(--fo-classic-face);
   color: var(--fo-classic-muted);
-  font-size: 12px;
+  font-size: var(--fo-font-size-md);
 }
 
 .fo-properties-state::before {
@@ -402,7 +402,7 @@
   margin: 0;
   padding: 0 0.1rem;
   color: var(--fo-classic-text);
-  font-size: 11px;
+  font-size: var(--fo-font-size-sm);
   font-weight: 750;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -411,7 +411,7 @@
 .fo-properties-value--mono {
   display: block;
   font-family: var(--fo-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
-  font-size: 11px;
+  font-size: var(--fo-font-size-sm);
   line-height: 1.45;
 }
 
@@ -421,7 +421,7 @@
 
 .fo-properties-calculating {
   color: var(--fo-accent);
-  font-size: 12px;
+  font-size: var(--fo-font-size-md);
   font-style: normal;
 }
 
@@ -439,7 +439,7 @@
   border-radius: 0;
   background: var(--fo-classic-face);
   color: var(--fo-classic-text);
-  font-size: 11px;
+  font-size: var(--fo-font-size-sm);
   font-weight: 600;
 }
 
@@ -447,20 +447,15 @@
   display: grid;
   gap: 0.35rem;
   padding: 0.65rem 0.75rem;
-  border: 1px solid
-    color-mix(in srgb, var(--fo-warning, #d97706) 40%, var(--fo-border));
+  border: 1px solid color-mix(in srgb, var(--fo-warning) 40%, var(--fo-border));
   border-radius: 8px;
-  background: color-mix(
-    in srgb,
-    var(--fo-warning, #d97706) 12%,
-    var(--fo-control-bg)
-  );
+  background: color-mix(in srgb, var(--fo-warning) 12%, var(--fo-control-bg));
 }
 
 .fo-properties-warnings p {
   margin: 0;
   color: var(--fo-text);
-  font-size: 12px;
+  font-size: var(--fo-font-size-md);
   line-height: 1.4;
 }
 
@@ -475,7 +470,7 @@
 .fo-properties-grid dt {
   text-transform: none;
   letter-spacing: normal;
-  font-size: 12px;
+  font-size: var(--fo-font-size-md);
   font-weight: 600;
 }
 
@@ -496,9 +491,13 @@
   display: grid;
   gap: 0.5rem;
   max-width: 22rem;
+  /* The live region stays mounted even when empty (UPP-I1); keep it from
+     intercepting clicks. Individual toasts re-enable pointer events. */
+  pointer-events: none;
 }
 
 .fo-toast {
+  pointer-events: auto;
   display: grid;
   gap: 0.5rem;
   padding: 0.75rem;
@@ -524,12 +523,12 @@
 
 .fo-toast-body strong {
   color: var(--fo-text);
-  font-size: 12px;
+  font-size: var(--fo-font-size-md);
 }
 
 .fo-toast-body span {
   color: var(--fo-muted-text);
-  font-size: 11px;
+  font-size: var(--fo-font-size-sm);
   word-break: break-word;
 }
 
@@ -611,7 +610,7 @@ dialog.fo-dialog[open] {
   min-height: 26px;
   padding: 3px 4px 3px 6px;
   border: 0;
-  background: #3c3c3c;
+  background: var(--fo-control-bg);
   color: var(--fo-classic-light);
 }
 
@@ -653,7 +652,7 @@ dialog.fo-dialog[open] {
 .fo-dialog-header h2 {
   margin: 0;
   color: var(--fo-classic-light);
-  font-size: 12px;
+  font-size: var(--fo-font-size-md);
   font-weight: 500;
   line-height: 1;
 }
@@ -686,7 +685,7 @@ dialog.fo-dialog[open] {
 
 .fo-dialog-field > span {
   color: var(--fo-classic-text);
-  font-size: 12px;
+  font-size: var(--fo-font-size-md);
   font-weight: 400;
 }
 
@@ -703,7 +702,7 @@ dialog.fo-dialog[open] {
   border-radius: 0;
   background: var(--fo-classic-window);
   color: var(--fo-classic-text);
-  font-size: 13px;
+  font-size: var(--fo-font-size-lg);
 }
 
 .fo-dialog-field input:focus-visible,
@@ -711,6 +710,84 @@ dialog.fo-dialog[open] {
 .fo-dialog-field textarea:focus-visible {
   outline: 2px solid color-mix(in srgb, var(--fo-accent) 45%, transparent);
   outline-offset: 1px;
+}
+
+/* Wizard step indicator (UPP-F1). Numbered chips that read as todo / active /
+   done; fully token-driven so it tracks theme + density. */
+.fo-wizard-steps {
+  display: flex;
+  align-items: center;
+  gap: var(--fo-spacing-xs);
+  margin: 0 0 var(--fo-spacing-md);
+  padding: 0;
+  list-style: none;
+}
+
+.fo-wizard-step {
+  display: flex;
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.fo-wizard-step-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--fo-spacing-sm);
+  width: 100%;
+  min-width: 0;
+  min-height: 28px;
+  padding: 0 var(--fo-spacing-md);
+  border: 1px solid var(--fo-border);
+  border-radius: var(--fo-radius-xs);
+  background: var(--fo-surface);
+  color: var(--fo-muted-text);
+  font-size: var(--fo-font-size-sm);
+  text-align: left;
+  cursor: default;
+}
+
+.fo-wizard-step-btn:not(:disabled) {
+  cursor: pointer;
+}
+
+.fo-wizard-step-index {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--fo-control-bg);
+  color: var(--fo-muted-text);
+  font-size: var(--fo-font-size-xs);
+  font-weight: 700;
+}
+
+.fo-wizard-step-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fo-wizard-step-active .fo-wizard-step-btn {
+  border-color: var(--fo-accent);
+  color: var(--fo-text);
+  box-shadow: inset 0 0 0 1px var(--fo-accent);
+}
+
+.fo-wizard-step-active .fo-wizard-step-index {
+  background: var(--fo-accent);
+  color: var(--fo-on-accent);
+}
+
+.fo-wizard-step-done .fo-wizard-step-btn {
+  color: var(--fo-text);
+}
+
+.fo-wizard-step-done .fo-wizard-step-index {
+  background: var(--fo-accent-soft);
+  color: var(--fo-text);
 }
 
 .fo-connect-stepper {
@@ -724,7 +801,7 @@ dialog.fo-dialog[open] {
   padding: 0 6px;
   overflow: hidden;
   color: var(--fo-classic-text);
-  font-size: 11px;
+  font-size: var(--fo-font-size-sm);
   text-overflow: ellipsis;
   white-space: nowrap;
   background: var(--fo-classic-face);
@@ -744,7 +821,7 @@ dialog.fo-dialog[open] {
   margin: 0;
   padding: 0 0.1rem;
   color: var(--fo-classic-text);
-  font-size: 11px;
+  font-size: var(--fo-font-size-sm);
   font-weight: 750;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -758,7 +835,7 @@ dialog.fo-dialog[open] {
 .fo-dialog-section > p {
   margin: 0;
   color: var(--fo-classic-muted);
-  font-size: 12px;
+  font-size: var(--fo-font-size-md);
   line-height: 1.45;
 }
 
@@ -800,7 +877,7 @@ dialog.fo-dialog[open] {
   border: 1px solid var(--fo-classic-shadow);
   border-radius: 0;
   background: var(--fo-classic-window);
-  font-size: 12px;
+  font-size: var(--fo-font-size-md);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -819,7 +896,7 @@ dialog.fo-dialog[open] {
 }
 
 .fo-dialog-callout strong {
-  font-size: 13px;
+  font-size: var(--fo-font-size-lg);
   color: var(--fo-text);
 }
 
@@ -835,7 +912,7 @@ dialog.fo-dialog[open] {
 .fo-symlink-warning {
   border-color: var(--fo-accent);
   background: var(--fo-accent-bg, rgba(74, 158, 255, 0.08));
-  font-size: 12px;
+  font-size: var(--fo-font-size-md);
   color: var(--fo-muted-text);
 }
 
@@ -866,7 +943,7 @@ dialog.fo-dialog[open] {
 }
 
 .fo-destination-section-label {
-  font-size: 11px;
+  font-size: var(--fo-font-size-sm);
   font-weight: 700;
   color: var(--fo-classic-muted);
   padding: 0.2rem 0.4rem;
@@ -884,7 +961,7 @@ dialog.fo-dialog[open] {
   border-radius: 0;
   background: transparent;
   color: var(--fo-classic-text);
-  font-size: 12px;
+  font-size: var(--fo-font-size-md);
   cursor: pointer;
   text-align: left;
   white-space: nowrap;
@@ -903,7 +980,7 @@ dialog.fo-dialog[open] {
 }
 
 .fo-destination-item-path {
-  font-size: 10px;
+  font-size: var(--fo-font-size-xs);
   color: var(--fo-classic-muted);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -940,7 +1017,7 @@ dialog.fo-dialog[open] {
   border: none;
   background: transparent;
   color: var(--fo-classic-text);
-  font-size: 10px;
+  font-size: var(--fo-font-size-xs);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -957,7 +1034,7 @@ dialog.fo-dialog[open] {
   border: none;
   background: transparent;
   color: var(--fo-classic-text);
-  font-size: 11px;
+  font-size: var(--fo-font-size-sm);
   cursor: pointer;
   text-align: left;
   padding: 0 4px;
@@ -976,7 +1053,7 @@ dialog.fo-dialog[open] {
 }
 
 .fo-folder-tree-empty {
-  font-size: 10px;
+  font-size: var(--fo-font-size-xs);
   color: var(--fo-classic-muted);
   font-style: italic;
   padding: 2px 0;
@@ -984,7 +1061,7 @@ dialog.fo-dialog[open] {
 }
 
 .fo-destination-heading {
-  font-size: 10px;
+  font-size: var(--fo-font-size-xs);
   font-weight: 700;
   color: var(--fo-classic-muted);
   text-transform: uppercase;
@@ -1016,7 +1093,7 @@ dialog.fo-dialog[open] {
   border: none;
   border-radius: 0;
   background: transparent;
-  font-size: 13px;
+  font-size: var(--fo-font-size-lg);
   line-height: 1.35;
   color: var(--fo-text);
   cursor: pointer;
@@ -1066,7 +1143,7 @@ dialog.fo-dialog[open] {
   background: var(--fo-control-bg);
   color: var(--fo-text);
   font-family: var(--fo-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
-  font-size: 11px;
+  font-size: var(--fo-font-size-sm);
   line-height: 1.45;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -1102,7 +1179,7 @@ dialog.fo-dialog[open] {
   border-radius: 0;
   background: transparent;
   color: var(--fo-classic-text);
-  font-size: 12px;
+  font-size: var(--fo-font-size-md);
   font-weight: 700;
   text-align: left;
 }
@@ -1116,7 +1193,7 @@ dialog.fo-dialog[open] {
   padding: 0.55rem 0.65rem;
   border-radius: 0;
   color: var(--fo-classic-muted);
-  font-size: 12px;
+  font-size: var(--fo-font-size-md);
   font-weight: 700;
 }
 
@@ -1151,7 +1228,7 @@ dialog.fo-dialog[open] {
 .fo-settings-section h3 {
   margin: 0;
   color: var(--fo-classic-text);
-  font-size: 13px;
+  font-size: var(--fo-font-size-lg);
 }
 
 .fo-dialog label.fo-settings-field,
@@ -1162,7 +1239,7 @@ dialog.fo-dialog[open] {
 
 .fo-settings-field span {
   color: var(--fo-classic-text);
-  font-size: 12px;
+  font-size: var(--fo-font-size-md);
   font-weight: 700;
 }
 
@@ -1180,7 +1257,7 @@ dialog.fo-dialog[open] {
   background: var(--fo-classic-window);
   color: var(--fo-classic-text);
   font-family: inherit;
-  font-size: 13px;
+  font-size: var(--fo-font-size-lg);
 }
 
 .fo-settings-field select {
@@ -1228,7 +1305,7 @@ dialog.fo-dialog[open] {
   flex: 1;
   min-width: 0;
   color: var(--fo-classic-text);
-  font-size: 13px;
+  font-size: var(--fo-font-size-lg);
   font-weight: 500;
   line-height: 1.35;
 }
@@ -1264,7 +1341,7 @@ dialog.fo-dialog[open] {
 
 .fo-settings-fieldset legend {
   color: var(--fo-muted-text);
-  font-size: 12px;
+  font-size: var(--fo-font-size-md);
   font-weight: 700;
   margin-bottom: 0.35rem;
 }
@@ -1273,7 +1350,7 @@ dialog.fo-dialog[open] {
 .fo-settings-hint {
   margin: 4px 0 0;
   color: var(--fo-muted-text);
-  font-size: 12px;
+  font-size: var(--fo-font-size-md);
 }
 
 .fo-settings-nav-wrapper {
@@ -1292,7 +1369,7 @@ dialog.fo-dialog[open] {
   border-radius: 0;
   background: var(--fo-classic-face);
   color: var(--fo-classic-text);
-  font-size: 12px;
+  font-size: var(--fo-font-size-md);
   font-family: inherit;
   box-sizing: border-box;
 }
@@ -1309,7 +1386,7 @@ dialog.fo-dialog[open] {
 .fo-settings-description {
   margin: 0;
   color: var(--fo-muted-text);
-  font-size: 12px;
+  font-size: var(--fo-font-size-md);
   line-height: 1.4;
 }
 
@@ -1321,7 +1398,7 @@ dialog.fo-dialog[open] {
   bottom: 0;
   width: 45%;
   min-width: 300px;
-  background: var(--fo-surface, #1e1e2e);
+  background: var(--fo-surface);
   border-left: 1px solid var(--fo-subtle-border, rgba(255, 255, 255, 0.08));
   display: flex;
   flex-direction: column;
@@ -1335,12 +1412,12 @@ dialog.fo-dialog[open] {
   gap: 8px;
   padding: 8px 12px;
   border-bottom: 1px solid var(--fo-subtle-border, rgba(255, 255, 255, 0.08));
-  background: var(--fo-surface-alt, #181825);
+  background: var(--fo-surface-elevated);
   flex-shrink: 0;
 }
 
 .fo-preview-title {
-  font-size: 13px;
+  font-size: var(--fo-font-size-lg);
   font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1350,7 +1427,7 @@ dialog.fo-dialog[open] {
 }
 
 .fo-preview-meta {
-  font-size: 11px;
+  font-size: var(--fo-font-size-sm);
   opacity: 0.5;
   white-space: nowrap;
   flex-shrink: 0;
@@ -1384,11 +1461,11 @@ dialog.fo-dialog[open] {
   padding: 24px;
   text-align: center;
   opacity: 0.6;
-  font-size: 13px;
+  font-size: var(--fo-font-size-lg);
 }
 
 .fo-preview-error {
-  color: #f38ba8;
+  color: var(--fo-danger-text);
   opacity: 1;
 }
 
@@ -1413,11 +1490,11 @@ dialog.fo-dialog[open] {
   margin: 0;
   padding: 12px;
   font-family: var(--fo-mono, monospace);
-  font-size: 12px;
+  font-size: var(--fo-font-size-md);
   line-height: 1.5;
   white-space: pre-wrap;
   word-break: break-all;
-  color: var(--fo-text, #cdd6f4);
+  color: var(--fo-text);
   background: transparent;
 }
 
@@ -1459,7 +1536,7 @@ dialog.fo-dialog[open] {
 }
 
 .fo-favorites-manage-path {
-  font-size: 12px;
+  font-size: var(--fo-font-size-md);
   opacity: 0.75;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1520,7 +1597,7 @@ dialog.fo-dialog[open] {
 }
 
 .fo-recent-locations-path {
-  font-size: 12px;
+  font-size: var(--fo-font-size-md);
   opacity: 0.75;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1528,7 +1605,7 @@ dialog.fo-dialog[open] {
 }
 
 .fo-recent-locations-time {
-  font-size: 11px;
+  font-size: var(--fo-font-size-sm);
   opacity: 0.5;
 }
 
@@ -1594,14 +1671,14 @@ dialog.fo-dialog[open] {
 .fo-conflict-side {
   display: grid;
   gap: 2px;
-  font-size: 12px;
+  font-size: var(--fo-font-size-md);
 }
 
 .fo-conflict-label {
-  font-size: 10px;
+  font-size: var(--fo-font-size-xs);
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: var(--fo-muted-text, #888);
+  color: var(--fo-muted-text);
 }
 
 .fo-conflict-name {
@@ -1612,8 +1689,8 @@ dialog.fo-dialog[open] {
 }
 
 .fo-conflict-path {
-  font-size: 11px;
-  color: var(--fo-muted-text, #888);
+  font-size: var(--fo-font-size-sm);
+  color: var(--fo-muted-text);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1622,14 +1699,14 @@ dialog.fo-dialog[open] {
 .fo-conflict-meta {
   display: flex;
   gap: 8px;
-  font-size: 11px;
-  color: var(--fo-muted-text, #888);
+  font-size: var(--fo-font-size-sm);
+  color: var(--fo-muted-text);
 }
 
 .fo-conflict-arrow {
   display: flex;
   align-items: center;
-  color: var(--fo-muted-text, #888);
+  color: var(--fo-muted-text);
   font-size: 14px;
 }
 
@@ -1643,7 +1720,7 @@ dialog.fo-dialog[open] {
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 12px;
+  font-size: var(--fo-font-size-md);
   cursor: pointer;
 }
 
@@ -1657,7 +1734,7 @@ dialog.fo-dialog[open] {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 13px;
+  font-size: var(--fo-font-size-lg);
   cursor: pointer;
 }
 
@@ -1686,7 +1763,7 @@ dialog.fo-dialog[open] {
   padding: 24px 16px;
   text-align: center;
   color: var(--fo-muted-text);
-  font-size: 13px;
+  font-size: var(--fo-font-size-lg);
 }
 
 .fo-volume-picker-error {
@@ -1696,7 +1773,7 @@ dialog.fo-dialog[open] {
 .fo-volume-picker-section-title {
   margin: 8px 12px 2px;
   color: var(--fo-muted-text);
-  font-size: 10px;
+  font-size: var(--fo-font-size-xs);
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -1712,7 +1789,7 @@ dialog.fo-dialog[open] {
   background: transparent;
   border-radius: var(--fo-radius-sm);
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--fo-font-size-lg);
   text-align: left;
   color: var(--fo-text);
   width: 100%;
@@ -1720,7 +1797,7 @@ dialog.fo-dialog[open] {
 
 .fo-volume-item:hover {
   background: var(--fo-accent);
-  color: #fff;
+  color: var(--fo-on-accent);
 }
 
 .fo-volume-name {
@@ -1737,7 +1814,7 @@ dialog.fo-dialog[open] {
 }
 
 .fo-volume-fs {
-  font-size: 11px;
+  font-size: var(--fo-font-size-sm);
   color: var(--fo-muted-text);
 }
 
@@ -1746,7 +1823,7 @@ dialog.fo-dialog[open] {
 }
 
 .fo-volume-badge {
-  font-size: 11px;
+  font-size: var(--fo-font-size-sm);
   color: var(--fo-muted-text);
 }
 
@@ -1807,7 +1884,7 @@ dialog.fo-dialog[open] {
   padding: 4px 10px;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--fo-font-size-md);
 }
 
 .fo-viewer-mode-tab[aria-selected="true"] {
@@ -1861,7 +1938,7 @@ dialog.fo-dialog[open] {
 .fo-viewer-hex {
   overflow: auto;
   font-family: var(--fo-mono-font, "SF Mono", Menlo, Consolas, monospace);
-  font-size: 13px;
+  font-size: var(--fo-font-size-lg);
   padding: 12px 16px;
 }
 
@@ -1936,9 +2013,9 @@ dialog.fo-dialog[open] {
 
 .fo-viewer-pdf-prev:hover:not(:disabled),
 .fo-viewer-pdf-next:hover:not(:disabled) {
-  background: var(--fo-accent, #4a9eff);
+  background: var(--fo-accent);
   color: white;
-  border-color: var(--fo-accent, #4a9eff);
+  border-color: var(--fo-accent);
 }
 
 .fo-viewer-pdf-prev:disabled,
@@ -1948,7 +2025,7 @@ dialog.fo-dialog[open] {
 }
 
 .fo-viewer-pdf-page {
-  font-size: 12px;
+  font-size: var(--fo-font-size-md);
   color: var(--fo-muted-text);
   min-width: 60px;
   text-align: center;
@@ -2002,7 +2079,7 @@ dialog.fo-dialog[open] {
 
 .fo-viewer-footer {
   padding: 6px 12px;
-  font-size: 12px;
+  font-size: var(--fo-font-size-md);
   color: var(--fo-muted-text);
   border-top: 1px solid var(--fo-border);
   display: flex;
@@ -2046,7 +2123,7 @@ dialog.fo-dialog[open] {
 }
 
 .fo-viewer-gallery-counter {
-  font-size: 11px;
+  font-size: var(--fo-font-size-sm);
   color: var(--fo-muted-text);
   min-width: 40px;
   text-align: center;
@@ -2115,7 +2192,7 @@ dialog.fo-dialog[open] {
 }
 
 .fo-editor-readonly-tag {
-  font-size: 11px;
+  font-size: var(--fo-font-size-sm);
   padding: 2px 8px;
   border-radius: 999px;
   background: var(--fo-muted-bg);
@@ -2130,7 +2207,7 @@ dialog.fo-dialog[open] {
   padding: 4px 10px;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--fo-font-size-md);
 }
 
 .fo-editor-save:disabled {
@@ -2202,7 +2279,7 @@ dialog.fo-dialog[open] {
 
 .fo-shortcuts-editable .fo-shortcuts-table td {
   padding: 4px 6px;
-  font-size: 12px;
+  font-size: var(--fo-font-size-md);
   vertical-align: middle;
 }
 
@@ -2225,7 +2302,7 @@ dialog.fo-dialog[open] {
   display: inline-block;
   margin-left: 6px;
   padding: 1px 5px;
-  font-size: 10px;
+  font-size: var(--fo-font-size-xs);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -2237,19 +2314,19 @@ dialog.fo-dialog[open] {
 .fo-shortcuts-none {
   color: var(--fo-muted-text);
   font-style: italic;
-  font-size: 11px;
+  font-size: var(--fo-font-size-sm);
 }
 
 .fo-shortcuts-conflict td {
-  background: color-mix(in srgb, var(--fo-danger, #f14c4c) 8%, transparent);
+  background: color-mix(in srgb, var(--fo-danger) 8%, transparent);
 }
 
 .fo-shortcuts-conflicts {
   margin-top: 8px;
   padding: 8px;
-  border: 1px solid var(--fo-danger, #f14c4c);
-  background: color-mix(in srgb, var(--fo-danger, #f14c4c) 8%, transparent);
-  font-size: 12px;
+  border: 1px solid var(--fo-danger);
+  background: color-mix(in srgb, var(--fo-danger) 8%, transparent);
+  font-size: var(--fo-font-size-md);
 }
 
 .fo-shortcuts-conflicts ul {
@@ -2266,7 +2343,7 @@ dialog.fo-dialog[open] {
   margin-bottom: 8px;
   border: 2px solid var(--fo-accent);
   background: color-mix(in srgb, var(--fo-accent) 8%, transparent);
-  font-size: 13px;
+  font-size: var(--fo-font-size-lg);
   text-align: center;
   outline: none;
   animation: fo-shortcuts-pulse 1s ease-in-out infinite;
@@ -2379,14 +2456,14 @@ dialog.fo-dialog[open] {
 }
 
 .fo-layout-profile-info strong {
-  font-size: 13px;
+  font-size: var(--fo-font-size-lg);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .fo-layout-profile-date {
-  font-size: 11px;
+  font-size: var(--fo-font-size-sm);
   color: var(--fo-muted-text);
 }
 
@@ -2422,14 +2499,14 @@ dialog.fo-dialog[open] {
 }
 
 .fo-column-preset-info strong {
-  font-size: 13px;
+  font-size: var(--fo-font-size-lg);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .fo-column-preset-columns {
-  font-size: 11px;
+  font-size: var(--fo-font-size-sm);
   color: var(--fo-muted-text);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2480,7 +2557,7 @@ dialog.fo-dialog[open] {
   align-items: center;
   gap: 6px;
   font-weight: 600;
-  font-size: 13px;
+  font-size: var(--fo-font-size-lg);
   min-width: 0;
 }
 
@@ -2498,16 +2575,16 @@ dialog.fo-dialog[open] {
 .fo-diff-stats {
   display: flex;
   gap: 8px;
-  font-size: 12px;
+  font-size: var(--fo-font-size-md);
   margin-left: auto;
 }
 
 .fo-diff-stat-added {
-  color: #2ea043;
+  color: var(--fo-success);
 }
 
 .fo-diff-stat-removed {
-  color: #cf222e;
+  color: var(--fo-danger);
 }
 
 .fo-diff-close {
@@ -2539,7 +2616,7 @@ dialog.fo-dialog[open] {
   justify-content: center;
   padding: 40px;
   color: var(--fo-muted-text);
-  font-size: 13px;
+  font-size: var(--fo-font-size-lg);
 }
 
 .fo-diff-error {
@@ -2549,14 +2626,14 @@ dialog.fo-dialog[open] {
 .fo-diff-warning {
   padding: 4px 12px;
   background: rgba(210, 153, 34, 0.1);
-  color: #d29922;
-  font-size: 12px;
+  color: var(--fo-warning);
+  font-size: var(--fo-font-size-md);
   border-bottom: 1px solid var(--fo-border);
 }
 
 .fo-diff-content {
   font-family: var(--fo-mono-font, "Menlo", "Consolas", monospace);
-  font-size: 12px;
+  font-size: var(--fo-font-size-md);
   line-height: 1.5;
 }
 
@@ -2570,7 +2647,7 @@ dialog.fo-dialog[open] {
 .fo-diff-pane-title {
   padding: 4px 12px;
   font-weight: 600;
-  font-size: 11px;
+  font-size: var(--fo-font-size-sm);
   color: var(--fo-muted-text);
   text-align: center;
 }
@@ -2582,7 +2659,7 @@ dialog.fo-dialog[open] {
   padding: 2px 12px;
   background: var(--fo-app-bg);
   color: var(--fo-muted-text);
-  font-size: 11px;
+  font-size: var(--fo-font-size-sm);
   border-top: 1px solid var(--fo-border);
   border-bottom: 1px solid var(--fo-border);
 }
@@ -2616,7 +2693,7 @@ dialog.fo-dialog[open] {
   color: var(--fo-muted-text);
   opacity: 0.6;
   user-select: none;
-  font-size: 11px;
+  font-size: var(--fo-font-size-sm);
   line-height: 18px;
 }
 
@@ -2624,17 +2701,17 @@ dialog.fo-dialog[open] {
   width: 16px;
   min-width: 16px;
   text-align: center;
-  font-size: 12px;
+  font-size: var(--fo-font-size-md);
   line-height: 18px;
   user-select: none;
 }
 
 .fo-diff-line-delete .fo-diff-marker {
-  color: #cf222e;
+  color: var(--fo-danger);
 }
 
 .fo-diff-line-insert .fo-diff-marker {
-  color: #2ea043;
+  color: var(--fo-success);
 }
 
 .fo-diff-text {
@@ -2656,14 +2733,14 @@ dialog.fo-dialog[open] {
 .fo-acl-info {
   display: flex;
   gap: 12px;
-  font-size: 12px;
+  font-size: var(--fo-font-size-md);
   color: var(--fo-muted-text);
 }
 
 .fo-acl-matrix {
   width: auto;
   border-collapse: collapse;
-  font-size: 12px;
+  font-size: var(--fo-font-size-md);
 }
 
 .fo-acl-matrix th,
@@ -2674,7 +2751,7 @@ dialog.fo-dialog[open] {
 }
 
 .fo-acl-matrix thead th {
-  font-size: 11px;
+  font-size: var(--fo-font-size-sm);
   color: var(--fo-muted-text);
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -2698,14 +2775,14 @@ dialog.fo-dialog[open] {
 }
 
 .fo-acl-octal-label {
-  font-size: 12px;
+  font-size: var(--fo-font-size-md);
   color: var(--fo-muted-text);
 }
 
 .fo-acl-octal-input {
   width: 48px;
   font-family: monospace;
-  font-size: 13px;
+  font-size: var(--fo-font-size-lg);
   text-align: center;
   border: 1px solid var(--fo-border);
   border-radius: var(--fo-radius-sm);
@@ -2718,7 +2795,7 @@ dialog.fo-dialog[open] {
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 12px;
+  font-size: var(--fo-font-size-md);
   color: var(--fo-muted-text);
   cursor: pointer;
 }
@@ -2757,7 +2834,7 @@ dialog.fo-dialog[open] {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  font-size: 12px;
+  font-size: var(--fo-font-size-md);
 }
 
 .fo-sync-path-label {
@@ -2776,7 +2853,7 @@ dialog.fo-dialog[open] {
   display: flex;
   align-items: center;
   gap: 1rem;
-  font-size: 12px;
+  font-size: var(--fo-font-size-md);
 }
 
 .fo-sync-options label {
@@ -2786,7 +2863,7 @@ dialog.fo-dialog[open] {
 }
 
 .fo-sync-options select {
-  font-size: 12px;
+  font-size: var(--fo-font-size-md);
   padding: 2px 4px;
 }
 
@@ -2796,16 +2873,16 @@ dialog.fo-dialog[open] {
   text-align: center;
   padding: 2rem;
   color: var(--fo-muted-text);
-  font-size: 13px;
+  font-size: var(--fo-font-size-lg);
 }
 
 .fo-sync-error {
-  color: var(--fo-danger, #e04040);
+  color: var(--fo-danger);
 }
 
 .fo-sync-stats {
   padding: 0.25rem 0;
-  font-size: 12px;
+  font-size: var(--fo-font-size-md);
   color: var(--fo-muted-text);
   border-bottom: 1px solid var(--fo-border);
 }
@@ -2819,7 +2896,7 @@ dialog.fo-dialog[open] {
 .fo-sync-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 12px;
+  font-size: var(--fo-font-size-md);
 }
 
 .fo-sync-table th {
@@ -2867,8 +2944,8 @@ dialog.fo-dialog[open] {
 .fo-hotlist-empty {
   padding: 16px;
   text-align: center;
-  color: var(--fo-classic-muted, #888);
-  font-size: 12px;
+  color: var(--fo-classic-muted);
+  font-size: var(--fo-font-size-md);
 }
 
 .fo-hotlist-entry {
@@ -2877,7 +2954,7 @@ dialog.fo-dialog[open] {
   gap: 8px;
   padding: 6px 12px;
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--fo-font-size-md);
   border-radius: 3px;
 }
 
@@ -2890,8 +2967,8 @@ dialog.fo-dialog[open] {
   width: 16px;
   text-align: center;
   font-weight: 700;
-  color: var(--fo-classic-muted, #888);
-  font-size: 11px;
+  color: var(--fo-classic-muted);
+  font-size: var(--fo-font-size-sm);
   flex-shrink: 0;
 }
 
@@ -2901,8 +2978,8 @@ dialog.fo-dialog[open] {
 }
 
 .fo-hotlist-path {
-  color: var(--fo-classic-muted, #888);
-  font-size: 11px;
+  color: var(--fo-classic-muted);
+  font-size: var(--fo-font-size-sm);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -2923,8 +3000,8 @@ dialog.fo-dialog[open] {
 .fo-manage-hotlist-empty {
   padding: 16px;
   text-align: center;
-  color: var(--fo-classic-muted, #888);
-  font-size: 12px;
+  color: var(--fo-classic-muted);
+  font-size: var(--fo-font-size-md);
 }
 
 .fo-manage-hotlist-row {
@@ -2943,20 +3020,20 @@ dialog.fo-dialog[open] {
   width: 16px;
   text-align: center;
   font-weight: 700;
-  color: var(--fo-classic-muted, #888);
-  font-size: 11px;
+  color: var(--fo-classic-muted);
+  font-size: var(--fo-font-size-sm);
   flex-shrink: 0;
 }
 
 .fo-manage-hotlist-label {
   font-weight: 500;
-  font-size: 12px;
+  font-size: var(--fo-font-size-md);
   flex-shrink: 0;
 }
 
 .fo-manage-hotlist-path {
-  color: var(--fo-classic-muted, #888);
-  font-size: 11px;
+  color: var(--fo-classic-muted);
+  font-size: var(--fo-font-size-sm);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -2980,5 +3057,5 @@ dialog.fo-dialog[open] {
 
 .fo-manage-hotlist-edit .fo-ui-input {
   min-width: 80px;
-  font-size: 12px;
+  font-size: var(--fo-font-size-md);
 }

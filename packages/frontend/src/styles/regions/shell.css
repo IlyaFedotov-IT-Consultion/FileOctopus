@@ -22,6 +22,7 @@
      dark-styled status bar (also shown under the light theme); the
      commander-blue theme overrides them below. */
   --fo-statusbar-bg: #007acc;
+  --fo-statusbar-fg: #ffffff;
   --fo-path-rail-bg: #252526;
   --fo-path-rail-field-bg: #1e1e1e;
   --fo-path-rail-field-border: #3c3c3c;
@@ -163,8 +164,8 @@
   padding: 0 10px;
   border-width: 0 0 1px;
   border-radius: 0;
-  background: #3c3c3c;
-  border-bottom: 1px solid #252526;
+  background: var(--fo-titlebar-bg);
+  border-bottom: 1px solid var(--fo-border);
 }
 
 .fo-brand {
@@ -211,10 +212,10 @@
   min-width: 8rem;
   max-width: min(36vw, 34rem);
   margin: 0 0 0 14px;
-  color: #cccccc;
-  font-size: 12px;
+  color: var(--fo-text);
+  font-size: var(--fo-font-size-md);
   font-weight: 400;
-  line-height: 1.2;
+  line-height: var(--fo-line-tight);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -234,28 +235,28 @@
   min-height: 20px;
   padding: 3px 6px;
   overflow: hidden;
-  border: 1px solid #505050;
-  border-radius: 2px;
-  color: #cccccc;
-  font-size: 11px;
+  border: 1px solid var(--fo-strong-border);
+  border-radius: var(--fo-radius-xs);
+  color: var(--fo-text);
+  font-size: var(--fo-font-size-sm);
   line-height: 1.1;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .fo-title-status-pill-ok {
-  border-color: #2f7d4f;
-  color: #d6f5df;
+  border-color: var(--fo-success);
+  color: var(--fo-success);
 }
 
 .fo-title-status-pill-warning {
-  border-color: #8a6d1d;
-  color: #ffe8a3;
+  border-color: var(--fo-warning);
+  color: var(--fo-warning);
 }
 
 .fo-title-status-pill-danger {
-  border-color: #9a3d3d;
-  color: #ffd6d6;
+  border-color: var(--fo-danger);
+  color: var(--fo-danger-text);
 }
 
 .fo-brand-badge {
@@ -265,7 +266,7 @@
   border-radius: 999px;
   background: var(--fo-workspace-bg);
   color: var(--fo-muted-text);
-  font-size: 10px;
+  font-size: var(--fo-font-size-xs);
   font-weight: 700;
 }
 
@@ -281,22 +282,25 @@
   border-width: 1px;
   border-style: solid;
   border-color: transparent;
-  border-radius: 2px;
+  border-radius: var(--fo-radius-xs);
   background: transparent;
-  color: #cccccc;
+  color: var(--fo-text);
+  transition:
+    background var(--fo-motion-fast) var(--fo-motion-ease),
+    color var(--fo-motion-fast) var(--fo-motion-ease);
 }
 
 .fo-topbar-actions .fo-ui-btn:hover:not(:disabled),
 .fo-topbar-actions .fo-ui-btn:focus-visible {
-  border-color: #505050;
-  background: #505050;
-  color: #ffffff;
+  border-color: var(--fo-chrome-hover-bg);
+  background: var(--fo-chrome-hover-bg);
+  color: var(--fo-chrome-hover-text);
 }
 
 .fo-workbench-toolbar {
   min-width: 0;
-  border-bottom: 1px solid #1e1e1e;
-  background: #2d2d30;
+  border-bottom: 1px solid var(--fo-border);
+  background: var(--fo-strip-bg);
 }
 
 .fo-workbench-toolbar .fo-operation-toolbar {
@@ -338,7 +342,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 12px;
+  font-size: var(--fo-font-size-md);
 }
 
 .fo-toolbar-customize-actions {
@@ -377,12 +381,15 @@
 .fo-menubar-trigger {
   min-height: 26px;
   padding: 0 9px;
-  border-radius: 2px;
+  border-radius: var(--fo-radius-xs);
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--fo-font-size-md);
   font-weight: 400;
-  color: #cccccc;
+  color: var(--fo-text);
   user-select: none;
+  transition:
+    background var(--fo-motion-fast) var(--fo-motion-ease),
+    color var(--fo-motion-fast) var(--fo-motion-ease);
 }
 
 .fo-menubar-trigger-inner {
@@ -394,8 +401,13 @@
 
 .fo-menubar-trigger:hover,
 .fo-menubar-trigger[data-state="open"] {
-  background: #505050;
-  color: #ffffff;
+  background: var(--fo-chrome-hover-bg);
+  color: var(--fo-chrome-hover-text);
+}
+
+.fo-menubar-trigger:focus-visible {
+  outline: none;
+  box-shadow: var(--fo-focus-ring);
 }
 
 .fo-help-menu {
@@ -414,13 +426,13 @@
   border: 1px solid var(--fo-dialog-border);
   border-radius: 0;
   background: var(--fo-surface-elevated);
-  box-shadow: 0 8px 20px var(--fo-menu-shadow);
+  box-shadow: var(--fo-elevation-popover);
 }
 
 .fo-resizer {
   width: var(--fo-splitter-width, 6px);
   cursor: col-resize;
-  background: #1e1e1e;
+  background: var(--fo-app-bg);
 }
 
 .fo-resizer:hover {
@@ -502,8 +514,8 @@
   }
 
   .fo-activity-collapsed .fo-ui-btn {
-    border-radius: 2px;
-    box-shadow: 0 8px 24px var(--fo-menu-shadow);
+    border-radius: var(--fo-radius-xs);
+    box-shadow: var(--fo-elevation-popover);
   }
 }
 
@@ -567,13 +579,13 @@
   min-width: 0;
   padding: 2px 8px;
   border: 1px solid var(--fo-path-rail-field-border);
-  border-radius: 2px;
+  border-radius: var(--fo-radius-xs);
   background: var(--fo-path-rail-field-bg);
   color: var(--fo-commander-text);
   font-family:
     ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
     monospace;
-  font-size: 12px;
+  font-size: var(--fo-font-size-md);
   text-align: left;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -603,7 +615,7 @@
   border-radius: 0;
   background: var(--fo-commander-key-bg);
   color: var(--fo-commander-text);
-  font-size: 12px;
+  font-size: var(--fo-font-size-md);
   font-weight: 650;
   white-space: nowrap;
 }
@@ -612,7 +624,7 @@
 .fo-commander-key:focus-visible {
   border-color: var(--fo-commander-key-hover-border);
   background: var(--fo-commander-key-hover-bg);
-  color: #ffffff;
+  color: var(--fo-statusbar-fg);
 }
 
 .fo-commander-key:disabled {
@@ -626,13 +638,13 @@
   min-width: 27px;
   min-height: 18px;
   border: 1px solid var(--fo-commander-keycap-border);
-  border-radius: 2px;
+  border-radius: var(--fo-radius-xs);
   background: var(--fo-commander-keycap-bg);
   color: var(--fo-commander-keycap-fg);
   font-family:
     ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
     sans-serif;
-  font-size: 11px;
+  font-size: var(--fo-font-size-sm);
   font-weight: 800;
 }
 
@@ -648,8 +660,8 @@
   gap: 4px;
   min-height: var(--fo-statusbar-height, 22px);
   padding: 1px 4px;
-  color: #ffffff;
-  font-size: 11px;
+  color: var(--fo-statusbar-fg);
+  font-size: var(--fo-font-size-sm);
   white-space: nowrap;
   overflow: hidden;
 }
@@ -680,7 +692,7 @@
 
 .fo-status-button:hover,
 .fo-status-button:focus-visible {
-  color: #ffffff;
+  color: var(--fo-statusbar-fg);
   text-decoration: underline;
   text-underline-offset: 2px;
 }
@@ -693,7 +705,7 @@
   font-family:
     ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
     monospace;
-  font-size: 10px;
+  font-size: var(--fo-font-size-xs);
 }
 
 .fo-status-error {
@@ -746,7 +758,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 10px;
+  font-size: var(--fo-font-size-xs);
   opacity: 0.9;
 }
 
