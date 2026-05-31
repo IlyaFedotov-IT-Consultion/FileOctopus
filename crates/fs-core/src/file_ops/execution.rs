@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use chrono::Utc;
 use filetime::FileTime;
-use jobs::{CancellationToken, JobEvent, JobId, JobProgressEvent};
+use jobs::{CancellationToken, JobEvent, JobId, JobProgressEvent, PauseToken};
 use vfs::{
     ConflictPolicy, FileKind, FileOperationError, FileOperationItem, FileOperationPlan, ResourceUri,
 };
@@ -23,12 +23,13 @@ pub(super) fn execute_copy(
     plan: &FileOperationPlan,
     job_id: &JobId,
     cancel: &CancellationToken,
+    pause: &PauseToken,
     sink: &FileOperationEventSink,
 ) -> Result<(), FileOperationError> {
     let mut progress = ExecutionProgress::new(plan);
 
     for item in &plan.items {
-        check_cancelled(cancel, job_id)?;
+        check_cancelled(cancel, pause, job_id)?;
         let Some(destination) = &item.destination else {
             continue;
         };
@@ -50,6 +51,7 @@ pub(super) fn execute_copy(
                             &destination.to_local_path()?,
                             job_id,
                             cancel,
+                            pause,
                             &mut progress,
                             sink,
                         )?;
@@ -88,9 +90,10 @@ pub(super) fn execute_move(
     plan: &FileOperationPlan,
     job_id: &JobId,
     cancel: &CancellationToken,
+    pause: &PauseToken,
     sink: &FileOperationEventSink,
 ) -> Result<(), FileOperationError> {
-    check_cancelled(cancel, job_id)?;
+    check_cancelled(cancel, pause, job_id)?;
 
     if plan.sources.len() == 1 {
         let root = &plan.sources[0];
@@ -148,7 +151,7 @@ pub(super) fn execute_move(
         }
     }
 
-    execute_copy(vfs, plan, job_id, cancel, sink)?;
+    execute_copy(vfs, plan, job_id, cancel, pause, sink)?;
 
     for source in &plan.sources {
         vfs.remove(source, true)?;
@@ -254,6 +257,7 @@ pub(super) fn copy_file_streaming(
     destination: &Path,
     job_id: &JobId,
     cancel: &CancellationToken,
+    pause: &PauseToken,
     progress: &mut ExecutionProgress<'_>,
     sink: &FileOperationEventSink,
 ) -> Result<(), FileOperationError> {
@@ -263,7 +267,7 @@ pub(super) fn copy_file_streaming(
     let mut buffer = vec![0_u8; COPY_BUFFER_SIZE];
 
     loop {
-        check_cancelled(cancel, job_id)?;
+        check_cancelled(cancel, pause, job_id)?;
 
         let bytes = input
             .read(&mut buffer)
@@ -381,8 +385,10 @@ pub(super) fn next_available_path(path: &Path) -> PathBuf {
 
 pub(super) fn check_cancelled(
     cancel: &CancellationToken,
+    pause: &PauseToken,
     job_id: &JobId,
 ) -> Result<(), FileOperationError> {
+    pause.wait_while_paused(cancel);
     if cancel.is_cancelled() {
         return Err(FileOperationError::Cancelled {
             job_id: Some(job_id.as_str().to_string()),

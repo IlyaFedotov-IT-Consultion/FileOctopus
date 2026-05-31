@@ -2,14 +2,29 @@ import { IPC_ERROR_CODES } from "../types";
 import type {
   ComputeHashRequest,
   ComputeHashResponse,
+  CompareFilesRequest,
+  CompareFilesResponse,
+  SyncDirectoriesRequest,
+  SyncDirectoriesResponse,
+  ContentSearchCompletedEventDto,
+  ContentSearchJobResponse,
+  ContentSearchMatchEventDto,
+  ContentSearchRequest,
+  ContentSearchResponse,
   DirectoryBatchEventDto,
   DiscoverVolumesResponse,
+  EjectVolumeRequest,
+  EjectVolumeResponse,
   FolderSizeCompletedEventDto,
   FolderSizeJobResponse,
   FolderSizeRequest,
   FolderSizeResponse,
   IpcError,
   IpcTransport,
+  ListDirectoriesRequest,
+  ListDirectoriesResponse,
+  ListArchiveRequest,
+  ListArchiveResponse,
   ListStartRequest,
   ListStartResponse,
   OkResponse,
@@ -18,6 +33,8 @@ import type {
   PathPropertiesRequest,
   PathPropertiesResponse,
   PathRequest,
+  ReadFileAsDataUriRequest,
+  ReadFileAsDataUriResponse,
   ReadImageAsDataUriRequest,
   ReadImageAsDataUriResponse,
   ReadFileRangeRequest,
@@ -37,9 +54,15 @@ import type {
   UnlistenFn,
   WatchEventDto,
   WatchStartRequest,
+  GetAclRequest,
+  GetAclResponse,
+  SetAclRequest,
+  SetAclResponse,
 } from "../types";
 import {
   DIRECTORY_BATCH_EVENT,
+  CONTENT_SEARCH_COMPLETED_EVENT,
+  CONTENT_SEARCH_MATCH_EVENT,
   FOLDER_SIZE_COMPLETED_EVENT,
   RECURSIVE_SEARCH_COMPLETED_EVENT,
   RECURSIVE_SEARCH_MATCH_EVENT,
@@ -111,6 +134,19 @@ export class FsClient {
     }
   }
 
+  async readFileAsDataUri(
+    request: ReadFileAsDataUriRequest,
+  ): Promise<ReadFileAsDataUriResponse> {
+    try {
+      return await this.transport.invoke<ReadFileAsDataUriResponse>(
+        "fs.read_file_as_data_uri",
+        { request },
+      );
+    } catch (error) {
+      throw normalizeIpcError(error);
+    }
+  }
+
   async computeHash(request: ComputeHashRequest): Promise<ComputeHashResponse> {
     try {
       return await this.transport.invoke<ComputeHashResponse>(
@@ -145,6 +181,30 @@ export class FsClient {
     }
   }
 
+  async listDirectories(
+    request: ListDirectoriesRequest,
+  ): Promise<ListDirectoriesResponse> {
+    try {
+      return await this.transport.invoke<ListDirectoriesResponse>(
+        "fs.list_directories",
+        { request },
+      );
+    } catch (error) {
+      throw normalizeIpcError(error);
+    }
+  }
+
+  async listArchive(request: ListArchiveRequest): Promise<ListArchiveResponse> {
+    try {
+      return await this.transport.invoke<ListArchiveResponse>(
+        "fs.list_archive",
+        { request },
+      );
+    } catch (error) {
+      throw normalizeIpcError(error);
+    }
+  }
+
   async standardLocations(): Promise<StandardLocationsResponse> {
     try {
       return await this.transport.invoke<StandardLocationsResponse>(
@@ -159,6 +219,30 @@ export class FsClient {
     try {
       return await this.transport.invoke<DiscoverVolumesResponse>(
         "fs.discover_volumes",
+      );
+    } catch (error) {
+      throw normalizeIpcError(error);
+    }
+  }
+
+  async ejectVolume(request: EjectVolumeRequest): Promise<EjectVolumeResponse> {
+    try {
+      return await this.transport.invoke<EjectVolumeResponse>(
+        "fs.eject_volume",
+        { request },
+      );
+    } catch (error) {
+      throw normalizeIpcError(error);
+    }
+  }
+
+  async diffText(
+    request: import("../types").DiffTextRequest,
+  ): Promise<import("../types").DiffTextResponse> {
+    try {
+      return await this.transport.invoke<import("../types").DiffTextResponse>(
+        "fs.diff_text",
+        { request },
       );
     } catch (error) {
       throw normalizeIpcError(error);
@@ -247,6 +331,32 @@ export class FsClient {
     }
   }
 
+  async contentSearch(
+    request: ContentSearchRequest,
+  ): Promise<ContentSearchResponse> {
+    try {
+      return await this.transport.invoke<ContentSearchResponse>(
+        "fs.content_search",
+        { request },
+      );
+    } catch (error) {
+      throw normalizeIpcError(error);
+    }
+  }
+
+  async startContentSearchJob(
+    request: ContentSearchRequest,
+  ): Promise<ContentSearchJobResponse> {
+    try {
+      return await this.transport.invoke<ContentSearchJobResponse>(
+        "fs.content_search_start",
+        { request },
+      );
+    } catch (error) {
+      throw normalizeIpcError(error);
+    }
+  }
+
   onFolderSizeCompleted(
     handler: (event: FolderSizeCompletedEventDto) => void,
   ): Promise<UnlistenFn> {
@@ -265,6 +375,22 @@ export class FsClient {
     return requireListen(
       this.transport,
       RECURSIVE_SEARCH_COMPLETED_EVENT,
+      handler,
+    );
+  }
+
+  onContentSearchMatch(
+    handler: (event: ContentSearchMatchEventDto) => void,
+  ): Promise<UnlistenFn> {
+    return requireListen(this.transport, CONTENT_SEARCH_MATCH_EVENT, handler);
+  }
+
+  onContentSearchCompleted(
+    handler: (event: ContentSearchCompletedEventDto) => void,
+  ): Promise<UnlistenFn> {
+    return requireListen(
+      this.transport,
+      CONTENT_SEARCH_COMPLETED_EVENT,
       handler,
     );
   }
@@ -311,6 +437,36 @@ export class FsClient {
     return this.transport.listen<DirectoryBatchEventDto>(
       DIRECTORY_BATCH_EVENT,
       handler,
+    );
+  }
+
+  async getAcl(request: GetAclRequest): Promise<GetAclResponse> {
+    return await this.transport.invoke<GetAclResponse>("fs.get_acl", {
+      request,
+    });
+  }
+
+  async setAcl(request: SetAclRequest): Promise<SetAclResponse> {
+    return await this.transport.invoke<SetAclResponse>("fs.set_acl", {
+      request,
+    });
+  }
+
+  async compareFiles(
+    request: CompareFilesRequest,
+  ): Promise<CompareFilesResponse> {
+    return await this.transport.invoke<CompareFilesResponse>(
+      "fs.compare_files",
+      { request },
+    );
+  }
+
+  async syncDirectories(
+    request: SyncDirectoriesRequest,
+  ): Promise<SyncDirectoriesResponse> {
+    return await this.transport.invoke<SyncDirectoriesResponse>(
+      "fs.sync_directories",
+      { request },
     );
   }
 }

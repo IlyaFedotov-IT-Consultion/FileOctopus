@@ -1,0 +1,515 @@
+use std::sync::Arc;
+
+use remote_core::ConnectionSessionManager;
+use vfs::{
+    DirectoryBatch, DirectorySink, FileKind, ListOptions, ProviderCapabilities, ProviderId,
+    ResourceUri, VfsError, VfsProvider,
+};
+
+use crate::connector::{parse_bucket_key, S3Session};
+use crate::ops::{dir_entry, object_entry, s3_bucket_from_uri_path, s3_prefix_from_uri_path};
+
+pub struct S3Provider {
+    sessions: Arc<ConnectionSessionManager>,
+}
+
+impl S3Provider {
+    pub fn new(sessions: Arc<ConnectionSessionManager>) -> Self {
+        Self { sessions }
+    }
+
+    fn profile_id_for_uri(uri: &ResourceUri) -> Result<String, VfsError> {
+        uri.remote_authority()
+            .map(str::to_string)
+            .ok_or_else(|| VfsError::invalid_uri(uri.as_str(), "missing s3 profile id"))
+    }
+
+    async fn session_for(&self, uri: &ResourceUri) -> Result<(String, S3Session), VfsError> {
+        let profile_id = Self::profile_id_for_uri(uri)?;
+        let session = self
+            .sessions
+            .session_for_profile(&profile_id)
+            .await
+            .map_err(VfsError::from)?;
+        let s3_session = session
+            .as_any()
+            .downcast_ref::<S3Session>()
+            .ok_or_else(|| VfsError::internal("invalid s3 session handle"))?
+            .clone_handle();
+        Ok((profile_id, s3_session))
+    }
+}
+
+fn remove_s3_tree_blocking(
+    session: &S3Session,
+    _uri: &ResourceUri,
+    prefix: &str,
+) -> Result<(), VfsError> {
+    let bucket = session.bucket();
+    let rt = tokio::runtime::Handle::current();
+
+    // List all objects with this prefix
+    let (list_result, _status) = rt
+        .block_on(bucket.list_page(prefix.to_string(), None, None, None, Some(1000)))
+        .map_err(|e| VfsError::internal(&format!("s3 list failed: {e}")))?;
+
+    for obj in &list_result.contents {
+        let key = &obj.key;
+        rt.block_on(bucket.delete_object(key))
+            .map_err(|e| VfsError::internal(&format!("s3 delete failed: {e}")))?;
+    }
+
+    Ok(())
+}
+
+#[async_trait::async_trait]
+impl VfsProvider for S3Provider {
+    fn id(&self) -> ProviderId {
+        ProviderId::new("s3")
+    }
+
+    fn schemes(&self) -> &'static [&'static str] {
+        &["s3"]
+    }
+
+    fn capabilities(&self) -> ProviderCapabilities {
+        ProviderCapabilities::read_write()
+    }
+
+    async fn stat(&self, uri: &ResourceUri) -> Result<vfs::FileEntry, VfsError> {
+        let (profile_id, session) = self.session_for(uri).await?;
+        let uri_path = uri.remote_path().unwrap_or_default();
+        let bucket_name = s3_bucket_from_uri_path(&uri_path);
+        let key = {
+            let (_, k) = parse_bucket_key(&uri_path);
+            k
+        };
+
+        if key.is_empty() || key.ends_with('/') {
+            // This is a "directory" — just return a synthetic dir entry
+            let name = if key.is_empty() {
+                bucket_name.clone()
+            } else {
+                key.trim_end_matches('/')
+                    .rsplit('/')
+                    .next()
+                    .unwrap_or(&key)
+                    .to_string()
+            };
+            return Ok(vfs::FileEntry {
+                uri: uri.clone(),
+                name,
+                extension: None,
+                kind: FileKind::Directory,
+                size: None,
+                modified_at: None,
+                created_at: None,
+                accessed_at: None,
+                is_hidden: false,
+                is_symlink: false,
+                symlink_target: None,
+                provider_id: ProviderId::new("s3"),
+                capabilities: vfs::EntryCapabilities::writable_directory(),
+                permissions: None,
+                owner: None,
+            });
+        }
+
+        // Try head_object
+        let head_result = session.bucket().head_object(&key).await;
+        match head_result {
+            Ok((head, _status)) => {
+                let name = key.rsplit('/').next().unwrap_or(&key).to_string();
+                let extension = name
+                    .rsplit('.')
+                    .next()
+                    .filter(|part| *part != name)
+                    .map(str::to_string);
+                let modified_at = head
+                    .last_modified
+                    .as_deref()
+                    .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
+                    .map(|dt| {
+                        chrono::DateTime::<chrono::Utc>::from_naive_utc_and_offset(
+                            dt.naive_utc(),
+                            chrono::Utc,
+                        )
+                    });
+
+                self.sessions.touch_session(&profile_id).await;
+                Ok(vfs::FileEntry {
+                    uri: uri.clone(),
+                    name,
+                    extension,
+                    kind: FileKind::File,
+                    size: head.content_length.map(|s| s as u64),
+                    modified_at,
+                    created_at: None,
+                    accessed_at: None,
+                    is_hidden: false,
+                    is_symlink: false,
+                    symlink_target: None,
+                    provider_id: ProviderId::new("s3"),
+                    capabilities: vfs::EntryCapabilities::writable_file(),
+                    permissions: None,
+                    owner: None,
+                })
+            }
+            Err(_) => {
+                // Maybe it's a "directory" (common prefix)
+                let prefix = format!("{key}/");
+                let list_result = session
+                    .bucket()
+                    .list_page(prefix, Some("/".to_string()), None, None, Some(1))
+                    .await;
+                match list_result {
+                    Ok((result, _))
+                        if !result.contents.is_empty()
+                            || result
+                                .common_prefixes
+                                .as_ref()
+                                .is_some_and(|cp| !cp.is_empty()) =>
+                    {
+                        let name = key.rsplit('/').next().unwrap_or(&key).to_string();
+                        self.sessions.touch_session(&profile_id).await;
+                        Ok(vfs::FileEntry {
+                            uri: uri.clone(),
+                            name,
+                            extension: None,
+                            kind: FileKind::Directory,
+                            size: None,
+                            modified_at: None,
+                            created_at: None,
+                            accessed_at: None,
+                            is_hidden: false,
+                            is_symlink: false,
+                            symlink_target: None,
+                            provider_id: ProviderId::new("s3"),
+                            capabilities: vfs::EntryCapabilities::writable_directory(),
+                            permissions: None,
+                            owner: None,
+                        })
+                    }
+                    _ => Err(VfsError::not_found(uri)),
+                }
+            }
+        }
+    }
+
+    async fn list(
+        &self,
+        uri: &ResourceUri,
+        options: ListOptions,
+        sink: DirectorySink,
+    ) -> Result<(), VfsError> {
+        let (profile_id, session) = self.session_for(uri).await?;
+        let uri_path = uri.remote_path().unwrap_or_default();
+        let prefix = s3_prefix_from_uri_path(&uri_path);
+
+        let include_hidden = options.include_hidden;
+        let batch_size = options.batch_size.max(1);
+        let cancel = options.cancel.clone();
+
+        // Collect all entries then batch them
+        let mut all_entries: Vec<vfs::FileEntry> = Vec::new();
+        let mut continuation_token: Option<String> = None;
+
+        loop {
+            if cancel.is_cancelled() {
+                return Err(VfsError::cancelled(uri));
+            }
+
+            let (result, _status) = session
+                .bucket()
+                .list_page(
+                    prefix.clone(),
+                    Some("/".to_string()),
+                    continuation_token.clone(),
+                    None,
+                    Some(batch_size),
+                )
+                .await
+                .map_err(|e| VfsError::internal(&format!("s3 list_page failed: {e}")))?;
+
+            // Common prefixes = "directories"
+            if let Some(prefixes) = &result.common_prefixes {
+                for cp in prefixes {
+                    let dir_name = cp
+                        .prefix
+                        .trim_end_matches('/')
+                        .rsplit('/')
+                        .next()
+                        .unwrap_or("")
+                        .to_string();
+                    if !include_hidden && dir_name.starts_with('.') {
+                        continue;
+                    }
+                    let child_uri = ResourceUri::from_remote_profile(
+                        "s3",
+                        &profile_id,
+                        &format!("/{}/{}", s3_bucket_from_uri_path(&uri_path), cp.prefix),
+                    )?;
+                    all_entries.push(dir_entry(&child_uri, &profile_id, &cp.prefix)?);
+                }
+            }
+
+            // Objects = files
+            for obj in &result.contents {
+                let obj_key = &obj.key;
+                // Skip "directory marker" objects (same as prefix)
+                if obj_key == &prefix
+                    || obj_key.ends_with('/')
+                        && obj_key.trim_end_matches('/') == prefix.trim_end_matches('/')
+                {
+                    continue;
+                }
+                let obj_name = obj_key
+                    .trim_end_matches('/')
+                    .rsplit('/')
+                    .next()
+                    .unwrap_or(obj_key)
+                    .to_string();
+                if !include_hidden && obj_name.starts_with('.') {
+                    continue;
+                }
+                let child_uri = ResourceUri::from_remote_profile(
+                    "s3",
+                    &profile_id,
+                    &format!("/{}/{}", s3_bucket_from_uri_path(&uri_path), obj_key),
+                )?;
+                all_entries.push(object_entry(
+                    &child_uri,
+                    &profile_id,
+                    obj_key,
+                    obj.size,
+                    &obj.last_modified,
+                )?);
+            }
+
+            if result.is_truncated {
+                continuation_token = result.next_continuation_token;
+            } else {
+                break;
+            }
+        }
+
+        // Sort and batch
+        all_entries.sort_by_key(|e| e.name.to_lowercase());
+        for (batch_index, chunk) in (0_u64..).zip(all_entries.chunks(batch_size)) {
+            if cancel.is_cancelled() {
+                return Err(VfsError::cancelled(uri));
+            }
+            let is_complete = (batch_index as usize + 1) * batch_size >= all_entries.len();
+            sink.send(DirectoryBatch {
+                session_id: options.session_id.clone(),
+                request_id: options.request_id.clone(),
+                uri: uri.clone(),
+                entries: chunk.to_vec(),
+                batch_index,
+                is_complete,
+                total_hint: None,
+            })
+            .await
+            .map_err(|_| VfsError::internal("directory sink closed"))?;
+        }
+
+        self.sessions.touch_session(&profile_id).await;
+        Ok(())
+    }
+
+    async fn create_directory(&self, uri: &ResourceUri) -> Result<(), VfsError> {
+        let (profile_id, session) = self.session_for(uri).await?;
+        let uri_path = uri.remote_path().unwrap_or_default();
+        let (_, key) = parse_bucket_key(&uri_path);
+        let dir_key = if key.ends_with('/') {
+            key.to_string()
+        } else {
+            format!("{key}/")
+        };
+
+        // S3 "directories" are 0-byte objects ending with /
+        session
+            .bucket()
+            .put_object(&dir_key, &[])
+            .await
+            .map_err(|e| VfsError::internal(&format!("s3 mkdir failed: {e}")))?;
+
+        self.sessions.touch_session(&profile_id).await;
+        Ok(())
+    }
+
+    async fn create_file(&self, uri: &ResourceUri) -> Result<(), VfsError> {
+        let (profile_id, session) = self.session_for(uri).await?;
+        let uri_path = uri.remote_path().unwrap_or_default();
+        let (_, key) = parse_bucket_key(&uri_path);
+
+        session
+            .bucket()
+            .put_object(&key, &[])
+            .await
+            .map_err(|e| VfsError::internal(&format!("s3 create file failed: {e}")))?;
+
+        self.sessions.touch_session(&profile_id).await;
+        Ok(())
+    }
+
+    async fn rename(&self, from: &ResourceUri, to: &ResourceUri) -> Result<(), VfsError> {
+        let from_authority = Self::profile_id_for_uri(from)?;
+        let to_authority = Self::profile_id_for_uri(to)?;
+        if from_authority != to_authority {
+            return Err(VfsError::UnsupportedOperation {
+                scheme: "s3".to_string(),
+                operation: "rename across profiles",
+            });
+        }
+
+        let (profile_id, session) = self.session_for(from).await?;
+        let from_path = from.remote_path().unwrap_or_default();
+        let to_path = to.remote_path().unwrap_or_default();
+        let (_, from_key) = parse_bucket_key(&from_path);
+        let (_, to_key) = parse_bucket_key(&to_path);
+
+        session
+            .bucket()
+            .copy_object_internal(&from_key, &to_key)
+            .await
+            .map_err(|e| VfsError::internal(&format!("s3 copy_object failed: {e}")))?;
+
+        session
+            .bucket()
+            .delete_object(&from_key)
+            .await
+            .map_err(|e| VfsError::internal(&format!("s3 delete_object failed: {e}")))?;
+
+        self.sessions.touch_session(&profile_id).await;
+        Ok(())
+    }
+
+    async fn remove(&self, uri: &ResourceUri, recursive: bool) -> Result<(), VfsError> {
+        let (profile_id, session) = self.session_for(uri).await?;
+        let uri_path = uri.remote_path().unwrap_or_default();
+        let (_, key) = parse_bucket_key(&uri_path);
+
+        if recursive && !key.is_empty() {
+            let prefix = if key.ends_with('/') {
+                key.clone()
+            } else {
+                format!("{key}/")
+            };
+            let uri_clone = uri.clone();
+            tokio::task::spawn_blocking(move || {
+                remove_s3_tree_blocking(&session, &uri_clone, &prefix)
+            })
+            .await
+            .map_err(|error| VfsError::internal(&error.to_string()))??;
+        } else {
+            session
+                .bucket()
+                .delete_object(&key)
+                .await
+                .map_err(|e| VfsError::internal(&format!("s3 delete failed: {e}")))?;
+        }
+
+        self.sessions.touch_session(&profile_id).await;
+        Ok(())
+    }
+
+    async fn copy_file(
+        &self,
+        source: &ResourceUri,
+        destination: &ResourceUri,
+        _on_progress: Box<dyn FnMut(u64) + Send>,
+    ) -> Result<u64, VfsError> {
+        let source_authority = Self::profile_id_for_uri(source)?;
+        let dest_authority = Self::profile_id_for_uri(destination)?;
+        if source_authority != dest_authority {
+            return Err(VfsError::UnsupportedOperation {
+                scheme: "s3".to_string(),
+                operation: "copy_file across profiles",
+            });
+        }
+
+        let (profile_id, session) = self.session_for(source).await?;
+        let from_path = source.remote_path().unwrap_or_default();
+        let to_path = destination.remote_path().unwrap_or_default();
+        let (_, from_key) = parse_bucket_key(&from_path);
+        let (_, to_key) = parse_bucket_key(&to_path);
+
+        // Get source size for reporting
+        let (head, _status) = session
+            .bucket()
+            .head_object(&from_key)
+            .await
+            .map_err(|e| VfsError::internal(&format!("s3 head_object failed: {e}")))?;
+        let size = head.content_length.unwrap_or(0) as u64;
+
+        let content_type = head
+            .content_type
+            .unwrap_or_else(|| "application/octet-stream".to_string());
+        // Note: copy_object_internal only takes 2 args in rust-s3 0.34
+        let _ = content_type; // unused but kept for future upgrade
+        session
+            .bucket()
+            .copy_object_internal(&from_key, &to_key)
+            .await
+            .map_err(|e| VfsError::internal(&format!("s3 copy_object failed: {e}")))?;
+
+        self.sessions.touch_session(&profile_id).await;
+        Ok(size)
+    }
+
+    async fn read_file_prefix(
+        &self,
+        uri: &ResourceUri,
+        max_bytes: u64,
+    ) -> Result<Vec<u8>, VfsError> {
+        let (profile_id, session) = self.session_for(uri).await?;
+        let uri_path = uri.remote_path().unwrap_or_default();
+        let (_, key) = parse_bucket_key(&uri_path);
+
+        let response = session
+            .bucket()
+            .get_object_range(&key, 0, Some(max_bytes.saturating_sub(1)))
+            .await
+            .map_err(|e| VfsError::internal(&format!("s3 get_object_range failed: {e}")))?;
+
+        self.sessions.touch_session(&profile_id).await;
+        Ok(response.to_vec())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn s3_prefix_extraction() {
+        assert_eq!(s3_prefix_from_uri_path("/my-bucket"), "");
+        assert_eq!(s3_prefix_from_uri_path("/my-bucket/"), "");
+        assert_eq!(s3_prefix_from_uri_path("/my-bucket/docs/"), "docs/");
+        assert_eq!(
+            s3_prefix_from_uri_path("/my-bucket/docs/file.txt"),
+            "docs/file.txt/"
+        );
+    }
+
+    #[test]
+    fn s3_bucket_extraction() {
+        assert_eq!(s3_bucket_from_uri_path("/my-bucket"), "my-bucket");
+        assert_eq!(
+            s3_bucket_from_uri_path("/my-bucket/path/to/key"),
+            "my-bucket"
+        );
+    }
+
+    #[test]
+    fn parse_bucket_key_test() {
+        let (b, k) = parse_bucket_key("/my-bucket/docs/file.txt");
+        assert_eq!(b, "my-bucket");
+        assert_eq!(k, "docs/file.txt");
+
+        let (b, k) = parse_bucket_key("/my-bucket");
+        assert_eq!(b, "my-bucket");
+        assert_eq!(k, "");
+    }
+}

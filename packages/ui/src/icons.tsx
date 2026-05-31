@@ -26,16 +26,22 @@ import {
   Maximize2,
   Minimize2,
   Monitor,
+  Moon,
   Music,
   Pencil,
   Pin,
+  Pause,
+  Play,
   RefreshCw,
   Search,
   Server,
   Settings,
   Star,
+  Sun,
   Terminal,
   Trash2,
+  Usb,
+  Video,
   X,
 } from "lucide-react";
 import type { ReactNode } from "react";
@@ -61,6 +67,8 @@ export const Icons = {
   folderPlus: () => renderIcon(FolderPlus, "fo-ui-icon"),
   filePlus: () => renderIcon(FilePlus, "fo-ui-icon"),
   pencil: () => renderIcon(Pencil, "fo-ui-icon"),
+  pause: () => renderIcon(Pause, "fo-ui-icon"),
+  play: () => renderIcon(Play, "fo-ui-icon"),
   copy: () => renderIcon(Copy, "fo-ui-icon"),
   move: () => renderIcon(ArrowRightLeft, "fo-ui-icon"),
   trash: () => renderIcon(Trash2, "fo-ui-icon"),
@@ -72,6 +80,7 @@ export const Icons = {
   downloads: () => renderIcon(Download, "fo-ui-icon"),
   pictures: () => renderIcon(Image, "fo-ui-icon"),
   music: () => renderIcon(Music, "fo-ui-icon"),
+  video: () => renderIcon(Video, "fo-ui-icon"),
   volume: () => renderIcon(HardDrive, "fo-ui-icon"),
   server: () => renderIcon(Server, "fo-ui-icon"),
   recent: () => renderIcon(Clock, "fo-ui-icon"),
@@ -90,6 +99,10 @@ export const Icons = {
   calculator: () => renderIcon(Calculator, "fo-ui-icon"),
   hash: () => renderIcon(Hash, "fo-ui-icon"),
   terminal: () => renderIcon(Terminal, "fo-ui-icon"),
+  sun: () => renderIcon(Sun, "fo-ui-icon"),
+  moon: () => renderIcon(Moon, "fo-ui-icon"),
+  monitor: () => renderIcon(Monitor, "fo-ui-icon"),
+  usb: () => renderIcon(Usb, "fo-ui-icon"),
   x: () => renderIcon(X, "fo-ui-icon"),
 };
 
@@ -113,7 +126,7 @@ function classicFolderIcon(): ReactNode {
 }
 
 function classicFileIcon(
-  kind: "generic" | "document" | "image" | "audio",
+  kind: "generic" | "document" | "image" | "audio" | "archive",
 ): ReactNode {
   const detail =
     kind === "image" ? (
@@ -132,6 +145,13 @@ function classicFileIcon(
         <rect width="13" height="2" x="9" y="14" fill="#2563eb" />
         <rect width="13" height="2" x="9" y="18" fill="#2563eb" />
         <rect width="9" height="2" x="9" y="22" fill="#2563eb" />
+      </>
+    ) : kind === "archive" ? (
+      <>
+        <rect width="7" height="2" x="13" y="13" fill="#f59e0b" />
+        <rect width="7" height="2" x="13" y="17" fill="#f59e0b" />
+        <rect width="7" height="2" x="13" y="21" fill="#f59e0b" />
+        <rect width="2" height="4" x="15" y="6" fill="#f59e0b" />
       </>
     ) : (
       <rect width="11" height="2" x="9" y="19" fill="#94a3b8" />
@@ -202,6 +222,16 @@ export function fileEntryIcon(
 
   if (["pdf", "doc", "docx", "txt", "md"].includes(extension)) {
     return classicFileIcon("document");
+  }
+
+  if (
+    ["zip", "tar", "tgz", "gz", "bz2", "tbz2", "7z", "rar"].includes(
+      extension,
+    ) ||
+    entry.name.endsWith(".tar.gz") ||
+    entry.name.endsWith(".tar.bz2")
+  ) {
+    return classicFileIcon("archive");
   }
 
   return classicFileIcon("generic");

@@ -13,11 +13,12 @@ pub struct AuthSecrets {
 impl AuthSecrets {
     pub fn profile_has_stored_secret(profile: &NetworkProfile) -> bool {
         match profile.auth_kind {
-            AuthKind::Password => profile.has_stored_secret,
+            AuthKind::Password | AuthKind::AccessKey => profile.has_stored_secret,
             AuthKind::PrivateKey => profile
                 .private_key_path
                 .as_ref()
                 .is_some_and(|path| !path.is_empty()),
+            AuthKind::OAuth => profile.has_stored_secret,
         }
     }
 
@@ -26,7 +27,7 @@ impl AuthSecrets {
         profile: &NetworkProfile,
     ) -> Result<Self, platform::SecretStoreError> {
         match profile.auth_kind {
-            AuthKind::Password => Ok(Self {
+            AuthKind::Password | AuthKind::AccessKey => Ok(Self {
                 password: Some(store.get(&SecretStore::network_password_key(&profile.id))?),
                 passphrase: None,
             }),
@@ -39,6 +40,10 @@ impl AuthSecrets {
                     passphrase,
                 })
             }
+            AuthKind::OAuth => Ok(Self {
+                password: Some(store.get(&SecretStore::network_password_key(&profile.id))?),
+                passphrase: None,
+            }),
         }
     }
 }

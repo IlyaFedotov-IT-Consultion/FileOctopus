@@ -1,3 +1,57 @@
+:root[data-theme="commander-blue"] {
+  color-scheme: dark;
+  --fo-app-bg: #000050;
+  --fo-workspace-bg: #000050;
+  --fo-surface: #0000a8;
+  --fo-surface-elevated: #0000c4;
+  --fo-panel-bg: #0000a8;
+  --fo-editor-bg: #000080;
+  --fo-titlebar-bg: #000050;
+  --fo-text: #d6f7f7;
+  --fo-muted-text: #7bc4d4;
+  --fo-secondary-text: #7bc4d4;
+  --fo-body-muted: #7bc4d4;
+  --fo-disabled-text: #4f8fa0;
+  --fo-icon-muted: #9fe0e0;
+  --fo-border: #2a2ad6;
+  --fo-strong-border: #3a3ae0;
+  --fo-control-border: #3a3ae0;
+  --fo-subtle-border: #1a1a8c;
+  --fo-divider: #2a2ad6;
+  --fo-control-bg: #0000c4;
+  --fo-accent: #00d8d8;
+  --fo-accent-soft: #00b8b8;
+  --fo-on-accent: #00102a;
+  --fo-focus: #5fefef;
+  --fo-success: #5fef9f;
+  --fo-warning: #ffd75f;
+  --fo-danger: #ff8a8a;
+  --fo-danger-text: #ff9d9d;
+  --fo-danger-bg: #3a0a1a;
+  --fo-danger-border: #7a2030;
+  --fo-tab-bg: #000080;
+  --fo-tab-hover-bg: #0000c4;
+  --fo-selection-inactive-bg: #1a1a8c;
+  --fo-row-hover-bg: #1414a0;
+  --fo-chrome-hover-bg: #0000c4;
+  --fo-chrome-hover-text: #ffffff;
+  --fo-strip-bg: #0a0a90;
+  --fo-dialog-border: #2a2ad6;
+  --fo-menu-shadow: rgb(0 0 40 / 55%);
+  --fo-dialog-shadow: rgb(0 0 40 / 55%);
+  --fo-backdrop: rgb(0 0 40 / 60%);
+  --fo-tag-red: #ff8a8a;
+  --fo-tag-orange: #ffa860;
+  --fo-tag-amber: #ffc94d;
+  --fo-tag-yellow: #ffe14d;
+  --fo-tag-green: #5fef9f;
+  --fo-tag-teal: #4fe0e0;
+  --fo-tag-blue: #6fb0ff;
+  --fo-tag-indigo: #8a9bff;
+  --fo-tag-violet: #b89bff;
+  --fo-tag-pink: #ff8ad6;
+}
+
 :root {
   --fo-text: #cccccc;
   --fo-app-bg: #1e1e1e;
@@ -12,6 +66,7 @@
   --fo-accent: #007acc;
   --fo-accent-soft: #094771;
   --fo-on-accent: #ffffff;
+  --fo-on-accent-soft: var(--fo-on-accent);
   --fo-shell-shadow: rgb(0 0 0 / 32%);
   --fo-sidebar-width: 240px;
   --fo-activity-width: 320px;
@@ -74,7 +129,7 @@
   --fo-dark-control-bg: #3c3c3c;
   --fo-dark-control-border: #3c3c3c;
   --fo-dark-accent-soft: #094771;
-  --fo-dark-muted-text: #969696;
+  --fo-dark-muted-text: #a0a0a0;
   --fo-dark-danger-bg: #5a1d1d;
   --fo-dark-danger-border: #be1100;
   --fo-dark-danger-text: #f48771;
@@ -201,6 +256,9 @@
   --fo-row-hover-bg: #f3f3f3;
   --fo-selection-inactive-bg: #e4e6f1;
   --fo-icon-muted: #424242;
+  --fo-chrome-hover-bg: #e0e0e0;
+  --fo-chrome-hover-text: #1f1f1f;
+  --fo-on-accent-soft: #1f1f1f;
 
   --fo-syntax-keyword: #0000ff;
   --fo-syntax-string: #a31515;
@@ -324,15 +382,22 @@
   --fo-spacing-xl: 16px;
   --fo-spacing-2xl: 24px;
 
-  /* Radius tokens (§20.2) */
+  /* Radius tokens (§20.2; UPP-H2)
+     xs = crisp commander content/inputs/keycaps; sm = popovers/dialogs. */
+  --fo-radius-xs: 2px;
+  --fo-radius-2xs: 3px;
+  --fo-radius-sm-subtle: 4px;
   --fo-radius-sm: 6px;
+  --fo-radius-sm-wide: 8px;
   --fo-radius-md: 10px;
   --fo-radius-lg: 14px;
 
-  /* Elevation tokens (§20.2) */
-  --fo-elevation-popover: 0 8px 24px rgba(0, 0, 0, 0.12);
-  --fo-elevation-modal: 0 14px 36px rgba(0, 0, 0, 0.18);
-  --fo-elevation-drawer: 0 12px 32px rgba(0, 0, 0, 0.14);
+  /* Elevation tokens (§20.2; UPP-D1) — theme-aware: the shadow colour comes
+     from the per-theme --fo-menu-shadow / --fo-dialog-shadow so popovers and
+     modals get the right shadow weight in light, dark, and commander-blue. */
+  --fo-elevation-popover: 0 8px 24px var(--fo-menu-shadow);
+  --fo-elevation-modal: 0 14px 36px var(--fo-dialog-shadow);
+  --fo-elevation-drawer: 0 12px 32px var(--fo-menu-shadow);
 
   /* Component-height tokens (§5.3) */
   --fo-toolbar-height: 26px;
@@ -341,6 +406,47 @@
   --fo-splitter-width: 6px;
   --fo-toast-width: 360px;
   --fo-job-drawer-width: 420px;
+
+  /* Typography scale (UPP-H1) — see docs/ui-premium-polish-improvement-plan.md §8.2 */
+  --fo-font-size-xs: 11px;
+  --fo-font-size-sm: 12px;
+  --fo-font-size-md: 13px;
+  --fo-font-size-lg: 14px;
+  --fo-font-size-xl: 16px;
+  --fo-line-tight: 1.2;
+  --fo-line-normal: 1.4;
+
+  /* Chrome interaction tokens (UPP-A1) — dark defaults; overridden per theme.
+     These drive titlebar/menubar/toolbar hover so chrome follows the theme
+     instead of being pinned to dark values. */
+  --fo-chrome-hover-bg: #505050;
+  --fo-chrome-hover-text: #ffffff;
+
+  /* Focus ring (UPP-A2) — single standard ring for every interactive element */
+  --fo-focus-ring-width: 2px;
+  --fo-focus-ring-offset: 2px;
+  --fo-focus-ring: 0 0 0 var(--fo-focus-ring-width) var(--fo-focus);
+
+  /* Motion tokens (UPP-J1) — all transitions gated by prefers-reduced-motion */
+  --fo-motion-fast: 120ms;
+  --fo-motion-med: 200ms;
+  --fo-motion-ease: cubic-bezier(0.2, 0, 0.2, 1);
+
+  /* Status surface tokens (UPP-H1) — derived from the theme's status color +
+     surface so success/warning chips adapt to every theme automatically,
+     mirroring the explicit --fo-danger-bg/-border pair. */
+  --fo-success-bg: color-mix(in srgb, var(--fo-success) 16%, var(--fo-surface));
+  --fo-success-border: color-mix(
+    in srgb,
+    var(--fo-success) 55%,
+    var(--fo-surface)
+  );
+  --fo-warning-bg: color-mix(in srgb, var(--fo-warning) 16%, var(--fo-surface));
+  --fo-warning-border: color-mix(
+    in srgb,
+    var(--fo-warning) 55%,
+    var(--fo-surface)
+  );
 }
 
 :root[data-density="compact"] {
@@ -363,6 +469,11 @@
   --fo-sidebar-width: 248px;
   --fo-toast-width: 360px;
   --fo-job-drawer-width: 420px;
+  --fo-font-size-xs: 12px;
+  --fo-font-size-sm: 13px;
+  --fo-font-size-md: 14px;
+  --fo-font-size-lg: 15px;
+  --fo-font-size-xl: 17px;
 }
 
 :root[data-density="spacious"] {
@@ -374,4 +485,30 @@
   --fo-sidebar-width: 280px;
   --fo-toast-width: 420px;
   --fo-job-drawer-width: 480px;
+  --fo-font-size-xs: 13px;
+  --fo-font-size-sm: 14px;
+  --fo-font-size-md: 15px;
+  --fo-font-size-lg: 16px;
+  --fo-font-size-xl: 18px;
+}
+
+:root {
+  --fo-tag-red: #e53e3e;
+  --fo-tag-orange: #ed8936;
+  --fo-tag-amber: #d69e2e;
+  --fo-tag-yellow: #ecc94b;
+  --fo-tag-green: #38a169;
+  --fo-tag-teal: #319795;
+  --fo-tag-blue: #3182ce;
+  --fo-tag-indigo: #5a67d8;
+  --fo-tag-violet: #805ad5;
+  --fo-tag-pink: #d53f8c;
+}
+
+/* Window chrome — macOS traffic-light dots.
+   Platform-fixed colors; not theme-dependent. */
+:root {
+  --fo-window-dot-red: #ff5f57;
+  --fo-window-dot-yellow: #ffbd2e;
+  --fo-window-dot-green: #28c840;
 }

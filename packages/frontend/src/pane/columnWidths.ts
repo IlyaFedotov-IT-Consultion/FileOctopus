@@ -65,7 +65,8 @@ export function buildVisibleGridTemplate(
   widths: ColumnWidths,
   visible: VisibleColumns,
 ): string {
-  const ordered = COLUMN_ORDER.filter((id) => visible.indexOf(id) !== -1);
+  // Use the visible array order directly (supports user-defined column reorder)
+  const ordered = visible.filter((id) => COLUMN_ORDER.indexOf(id) !== -1);
   return ordered
     .map((id) => {
       const w = widths[id];
@@ -78,7 +79,8 @@ export function buildVisibleHeaderGridTemplate(
   widths: ColumnWidths,
   visible: VisibleColumns,
 ): string {
-  const ordered = COLUMN_ORDER.filter((id) => visible.indexOf(id) !== -1);
+  // Use the visible array order directly (supports user-defined column reorder)
+  const ordered = visible.filter((id) => COLUMN_ORDER.indexOf(id) !== -1);
   const parts: string[] = [];
   for (let i = 0; i < ordered.length; i++) {
     const id = ordered[i];
@@ -91,8 +93,9 @@ export function buildVisibleHeaderGridTemplate(
   return parts.join(" ");
 }
 
-export function storedColumnWidths(): ColumnWidths {
-  const raw = readStorage(STORAGE_KEY);
+export function storedColumnWidths(panelId?: string): ColumnWidths {
+  const key = panelId ? `${STORAGE_KEY}.${panelId}` : STORAGE_KEY;
+  const raw = readStorage(key);
   if (!raw) return { ...DEFAULT_COLUMN_WIDTHS };
 
   try {
@@ -104,9 +107,13 @@ export function storedColumnWidths(): ColumnWidths {
   }
 }
 
-export function persistColumnWidths(widths: ColumnWidths): void {
+export function persistColumnWidths(
+  widths: ColumnWidths,
+  panelId?: string,
+): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(widths));
+    const key = panelId ? `${STORAGE_KEY}.${panelId}` : STORAGE_KEY;
+    localStorage.setItem(key, JSON.stringify(widths));
   } catch {
     // quota or security errors — silently ignore
   }
@@ -122,28 +129,67 @@ export function isValidVisibleColumns(value: unknown): boolean {
   return true;
 }
 
-export function storedVisibleColumns(): VisibleColumns {
-  const raw = readStorage(VISIBLE_STORAGE_KEY);
+export function normalizeVisibleColumns(
+  visible: VisibleColumns,
+): VisibleColumns {
+  if (visible.indexOf("name") === 0) {
+    return visible;
+  }
+  const filtered = visible.filter((id) => id !== "name");
+  return ["name", ...filtered];
+}
+
+export function reorderVisibleColumns(
+  visible: VisibleColumns,
+  fromIndex: number,
+  toIndex: number,
+): VisibleColumns {
+  const next = [...visible];
+  if (
+    fromIndex < 0 ||
+    toIndex < 0 ||
+    fromIndex >= next.length ||
+    toIndex >= next.length ||
+    next[fromIndex] === "name"
+  ) {
+    return normalizeVisibleColumns(visible);
+  }
+
+  const clampedToIndex = Math.max(1, toIndex);
+  const [moved] = next.splice(fromIndex, 1);
+  if (!moved || moved === "name") {
+    return normalizeVisibleColumns(visible);
+  }
+  next.splice(clampedToIndex, 0, moved);
+  return normalizeVisibleColumns(next);
+}
+
+export function storedVisibleColumns(panelId?: string): VisibleColumns {
+  const key = panelId
+    ? `${VISIBLE_STORAGE_KEY}.${panelId}`
+    : VISIBLE_STORAGE_KEY;
+  const raw = readStorage(key);
   if (!raw) return [...DEFAULT_VISIBLE_COLUMNS];
 
   try {
     const parsed = JSON.parse(raw);
     if (!isValidVisibleColumns(parsed)) return [...DEFAULT_VISIBLE_COLUMNS];
     const cols = parsed as VisibleColumns;
-    // Ensure name is always first
-    if (cols.indexOf("name") !== 0) {
-      const filtered = cols.filter((c) => c !== "name");
-      return ["name", ...filtered];
-    }
-    return cols;
+    return normalizeVisibleColumns(cols);
   } catch {
     return [...DEFAULT_VISIBLE_COLUMNS];
   }
 }
 
-export function persistVisibleColumns(visible: VisibleColumns): void {
+export function persistVisibleColumns(
+  visible: VisibleColumns,
+  panelId?: string,
+): void {
   try {
-    localStorage.setItem(VISIBLE_STORAGE_KEY, JSON.stringify(visible));
+    const key = panelId
+      ? `${VISIBLE_STORAGE_KEY}.${panelId}`
+      : VISIBLE_STORAGE_KEY;
+    localStorage.setItem(key, JSON.stringify(visible));
   } catch {
     // quota or security errors — silently ignore
   }

@@ -1,9 +1,10 @@
-import type { FsClient } from "@fileoctopus/ts-api";
+import type { FsClient, PluginClient } from "@fileoctopus/ts-api";
 import type {
   AppDataHealthResponse,
   AppInfoResponse,
   AutostartStatusDto,
   FileEntryDto,
+  NetworkConnectionDraftDto,
   UserPreferencesDto,
 } from "@fileoctopus/ts-api";
 import type { PanelId } from "../panelStore";
@@ -13,6 +14,7 @@ import { ShortcutsDialog } from "./ShortcutsDialog";
 import { CommandPalette, type CommandEntry } from "./CommandPalette";
 import { PreviewPanel } from "./PreviewPanel";
 import { ViewerDialog } from "./viewer/ViewerDialog";
+import { DiffDialog } from "./diff/DiffDialog";
 import { EditorDialog } from "./editor/EditorDialog";
 import { setRememberSessionPaths } from "../pane/sessionPaths";
 import {
@@ -31,6 +33,15 @@ import { VolumePickerDialog } from "./dialogs/VolumePickerDialog";
 import { NetworkLocationsDialog } from "./dialogs/NetworkLocationsDialog";
 import { ConnectServerDialog } from "./dialogs/ConnectServerDialog";
 import { RemoveServerDialog } from "./dialogs/RemoveServerDialog";
+import { MultiRenameDialog } from "./MultiRenameDialog";
+import { SyncDirectoriesDialog } from "./dialogs/SyncDirectoriesDialog";
+import { HotlistDialog } from "../dialogs/HotlistDialog";
+import { ManageHotlistDialog } from "../dialogs/ManageHotlistDialog";
+import {
+  createHotlistEntry,
+  parseHotlistEntries,
+  serializeHotlistEntries,
+} from "../utils/hotlist";
 import type {
   FavoriteEntryDto,
   NetworkConnectionStatusDto,
@@ -62,6 +73,7 @@ const FALLBACK_PREFERENCES: UserPreferencesDto = {
   toolbarVisible: true,
   toolbarEntries: "",
   paneMode: "dual",
+  paneDirection: "horizontal",
   jobDrawerBehavior: "manual",
   showAdvancedCopyOptions: false,
   paneTerminalHeightLeft: 0.35,
@@ -73,6 +85,35 @@ const FALLBACK_PREFERENCES: UserPreferencesDto = {
   terminalArgs: "",
   rememberLastUsedPanes: true,
   diagnosticsExportPath: "/tmp/fileoctopus-diagnostics.zip",
+  customShortcuts: "",
+  fileTypeColorRules: "",
+  layoutProfiles: "",
+  columnPresets: "",
+  tabSessions: "",
+  hotlistEntries: "",
+  leftDefaultViewMode: "details",
+  rightDefaultViewMode: "details",
+  leftDefaultSortField: "name",
+  rightDefaultSortField: "name",
+  logLevel: "warn",
+  experimentalFeatures: false,
+  cacheSizeLimit: 256,
+  fileOperationThreads: 4,
+  networkConnectionTimeout: 30,
+  networkAutoReconnect: true,
+  networkDefaultProtocol: "sftp",
+  networkSshKeyPath: "",
+  editorFontFamily: "monospace",
+  editorFontSize: 14,
+  editorTabSize: 4,
+  editorWordWrap: true,
+  editorAutoSave: false,
+  editorSyntaxHighlighting: true,
+  editorLineNumbers: true,
+  viewerDefaultViewMode: "text",
+  viewerImageZoom: "fit",
+  viewerMediaAutoplay: false,
+  viewerMaxPreviewSize: 10,
 };
 
 export interface DialogOverlayGroupProps {
@@ -84,6 +125,8 @@ export interface DialogOverlayGroupProps {
   viewerOpen: boolean;
   viewerEntry: FileEntryDto | null;
   setViewerOpen: (open: boolean) => void;
+  viewerSiblings?: FileEntryDto[];
+  onViewerNavigate?: (entry: FileEntryDto) => void;
   editorOpen: boolean;
   editorEntry: FileEntryDto | null;
   setEditorOpen: (open: boolean) => void;
@@ -103,10 +146,13 @@ export interface DialogOverlayGroupProps {
   networkLocationsOpen: boolean;
   connectServerOpen: boolean;
   connectServerProfile: NetworkProfileDto | null;
+  connectServerInitial: NetworkConnectionDraftDto | null;
   removeServerProfile: NetworkProfileDto | null;
   networkProfiles: NetworkProfileDto[];
   networkStatuses: NetworkConnectionStatusDto[];
   goToLocationInitialUri: string;
+  leftPanelUri: string;
+  rightPanelUri: string;
   favorites: FavoriteEntryDto[];
   history: OperationHistoryRecordDto[];
   operationError: string | null;
@@ -121,6 +167,7 @@ export interface DialogOverlayGroupProps {
   exportingDiagnostics: boolean;
   isProductionBuild: boolean;
   fs: FsClient;
+  pluginClient?: PluginClient;
   updatePreference: (key: string, value: string) => void;
   handleSetAutostart: (enabled: boolean) => Promise<void>;
   onCustomizeToolbar?: () => void;
@@ -144,19 +191,35 @@ export interface DialogOverlayGroupProps {
   setNetworkLocationsOpen: (open: boolean) => void;
   setConnectServerOpen: (open: boolean) => void;
   setConnectServerProfile: (profile: NetworkProfileDto | null) => void;
+  setConnectServerInitial: (profile: NetworkConnectionDraftDto | null) => void;
   setRemoveServerProfile: (profile: NetworkProfileDto | null) => void;
+  diffOpen: boolean;
+  diffLeftUri: string;
+  diffRightUri: string;
+  diffLeftName: string;
+  diffRightName: string;
+  setDiffOpen: (open: boolean) => void;
+  multiRenameOpen: boolean;
+  setMultiRenameOpen: (open: boolean) => void;
+  syncDirectoriesOpen: boolean;
+  setSyncDirectoriesOpen: (open: boolean) => void;
+  hotlistOpen: boolean;
+  setHotlistOpen: (open: boolean) => void;
+  manageHotlistOpen: boolean;
+  setManageHotlistOpen: (open: boolean) => void;
+  multiRenameEntries: FileEntryDto[];
   connectProfile: (profileId: string) => Promise<void>;
   forgetFingerprint: (profileId: string) => Promise<void>;
   disconnectProfile: (profileId: string) => Promise<void>;
   deleteProfile: (profileId: string) => Promise<void>;
   saveProfile: (payload: {
     id?: string;
-    scheme: "sftp" | "ssh";
+    scheme: "sftp" | "ssh" | "smb" | "s3" | "webdav";
     label: string;
     host: string;
     port: number;
     username: string;
-    authKind: "password" | "privateKey";
+    authKind: "password" | "privateKey" | "accessKey";
     privateKeyPath: string | null;
     defaultPath: string;
     password: string;
@@ -215,6 +278,8 @@ export function DialogOverlayGroup({
   viewerOpen,
   viewerEntry,
   setViewerOpen,
+  viewerSiblings,
+  onViewerNavigate,
   editorOpen,
   editorEntry,
   setEditorOpen,
@@ -234,10 +299,13 @@ export function DialogOverlayGroup({
   networkLocationsOpen,
   connectServerOpen,
   connectServerProfile,
+  connectServerInitial,
   removeServerProfile,
   networkProfiles,
   networkStatuses,
   goToLocationInitialUri,
+  leftPanelUri,
+  rightPanelUri,
   favorites,
   history,
   operationError,
@@ -252,6 +320,7 @@ export function DialogOverlayGroup({
   exportingDiagnostics,
   isProductionBuild,
   fs,
+  pluginClient,
   updatePreference,
   handleSetAutostart,
   onCustomizeToolbar,
@@ -272,7 +341,23 @@ export function DialogOverlayGroup({
   setNetworkLocationsOpen,
   setConnectServerOpen,
   setConnectServerProfile,
+  setConnectServerInitial,
   setRemoveServerProfile,
+  diffOpen,
+  diffLeftUri,
+  diffRightUri,
+  diffLeftName,
+  diffRightName,
+  setDiffOpen,
+  multiRenameOpen,
+  setMultiRenameOpen,
+  syncDirectoriesOpen,
+  setSyncDirectoriesOpen,
+  hotlistOpen,
+  setHotlistOpen,
+  manageHotlistOpen,
+  setManageHotlistOpen,
+  multiRenameEntries,
   connectProfile,
   disconnectProfile,
   deleteProfile,
@@ -312,6 +397,7 @@ export function DialogOverlayGroup({
         open={settingsOpen}
         preferences={preferences ?? FALLBACK_PREFERENCES}
         autostart={autostart}
+        pluginClient={pluginClient}
         onClose={() => setSettingsOpen(false)}
         onChange={(key, value) => {
           if (key === "rememberLastUsedPanes") {
@@ -345,6 +431,8 @@ export function DialogOverlayGroup({
         entry={viewerEntry}
         fs={fs}
         onClose={() => setViewerOpen(false)}
+        siblings={viewerSiblings}
+        onNavigate={onViewerNavigate}
       />
       <EditorDialog
         open={editorOpen}
@@ -352,6 +440,49 @@ export function DialogOverlayGroup({
         fs={fs}
         onClose={() => setEditorOpen(false)}
         onSaved={() => refreshActivePane?.()}
+      />
+      <DiffDialog
+        open={diffOpen}
+        leftUri={diffLeftUri}
+        rightUri={diffRightUri}
+        leftName={diffLeftName}
+        rightName={diffRightName}
+        fs={fs}
+        onClose={() => setDiffOpen(false)}
+      />
+      <MultiRenameDialog
+        open={multiRenameOpen}
+        entries={multiRenameEntries}
+        onClose={() => setMultiRenameOpen(false)}
+        onExecute={() => setMultiRenameOpen(false)}
+      />
+      <SyncDirectoriesDialog
+        open={syncDirectoriesOpen}
+        leftUri={leftPanelUri}
+        rightUri={rightPanelUri}
+        fs={fs}
+        onClose={() => setSyncDirectoriesOpen(false)}
+      />
+      <HotlistDialog
+        open={hotlistOpen}
+        onNavigate={(uri) => {
+          setHotlistOpen(false);
+          onNavigateActivePane(uri);
+        }}
+        onManage={() => setManageHotlistOpen(true)}
+        onClose={() => setHotlistOpen(false)}
+        onAddCurrent={(label, uri) => {
+          const STORAGE_KEY = "fileoctopus_hotlist";
+          const raw = localStorage.getItem(STORAGE_KEY) ?? "";
+          const existing = parseHotlistEntries(raw);
+          existing.push(createHotlistEntry(label, uri));
+          localStorage.setItem(STORAGE_KEY, serializeHotlistEntries(existing));
+        }}
+        currentUri={goToLocationInitialUri}
+      />
+      <ManageHotlistDialog
+        open={manageHotlistOpen}
+        onClose={() => setManageHotlistOpen(false)}
       />
       <AboutDialog
         open={aboutOpen}
@@ -454,11 +585,13 @@ export function DialogOverlayGroup({
         onAddServer={() => {
           setNetworkLocationsOpen(false);
           setConnectServerProfile(null);
+          setConnectServerInitial(null);
           setConnectServerOpen(true);
         }}
         onEditServer={(profile) => {
           setNetworkLocationsOpen(false);
           setConnectServerProfile(profile);
+          setConnectServerInitial(null);
           setConnectServerOpen(true);
         }}
         onDeleteServer={(profileId) => {
@@ -472,9 +605,11 @@ export function DialogOverlayGroup({
       <ConnectServerDialog
         open={connectServerOpen}
         editingProfile={connectServerProfile}
+        initialDraft={connectServerInitial}
         onClose={() => {
           setConnectServerOpen(false);
           setConnectServerProfile(null);
+          setConnectServerInitial(null);
         }}
         onSave={saveProfile}
         onForgetFingerprint={forgetFingerprint}
@@ -497,6 +632,10 @@ export function DialogOverlayGroup({
         onSelect={(uri) => {
           setVolumePickerOpen(false);
           onNavigateActivePane(uri);
+        }}
+        onOpenNetwork={() => {
+          setVolumePickerOpen(false);
+          onNavigateActivePane("network:///");
         }}
       />
     </>

@@ -16,6 +16,8 @@ pub const JOB_PROGRESS_EVENT: &str = "fileOperation:job:progress";
 pub const JOB_COMPLETED_EVENT: &str = "fileOperation:job:completed";
 pub const JOB_FAILED_EVENT: &str = "fileOperation:job:failed";
 pub const JOB_CANCELLED_EVENT: &str = "fileOperation:job:cancelled";
+pub const JOB_PAUSED_EVENT: &str = "fileOperation:job:paused";
+pub const JOB_RESUMED_EVENT: &str = "fileOperation:job:resumed";
 pub const WATCH_CHANGED_EVENT: &str = "fs:watch:changed";
 pub const NETWORK_STATUS_EVENT: &str = "network:status";
 pub const FOLDER_SIZE_COMPLETED_EVENT: &str = "fs:folderSize:completed";
@@ -24,6 +26,8 @@ pub const RECURSIVE_SEARCH_COMPLETED_EVENT: &str = "fs:recursiveSearch:completed
 pub const TERMINAL_OUTPUT_EVENT: &str = "terminal:output";
 pub const TERMINAL_EXIT_EVENT: &str = "terminal:exit";
 pub const NATIVE_MENU_COMMAND_EVENT: &str = "nativeMenu:command";
+pub const CONTENT_SEARCH_MATCH_EVENT: &str = "fs:contentSearch:match";
+pub const CONTENT_SEARCH_COMPLETED_EVENT: &str = "fs:contentSearch:completed";
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -35,6 +39,34 @@ pub struct AppInfoResponse {
     pub target_os: String,
     pub data_dir: String,
     pub network_enabled: bool,
+}
+
+fn default_network_timeout() -> u32 {
+    30
+}
+fn default_true() -> bool {
+    true
+}
+fn default_network_protocol() -> String {
+    "sftp".to_string()
+}
+fn default_editor_font_family() -> String {
+    "monospace".to_string()
+}
+fn default_editor_font_size() -> u32 {
+    14
+}
+fn default_editor_tab_size() -> u32 {
+    4
+}
+fn default_viewer_view_mode() -> String {
+    "text".to_string()
+}
+fn default_viewer_zoom() -> String {
+    "fit".to_string()
+}
+fn default_viewer_max_preview_size() -> u32 {
+    10
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -62,6 +94,7 @@ pub struct UserPreferencesDto {
     #[serde(default)]
     pub toolbar_entries: String,
     pub pane_mode: String,
+    pub pane_direction: String,
     pub job_drawer_behavior: String,
     pub show_advanced_copy_options: bool,
     pub pane_terminal_height_left: f64,
@@ -73,6 +106,56 @@ pub struct UserPreferencesDto {
     pub terminal_args: String,
     pub remember_last_used_panes: bool,
     pub diagnostics_export_path: String,
+    #[serde(default)]
+    pub custom_shortcuts: String,
+    #[serde(default)]
+    pub file_type_color_rules: String,
+    #[serde(default)]
+    pub layout_profiles: String,
+    #[serde(default)]
+    pub column_presets: String,
+    #[serde(default)]
+    pub tab_sessions: String,
+    #[serde(default)]
+    pub hotlist_entries: String,
+    #[serde(default)]
+    pub log_level: String,
+    #[serde(default)]
+    pub experimental_features: bool,
+    #[serde(default)]
+    pub cache_size_limit: u32,
+    #[serde(default)]
+    pub file_operation_threads: u32,
+    #[serde(default = "default_network_timeout")]
+    pub network_connection_timeout: u32,
+    #[serde(default = "default_true")]
+    pub network_auto_reconnect: bool,
+    #[serde(default = "default_network_protocol")]
+    pub network_default_protocol: String,
+    #[serde(default)]
+    pub network_ssh_key_path: String,
+    #[serde(default = "default_editor_font_family")]
+    pub editor_font_family: String,
+    #[serde(default = "default_editor_font_size")]
+    pub editor_font_size: u32,
+    #[serde(default = "default_editor_tab_size")]
+    pub editor_tab_size: u32,
+    #[serde(default = "default_true")]
+    pub editor_word_wrap: bool,
+    #[serde(default)]
+    pub editor_auto_save: bool,
+    #[serde(default = "default_true")]
+    pub editor_syntax_highlighting: bool,
+    #[serde(default = "default_true")]
+    pub editor_line_numbers: bool,
+    #[serde(default = "default_viewer_view_mode")]
+    pub viewer_default_view_mode: String,
+    #[serde(default = "default_viewer_zoom")]
+    pub viewer_image_zoom: String,
+    #[serde(default)]
+    pub viewer_media_autoplay: bool,
+    #[serde(default = "default_viewer_max_preview_size")]
+    pub viewer_max_preview_size: u32,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -296,6 +379,21 @@ pub struct ReadImageAsDataUriResponse {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct ReadFileAsDataUriRequest {
+    pub uri: String,
+    pub max_bytes: Option<u64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReadFileAsDataUriResponse {
+    pub data_uri: String,
+    pub byte_size: u64,
+    pub mime_type: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ReadFileRangeRequest {
     pub uri: String,
     pub offset: u64,
@@ -354,6 +452,81 @@ pub struct OpenTerminalRequest {
 #[serde(rename_all = "camelCase")]
 pub struct OpenTerminalResponse {
     pub success: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GetAclRequest {
+    pub uri: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AclEntry {
+    pub principal: String,
+    pub read: bool,
+    pub write: bool,
+    pub execute: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GetAclResponse {
+    pub owner: Option<String>,
+    pub group: Option<String>,
+    pub entries: Vec<AclEntry>,
+    pub octal: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SetAclRequest {
+    pub uri: String,
+    pub octal: String,
+    pub recursive: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SetAclResponse {
+    pub success: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DiffTextRequest {
+    pub left_uri: String,
+    pub right_uri: String,
+    pub max_bytes: Option<u64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DiffLine {
+    pub kind: String,
+    pub content: String,
+    pub old_line: Option<u64>,
+    pub new_line: Option<u64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DiffHunk {
+    pub old_start: u64,
+    pub old_count: u64,
+    pub new_start: u64,
+    pub new_count: u64,
+    pub lines: Vec<DiffLine>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DiffTextResponse {
+    pub hunks: Vec<DiffHunk>,
+    pub left_line_count: u64,
+    pub right_line_count: u64,
+    pub left_truncated: bool,
+    pub right_truncated: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -504,6 +677,18 @@ pub struct DiscoverVolumesResponse {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct EjectVolumeRequest {
+    pub mount_point: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EjectVolumeResponse {
+    pub success: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct NetworkProfileDto {
     pub id: String,
     pub label: String,
@@ -602,6 +787,19 @@ pub struct NetworkProfileActionRequest {
 #[serde(rename_all = "camelCase")]
 pub struct NetworkConnectionStatusResponse {
     pub statuses: Vec<NetworkConnectionStatusDto>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NetworkNeighborhoodRequest {
+    pub uri: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NetworkNeighborhoodResponse {
+    pub uri: String,
+    pub entries: Vec<FileEntryDto>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -746,6 +944,70 @@ pub struct RecursiveSearchCompletedEventDto {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct ContentSearchRequest {
+    pub uri: String,
+    pub query: String,
+    pub limit: Option<usize>,
+    pub case_sensitive: Option<bool>,
+    pub use_regex: Option<bool>,
+    pub file_pattern: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ContentSearchMatchDto {
+    pub uri: String,
+    pub parent_uri: String,
+    pub name: String,
+    pub kind: FileKind,
+    pub size: Option<u64>,
+    pub modified_at: Option<DateTime<Utc>>,
+    pub line_number: usize,
+    pub line_content: String,
+    pub match_start: usize,
+    pub match_end: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ContentSearchResultDto {
+    pub matches: Vec<ContentSearchMatchDto>,
+    pub warnings: Vec<String>,
+    pub incomplete: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ContentSearchResponse {
+    pub result: ContentSearchResultDto,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ContentSearchJobResponse {
+    pub job: JobSnapshot,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ContentSearchMatchEventDto {
+    pub job_id: String,
+    pub uri: String,
+    pub query: String,
+    pub item: ContentSearchMatchDto,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ContentSearchCompletedEventDto {
+    pub job_id: String,
+    pub uri: String,
+    pub query: String,
+    pub result: ContentSearchResultDto,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct WatchStartRequest {
     pub uri: String,
 }
@@ -779,6 +1041,16 @@ pub struct FileEntryDto {
     pub can_rename: bool,
     pub permissions: Option<String>,
     pub owner: Option<String>,
+    #[serde(default)]
+    pub target_uri: Option<String>,
+    #[serde(default)]
+    pub virtual_kind: Option<String>,
+    #[serde(default)]
+    pub protocol: Option<String>,
+    #[serde(default)]
+    pub status: Option<String>,
+    #[serde(default)]
+    pub description: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -792,6 +1064,25 @@ pub struct DirectoryBatchEventDto {
     pub is_complete: bool,
     pub total_hint: Option<u64>,
     pub error: Option<IpcError>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ListDirectoriesRequest {
+    pub uri: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DirectoryEntryDto {
+    pub name: String,
+    pub uri: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ListDirectoriesResponse {
+    pub directories: Vec<DirectoryEntryDto>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -831,6 +1122,18 @@ pub struct StartFileOperationResponse {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CancelJobRequest {
+    pub job_id: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PauseJobRequest {
+    pub job_id: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ResumeJobRequest {
     pub job_id: String,
 }
 
@@ -1008,7 +1311,7 @@ pub struct IpcError {
 
 impl From<config::NetworkProfile> for NetworkProfileDto {
     fn from(profile: config::NetworkProfile) -> Self {
-        let default_uri = if profile.scheme == "sftp" {
+        let default_uri = if matches!(profile.scheme.as_str(), "sftp" | "smb" | "s3" | "webdav") {
             ResourceUri::from_remote_profile(&profile.scheme, &profile.id, &profile.default_path)
                 .map(|uri| uri.as_str().to_string())
                 .unwrap_or_default()
@@ -1060,6 +1363,11 @@ impl From<FileEntry> for FileEntryDto {
             can_rename: entry.capabilities.can_rename,
             permissions: entry.permissions,
             owner: entry.owner,
+            target_uri: None,
+            virtual_kind: None,
+            protocol: None,
+            status: None,
+            description: None,
         }
     }
 }
@@ -1127,6 +1435,7 @@ impl From<config::UserPreferences> for UserPreferencesDto {
             toolbar_visible: value.toolbar_visible,
             toolbar_entries: value.toolbar_entries,
             pane_mode: value.pane_mode,
+            pane_direction: value.pane_direction,
             job_drawer_behavior: value.job_drawer_behavior,
             show_advanced_copy_options: value.show_advanced_copy_options,
             pane_terminal_height_left: value.pane_terminal_height_left,
@@ -1138,6 +1447,31 @@ impl From<config::UserPreferences> for UserPreferencesDto {
             terminal_args: value.terminal_args,
             remember_last_used_panes: value.remember_last_used_panes,
             diagnostics_export_path: value.diagnostics_export_path,
+            custom_shortcuts: value.custom_shortcuts,
+            file_type_color_rules: value.file_type_color_rules,
+            layout_profiles: value.layout_profiles,
+            column_presets: value.column_presets,
+            tab_sessions: value.tab_sessions,
+            hotlist_entries: value.hotlist_entries,
+            log_level: value.log_level,
+            experimental_features: value.experimental_features,
+            cache_size_limit: value.cache_size_limit,
+            file_operation_threads: value.file_operation_threads,
+            network_connection_timeout: value.network_connection_timeout,
+            network_auto_reconnect: value.network_auto_reconnect,
+            network_default_protocol: value.network_default_protocol,
+            network_ssh_key_path: value.network_ssh_key_path,
+            editor_font_family: value.editor_font_family,
+            editor_font_size: value.editor_font_size,
+            editor_tab_size: value.editor_tab_size,
+            editor_word_wrap: value.editor_word_wrap,
+            editor_auto_save: value.editor_auto_save,
+            editor_syntax_highlighting: value.editor_syntax_highlighting,
+            editor_line_numbers: value.editor_line_numbers,
+            viewer_default_view_mode: value.viewer_default_view_mode,
+            viewer_image_zoom: value.viewer_image_zoom,
+            viewer_media_autoplay: value.viewer_media_autoplay,
+            viewer_max_preview_size: value.viewer_max_preview_size,
         }
     }
 }
@@ -1394,6 +1728,8 @@ pub fn job_event_name(event: &JobEvent) -> &'static str {
         JobEvent::Completed(_) => JOB_COMPLETED_EVENT,
         JobEvent::Failed(_) => JOB_FAILED_EVENT,
         JobEvent::Cancelled(_) => JOB_CANCELLED_EVENT,
+        JobEvent::Paused(_) => JOB_PAUSED_EVENT,
+        JobEvent::Resumed(_) => JOB_RESUMED_EVENT,
     }
 }
 
@@ -1404,6 +1740,8 @@ pub fn job_event_payload(event: JobEvent) -> serde_json::Value {
         JobEvent::Completed(event) => serde_json::to_value(event).unwrap_or_default(),
         JobEvent::Failed(event) => serde_json::to_value(event).unwrap_or_default(),
         JobEvent::Cancelled(event) => serde_json::to_value(event).unwrap_or_default(),
+        JobEvent::Paused(event) => serde_json::to_value(event).unwrap_or_default(),
+        JobEvent::Resumed(event) => serde_json::to_value(event).unwrap_or_default(),
     }
 }
 
@@ -1482,6 +1820,196 @@ impl IpcError {
     pub fn git_command_failed(message: impl Into<String>) -> Self {
         Self::new(error_codes::GIT_COMMAND_FAILED, message)
     }
+
+    pub fn not_found(message: impl Into<String>) -> Self {
+        Self::new(error_codes::NOT_FOUND, message)
+    }
+
+    pub fn invalid_request(message: impl Into<String>) -> Self {
+        Self::new(error_codes::INVALID_REQUEST, message)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ListArchiveRequest {
+    pub uri: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ListArchiveResponse {
+    pub entries: Vec<FileEntryDto>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PluginManifestDto {
+    pub id: String,
+    pub name: String,
+    pub version: String,
+    pub description: String,
+    pub author: String,
+    pub entry_point: String,
+    pub permissions: Vec<String>,
+    pub min_app_version: Option<String>,
+}
+
+impl From<plugin_core::PluginManifest> for PluginManifestDto {
+    fn from(m: plugin_core::PluginManifest) -> Self {
+        Self {
+            id: m.id,
+            name: m.name,
+            version: m.version,
+            description: m.description,
+            author: m.author,
+            entry_point: m.entry_point,
+            permissions: m
+                .permissions
+                .into_iter()
+                .map(|p| match p {
+                    plugin_core::PluginPermission::ReadFiles => "readFiles".to_string(),
+                    plugin_core::PluginPermission::WriteFiles => "writeFiles".to_string(),
+                    plugin_core::PluginPermission::NetworkAccess => "networkAccess".to_string(),
+                    plugin_core::PluginPermission::ClipboardAccess => "clipboardAccess".to_string(),
+                })
+                .collect(),
+            min_app_version: m.min_app_version,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct InstalledPluginDto {
+    pub manifest: PluginManifestDto,
+    pub install_path: String,
+    pub enabled: bool,
+}
+
+impl From<plugin_core::InstalledPlugin> for InstalledPluginDto {
+    fn from(p: plugin_core::InstalledPlugin) -> Self {
+        Self {
+            manifest: p.manifest.into(),
+            install_path: p.install_path.to_string_lossy().to_string(),
+            enabled: p.enabled,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PluginListResponse {
+    pub plugins: Vec<InstalledPluginDto>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PluginInstallRequest {
+    pub source_path: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PluginInstallResponse {
+    pub plugin: InstalledPluginDto,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PluginUninstallRequest {
+    pub plugin_id: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PluginToggleRequest {
+    pub plugin_id: String,
+    pub enabled: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PluginToggleResponse {
+    pub plugin: InstalledPluginDto,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CompareFilesRequest {
+    pub left_uri: String,
+    pub right_uri: String,
+    pub mode: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DiffLineDto {
+    pub line_number_left: Option<usize>,
+    pub line_number_right: Option<usize>,
+    pub content: String,
+    pub line_type: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DiffHunkDto {
+    pub old_start: usize,
+    pub old_count: usize,
+    pub new_start: usize,
+    pub new_count: usize,
+    pub lines: Vec<DiffLineDto>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ByteDifferenceDto {
+    pub offset: usize,
+    pub left_byte: u8,
+    pub right_byte: u8,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CompareFilesResponse {
+    pub identical: bool,
+    pub hunks: Vec<DiffHunkDto>,
+    pub byte_differences: Vec<ByteDifferenceDto>,
+}
+
+// ── Directory Sync DTOs ───────────────────────────────────────────
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SyncDirectoriesRequest {
+    pub left_uri: String,
+    pub right_uri: String,
+    pub comparison: String,
+    pub recursive: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SyncEntryDto {
+    pub name: String,
+    pub left_uri: Option<String>,
+    pub right_uri: Option<String>,
+    pub left_size: Option<u64>,
+    pub right_size: Option<u64>,
+    pub left_modified: Option<String>,
+    pub right_modified: Option<String>,
+    pub left_is_dir: bool,
+    pub right_is_dir: bool,
+    pub status: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SyncDirectoriesResponse {
+    pub left_uri: String,
+    pub right_uri: String,
+    pub entries: Vec<SyncEntryDto>,
+    pub recursive: bool,
 }
 
 #[cfg(test)]
@@ -1518,6 +2046,189 @@ mod tests {
 
         assert_eq!(decoded.entry.uri, "local:///tmp/file.txt");
         assert_eq!(decoded.entry.kind, FileKind::File);
+    }
+
+    #[test]
+    fn network_profile_dto_builds_default_uri_for_each_remote_scheme() {
+        for scheme in ["sftp", "smb", "s3", "webdav"] {
+            let profile = config::NetworkProfile {
+                id: "550e8400-e29b-41d4-a716-446655440000".to_string(),
+                label: format!("{scheme} test"),
+                scheme: scheme.to_string(),
+                host: "example.com".to_string(),
+                port: 22,
+                username: "deploy".to_string(),
+                auth_kind: config::AuthKind::Password,
+                private_key_path: None,
+                default_path: "/share".to_string(),
+                host_key_fingerprint: None,
+                sort_order: 0,
+                last_connected_at: None,
+                last_error: None,
+                has_stored_secret: false,
+                created_at: "1970-01-01T00:00:00Z".to_string(),
+                updated_at: "1970-01-01T00:00:00Z".to_string(),
+            };
+
+            let dto = NetworkProfileDto::from(profile);
+
+            assert_eq!(
+                dto.default_uri,
+                format!("{scheme}://550e8400-e29b-41d4-a716-446655440000/share"),
+                "scheme = {scheme}"
+            );
+        }
+    }
+
+    #[test]
+    fn network_profile_dto_leaves_default_uri_empty_for_ssh_only_profiles() {
+        let profile = config::NetworkProfile {
+            id: "550e8400-e29b-41d4-a716-446655440000".to_string(),
+            label: "Bastion".to_string(),
+            scheme: "ssh".to_string(),
+            host: "example.com".to_string(),
+            port: 22,
+            username: "deploy".to_string(),
+            auth_kind: config::AuthKind::Password,
+            private_key_path: None,
+            default_path: "".to_string(),
+            host_key_fingerprint: None,
+            sort_order: 0,
+            last_connected_at: None,
+            last_error: None,
+            has_stored_secret: false,
+            created_at: "1970-01-01T00:00:00Z".to_string(),
+            updated_at: "1970-01-01T00:00:00Z".to_string(),
+        };
+
+        let dto = NetworkProfileDto::from(profile);
+
+        assert_eq!(dto.default_uri, "");
+    }
+
+    #[test]
+    fn neighborhood_request_and_response_round_trip_as_camel_case() {
+        let request = NetworkNeighborhoodRequest {
+            uri: "network:///cloud".to_string(),
+        };
+        let encoded = serde_json::to_value(&request).unwrap();
+        assert_eq!(encoded["uri"], "network:///cloud");
+        let decoded: NetworkNeighborhoodRequest = serde_json::from_value(encoded).unwrap();
+        assert_eq!(decoded, request);
+
+        let entry = FileEntryDto {
+            uri: "network:///cloud/icloud".to_string(),
+            name: "iCloud Drive".to_string(),
+            extension: None,
+            kind: FileKind::Directory,
+            size: None,
+            modified_at: None,
+            created_at: None,
+            accessed_at: None,
+            is_hidden: false,
+            is_symlink: false,
+            symlink_target: None,
+            provider_id: "network".to_string(),
+            can_read: true,
+            can_list: true,
+            can_write: false,
+            can_delete: false,
+            can_rename: false,
+            permissions: None,
+            owner: None,
+            target_uri: Some("local:///iCloud".to_string()),
+            virtual_kind: Some("cloudDrive".to_string()),
+            protocol: Some("cloud".to_string()),
+            status: Some("available".to_string()),
+            description: None,
+        };
+        let response = NetworkNeighborhoodResponse {
+            uri: "network:///cloud".to_string(),
+            entries: vec![entry.clone()],
+        };
+        let encoded = serde_json::to_value(&response).unwrap();
+        assert_eq!(encoded["uri"], "network:///cloud");
+        assert_eq!(encoded["entries"][0]["targetUri"], "local:///iCloud");
+        let decoded: NetworkNeighborhoodResponse = serde_json::from_value(encoded).unwrap();
+        assert_eq!(decoded.entries[0], entry);
+    }
+
+    #[test]
+    fn file_entry_dto_defaults_virtual_fields_to_none_when_deserialised_legacy() {
+        // The new optional virtual-entry fields all use #[serde(default)] so a
+        // legacy payload without them must still deserialise.
+        let legacy = serde_json::json!({
+            "uri": "local:///tmp/file.txt",
+            "name": "file.txt",
+            "extension": "txt",
+            "kind": "file",
+            "size": null,
+            "modifiedAt": null,
+            "createdAt": null,
+            "accessedAt": null,
+            "isHidden": false,
+            "isSymlink": false,
+            "symlinkTarget": null,
+            "providerId": "local",
+            "canRead": true,
+            "canList": false,
+            "canWrite": false,
+            "canDelete": false,
+            "canRename": false,
+            "permissions": null,
+            "owner": null
+        });
+
+        let entry: FileEntryDto = serde_json::from_value(legacy).unwrap();
+
+        assert_eq!(entry.target_uri, None);
+        assert_eq!(entry.virtual_kind, None);
+        assert_eq!(entry.protocol, None);
+        assert_eq!(entry.status, None);
+        assert_eq!(entry.description, None);
+    }
+
+    #[test]
+    fn serializes_virtual_entry_metadata() {
+        let entry = FileEntryDto {
+            uri: "network:///cloud".to_string(),
+            name: "Cloud Storage".to_string(),
+            extension: None,
+            kind: FileKind::Directory,
+            size: None,
+            modified_at: None,
+            created_at: None,
+            accessed_at: None,
+            is_hidden: false,
+            is_symlink: false,
+            symlink_target: None,
+            provider_id: "network".to_string(),
+            can_read: false,
+            can_list: true,
+            can_write: false,
+            can_delete: false,
+            can_rename: false,
+            permissions: None,
+            owner: None,
+            target_uri: Some(
+                "local:///Users/ilya/Library/CloudStorage/OneDrive-Personal".to_string(),
+            ),
+            virtual_kind: Some("cloudDrive".to_string()),
+            protocol: Some("cloud".to_string()),
+            status: Some("available".to_string()),
+            description: Some("OneDrive local sync folder".to_string()),
+        };
+
+        let encoded = serde_json::to_value(&entry).unwrap();
+
+        assert_eq!(
+            encoded["targetUri"],
+            "local:///Users/ilya/Library/CloudStorage/OneDrive-Personal"
+        );
+        assert_eq!(encoded["virtualKind"], "cloudDrive");
+        assert_eq!(encoded["protocol"], "cloud");
+        assert_eq!(encoded["status"], "available");
+        assert_eq!(encoded["description"], "OneDrive local sync folder");
     }
 
     #[test]

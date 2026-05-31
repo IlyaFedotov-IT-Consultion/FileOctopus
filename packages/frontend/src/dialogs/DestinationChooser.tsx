@@ -3,9 +3,11 @@ import type {
   FavoriteEntryDto,
   RecentEntryDto,
   NetworkProfileDto,
+  FsClient,
 } from "@fileoctopus/ts-api";
 import { localPathFromUri } from "../utils/paneUtils";
 import { networkProfileTitle } from "../navigation/driveTargets";
+import { FolderTree } from "./FolderTree";
 
 export { localPathFromUri };
 
@@ -14,6 +16,7 @@ export interface DestinationChooserProps {
   favorites: FavoriteEntryDto[];
   recent: RecentEntryDto[];
   networkProfiles?: NetworkProfileDto[];
+  fs?: FsClient;
   onSelect: (uri: string) => void;
 }
 
@@ -22,18 +25,40 @@ export function DestinationChooser({
   favorites,
   recent,
   networkProfiles = [],
+  fs,
   onSelect,
 }: DestinationChooserProps) {
   const browseableNetworkProfiles = networkProfiles.filter(
-    (profile) => profile.scheme === "sftp",
+    (profile) =>
+      profile.scheme === "sftp" ||
+      profile.scheme === "smb" ||
+      profile.scheme === "s3",
   );
   const hasLocations = locations.length > 0;
   const hasFavorites = favorites.length > 0;
   const hasRecent = recent.length > 0;
   const hasNetwork = browseableNetworkProfiles.length > 0;
 
+  const homeLocation = locations.find(
+    (loc) => loc.id === "home" || loc.name === "Home",
+  );
+  const hasTree = fs != null && homeLocation != null;
+
   return (
     <div className="fo-destination-chooser">
+      {hasTree ? (
+        <div className="fo-destination-section">
+          <h4 className="fo-destination-heading">Browse</h4>
+          <div className="fo-destination-tree-container">
+            <FolderTree
+              fs={fs}
+              rootUri={homeLocation.uri}
+              rootLabel={homeLocation.name}
+              onSelect={onSelect}
+            />
+          </div>
+        </div>
+      ) : null}
       {hasLocations ? (
         <div className="fo-destination-section">
           <h4 className="fo-destination-heading">Locations</h4>

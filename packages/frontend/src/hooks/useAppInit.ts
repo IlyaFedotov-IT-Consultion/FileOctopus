@@ -6,7 +6,11 @@ import {
   type MutableRefObject,
   type SetStateAction,
 } from "react";
-import { normalizeIpcError, type FileOctopusClient } from "@fileoctopus/ts-api";
+import {
+  isNetworkUri,
+  normalizeIpcError,
+  type FileOctopusClient,
+} from "@fileoctopus/ts-api";
 import type {
   AutostartStatusDto,
   AppInfoResponse,
@@ -17,6 +21,8 @@ import type {
   NetworkConnectionStatusDto,
   RecursiveSearchMatchEventDto,
   RecursiveSearchCompletedEventDto,
+  ContentSearchMatchEventDto,
+  ContentSearchCompletedEventDto,
   StandardLocationDto,
 } from "@fileoctopus/ts-api";
 import {
@@ -49,6 +55,8 @@ import {
   mergeCompleted,
   mergeFailed,
   mergeCancelled,
+  mergePaused,
+  mergeResumed,
 } from "../dialogs/OperationDialogView";
 import type { SearchState } from "../pane/PaneFilterBar";
 
@@ -70,6 +78,31 @@ function markDefaultViewModeDetailsMigrationDone() {
     localStorage.setItem(DEFAULT_VIEW_MODE_DETAILS_MIGRATION_KEY, "true");
   } catch {
     return;
+  }
+}
+
+async function resolveStartupUri(
+  client: FileOctopusClient,
+  uri: string,
+  fallbackUri: string,
+): Promise<string> {
+  if (!uri.startsWith("local://") || isNetworkUri(uri)) {
+    return uri;
+  }
+
+  try {
+    await client.fs.stat({ uri });
+    return uri;
+  } catch (error) {
+    const normalized = normalizeIpcError(error);
+    if (
+      normalized.code === "not_found" ||
+      normalized.code === "folder_not_found" ||
+      normalized.code === "invalid_uri"
+    ) {
+      return fallbackUri;
+    }
+    return uri;
   }
 }
 
@@ -117,6 +150,8 @@ export interface UseAppInitParams {
   applyRecursiveSearchCompleted: (
     event: RecursiveSearchCompletedEventDto,
   ) => void;
+  applyContentSearchMatch: (event: ContentSearchMatchEventDto) => void;
+  applyContentSearchCompleted: (event: ContentSearchCompletedEventDto) => void;
   setAutostart: Dispatch<SetStateAction<AutostartStatusDto | null>>;
   setSettingsOpen: Dispatch<SetStateAction<boolean>>;
   setShortcutsOpen: Dispatch<SetStateAction<boolean>>;
@@ -168,6 +203,8 @@ export function useAppInit({
   applyFolderSizeCompleted,
   applyRecursiveSearchMatch,
   applyRecursiveSearchCompleted,
+  applyContentSearchMatch,
+  applyContentSearchCompleted,
   setAutostart,
   setSettingsOpen,
   setShortcutsOpen,
@@ -470,6 +507,18 @@ export function useAppInit({
         refreshVisiblePanels();
         void refreshHistory();
       }),
+      client.fileOperations.onJobPaused((event) => {
+        setJobs((current) => ({
+          ...current,
+          [jobIdValue(event.jobId)]: mergePaused(current, event),
+        }));
+      }),
+      client.fileOperations.onJobResumed((event) => {
+        setJobs((current) => ({
+          ...current,
+          [jobIdValue(event.jobId)]: mergeResumed(current, event),
+        }));
+      }),
     ])
       .then((items) => {
         if (disposed) {
@@ -506,6 +555,10 @@ export function useAppInit({
       ),
       client.fs.onRecursiveSearchCompleted((event) =>
         applyRecursiveSearchCompleted(event),
+      ),
+      client.fs.onContentSearchMatch((event) => applyContentSearchMatch(event)),
+      client.fs.onContentSearchCompleted((event) =>
+        applyContentSearchCompleted(event),
       ),
     ])
       .then((items) => {
@@ -654,6 +707,8 @@ export function useAppInit({
         const documentsLocation = response.locations.find(
           (location) => location.id === "documents",
         );
+        const fallbackLeftUri = homeLocation?.uri ?? homeUri();
+        const fallbackRightUri = documentsLocation?.uri ?? documentsUri();
 
         if (initialLeftUri === homeUri() && homeLocation) {
           initialLeftUri = homeLocation.uri;
@@ -661,6 +716,10 @@ export function useAppInit({
         if (initialRightUri === documentsUri() && documentsLocation) {
           initialRightUri = documentsLocation.uri;
         }
+        [initialLeftUri, initialRightUri] = await Promise.all([
+          resolveStartupUri(client, initialLeftUri, fallbackLeftUri),
+          resolveStartupUri(client, initialRightUri, fallbackRightUri),
+        ]);
       } catch {
         void refreshLocations();
       }

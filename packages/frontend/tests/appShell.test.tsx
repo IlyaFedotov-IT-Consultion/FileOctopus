@@ -86,6 +86,12 @@ const appPreferences: UserPreferencesDto = {
   confirmClosePaneWithTerminal: true,
   terminalShell: "",
   terminalArgs: "",
+  tabSessions: "",
+  hotlistEntries: "",
+  leftDefaultViewMode: "details",
+  rightDefaultViewMode: "details",
+  leftDefaultSortField: "name",
+  rightDefaultSortField: "name",
 };
 const preferencesGet = vi.fn(async () => ({
   preferences: appPreferences,
@@ -406,6 +412,25 @@ vi.mock("@fileoctopus/ts-api", async (importOriginal) => {
         onRecursiveSearchCompleted,
         computeHash,
         openTerminal,
+        discoverVolumes: vi.fn(async () => ({ volumes: [] })),
+        getAcl: vi.fn(async () => ({
+          owner: "user",
+          group: "user",
+          entries: [
+            { principal: "owner", read: true, write: true, execute: false },
+            { principal: "group", read: true, write: false, execute: false },
+            { principal: "other", read: true, write: false, execute: false },
+          ],
+          octal: "644",
+        })),
+        setAcl: vi.fn(async () => ({ success: true })),
+        compareFiles: vi.fn(async () => ({
+          identical: false,
+          hunks: [],
+          byteDifferences: [],
+        })),
+        onContentSearchMatch: vi.fn(async () => () => {}),
+        onContentSearchCompleted: vi.fn(async () => () => {}),
       },
       terminal: mockTerminalClient(),
       fileOperations: {
@@ -416,6 +441,8 @@ vi.mock("@fileoctopus/ts-api", async (importOriginal) => {
         onJobCompleted,
         onJobFailed: subscribeJob,
         onJobCancelled: subscribeJob,
+        onJobPaused: subscribeJob,
+        onJobResumed: subscribeJob,
       },
       jobs: {
         cancelJob,
@@ -509,6 +536,7 @@ vi.mock("@fileoctopus/ts-api", async (importOriginal) => {
 });
 
 import { FileOctopusShell } from "../src";
+import { FIRST_RUN_DISMISSED_KEY } from "../src/onboarding/firstRun";
 
 describe("FileOctopusShell", () => {
   afterEach(() => {
@@ -517,6 +545,7 @@ describe("FileOctopusShell", () => {
 
   beforeEach(() => {
     localStorage.clear();
+    localStorage.setItem(FIRST_RUN_DISMISSED_KEY, "true");
     batchHandler = null;
     jobStartedHandler = null;
     jobProgressHandler = null;

@@ -1,5 +1,8 @@
+pub mod acl;
 pub mod app_info;
 pub mod autostart;
+pub mod compare;
+pub mod content_search;
 pub mod diagnostics;
 pub mod file_operations;
 pub mod folder_size;
@@ -7,7 +10,9 @@ pub mod fs;
 pub mod git;
 pub mod navigation;
 pub mod network;
+pub mod plugin;
 pub mod preferences;
 pub mod recursive_search;
+pub mod sync;
 pub mod terminal;
 pub mod watch;

@@ -4,6 +4,7 @@ import type {
   NetworkProfileDto,
   RecentEntryDto,
   StandardLocationDto,
+  StarredEntryDto,
 } from "@fileoctopus/ts-api";
 import { homeUri } from "../panelStore";
 import { localPathFromUri } from "../utils/paneUtils";
@@ -18,6 +19,7 @@ export type HotlistTargetKind =
   | "volume"
   | "network"
   | "favorite"
+  | "starred"
   | "recent";
 
 export interface HotlistTarget {
@@ -36,6 +38,7 @@ export interface HotlistTargetsInput {
   networkProfiles?: NetworkProfileDto[];
   networkStatuses?: NetworkConnectionStatusDto[];
   favorites: FavoriteEntryDto[];
+  starred?: StarredEntryDto[];
   recentToday: RecentEntryDto[];
   recentWeek: RecentEntryDto[];
   maxVisible?: number;
@@ -51,6 +54,17 @@ function locationName(uri: string): string {
   const parts = path.split("/").filter(Boolean);
   const name = parts[parts.length - 1];
   return name || path || uri;
+}
+
+function addStructuralTarget(
+  targets: HotlistTarget[],
+  seen: Set<string>,
+  target: HotlistTarget,
+) {
+  if (seen.has(target.uri)) {
+    return;
+  }
+  targets.push(target);
 }
 
 function addTarget(
@@ -72,6 +86,7 @@ export function buildHotlistTargets({
   networkProfiles = [],
   networkStatuses = [],
   favorites,
+  starred = [],
   recentToday,
   recentWeek,
   maxVisible = 10,
@@ -89,7 +104,7 @@ export function buildHotlistTargets({
   const resolvedHomeLabel = homeLocation?.name ?? "Home";
 
   if (upUri) {
-    addTarget(targets, seen, {
+    addStructuralTarget(targets, seen, {
       id: "parent",
       kind: "parent",
       label: "..",
@@ -99,7 +114,7 @@ export function buildHotlistTargets({
     });
   }
 
-  addTarget(targets, seen, {
+  addStructuralTarget(targets, seen, {
     id: "home",
     kind: "home",
     label: resolvedHomeLabel,
@@ -141,6 +156,17 @@ export function buildHotlistTargets({
       uri: favorite.uri,
       glyph: "★",
       title: localPathFromUri(favorite.uri),
+    }),
+  );
+
+  starred.forEach((entry, index) =>
+    addTarget(targets, seen, {
+      id: `starred-${index}-${entry.uri}`,
+      kind: "starred",
+      label: entry.label || locationName(entry.uri),
+      uri: entry.uri,
+      glyph: "☆",
+      title: localPathFromUri(entry.uri),
     }),
   );
 

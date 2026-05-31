@@ -1,12 +1,14 @@
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{mpsc, Arc, Mutex};
+use std::time::Duration;
 
 use chrono::Utc;
 use fs_core::file_ops::{execute_file_operation, plan_file_operation, FileOperationEventSink};
 use fs_core::vfs_io::VfsFilesystem;
 use jobs::{
     CancellationToken, JobCancelledEvent, JobCompletedEvent, JobEvent, JobFailedEvent, JobId,
-    JobProgressEvent, JobSnapshot, JobStartedEvent, JobStatus,
+    JobProgressEvent, JobSnapshot, JobStartedEvent, JobStatus, PauseToken,
 };
 use vfs::{
     ConflictPolicy, FileKind, FileOperationError, FileOperationItem, FileOperationKind,
@@ -15,21 +17,72 @@ use vfs::{
 
 use crate::history::{OperationHistoryRecord, OperationHistoryRepository, HISTORY_RETENTION_LIMIT};
 
+/// Bounded job runtime is queued through a fixed pool of worker threads, with a
+/// watchdog that cancels jobs that stop making progress for too long.
+type QueuedJob = Box<dyn FnOnce() + Send + 'static>;
+
+#[derive(Clone, Copy, Debug)]
+pub struct RuntimeSettings {
+    /// Maximum number of operations executing concurrently.
+    pub worker_count: usize,
+    /// Cancel a job that emits no progress for at least this long. `None`
+    /// disables the watchdog entirely.
+    pub idle_timeout: Option<Duration>,
+}
+
+impl Default for RuntimeSettings {
+    fn default() -> Self {
+        let worker_count = std::thread::available_parallelism()
+            .map(|count| count.get())
+            .unwrap_or(4)
+            .clamp(2, 8);
+        Self {
+            worker_count,
+            // Generous default: only truly stalled jobs are reaped, slow but
+            // progressing transfers keep resetting the clock via progress events.
+            idle_timeout: Some(Duration::from_secs(300)),
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct OperationRuntime {
     vfs: VfsFilesystem,
     jobs: Arc<Mutex<HashMap<String, JobRuntimeState>>>,
     planned_operations: Arc<Mutex<HashMap<String, FileOperationPlan>>>,
     history: OperationHistoryRepository,
+    dispatch: mpsc::Sender<QueuedJob>,
 }
 
 impl OperationRuntime {
     pub fn new(vfs: VfsFilesystem, history: OperationHistoryRepository) -> Self {
+        Self::with_settings(vfs, history, RuntimeSettings::default())
+    }
+
+    pub fn with_settings(
+        vfs: VfsFilesystem,
+        history: OperationHistoryRepository,
+        settings: RuntimeSettings,
+    ) -> Self {
+        let (dispatch, receiver) = mpsc::channel::<QueuedJob>();
+        let receiver = Arc::new(Mutex::new(receiver));
+        for _ in 0..settings.worker_count.max(1) {
+            let receiver = receiver.clone();
+            std::thread::spawn(move || worker_loop(&receiver));
+        }
+
+        let jobs = Arc::new(Mutex::new(HashMap::new()));
+        if let Some(idle_timeout) = settings.idle_timeout {
+            let jobs = jobs.clone();
+            std::thread::spawn(move || watchdog_loop(jobs, idle_timeout));
+        }
+
         Self {
             vfs,
-            jobs: Arc::new(Mutex::new(HashMap::new())),
+            jobs,
             planned_operations: Arc::new(Mutex::new(HashMap::new())),
             history,
+            dispatch,
         }
     }
 
@@ -117,7 +170,7 @@ impl OperationRuntime {
         self.start_with_executor(
             plan,
             sink,
-            move |vfs, plan, job_id, cancel, progress_sink| {
+            move |vfs, plan, job_id, cancel, _pause, progress_sink| {
                 if cancel.is_cancelled() {
                     return Err(FileOperationError::Cancelled {
                         job_id: Some(job_id.as_str().to_string()),
@@ -148,7 +201,7 @@ impl OperationRuntime {
         )
     }
 
-    fn start_with_executor<F>(
+    pub(crate) fn start_with_executor<F>(
         &self,
         plan: FileOperationPlan,
         sink: Arc<FileOperationEventSink>,
@@ -160,6 +213,7 @@ impl OperationRuntime {
                 &FileOperationPlan,
                 &JobId,
                 &CancellationToken,
+                &PauseToken,
                 &FileOperationEventSink,
             ) -> Result<(), FileOperationError>
             + Send
@@ -185,9 +239,13 @@ impl OperationRuntime {
             updated_at: now,
         };
         let token = CancellationToken::new();
+        let pause_token = PauseToken::new();
+        let timed_out = Arc::new(AtomicBool::new(false));
         let state = JobRuntimeState {
             snapshot: snapshot.clone(),
             cancel: token.clone(),
+            pause: pause_token.clone(),
+            timed_out: timed_out.clone(),
         };
 
         self.jobs
@@ -208,60 +266,96 @@ impl OperationRuntime {
         let vfs = self.vfs.clone();
         let jobs = self.jobs.clone();
         let history = self.history.clone();
-        let sink_for_thread = sink.clone();
-        let thread_job_id = job_id.clone();
-        let started = JobEvent::Started(JobStartedEvent {
-            job_id: job_id.clone(),
-            operation_kind,
-            total_items,
-            total_bytes,
-            started_at: now,
-        });
+        let task_job_id = job_id.clone();
 
-        sink(started);
-        update_snapshot_status(&jobs, &job_id, JobStatus::Running, None, None);
+        let task = move || {
+            // The job announces Running only once a worker picks it up; until
+            // then it stays Queued so the pool acts as a real bounded queue.
+            sink(JobEvent::Started(JobStartedEvent {
+                job_id: task_job_id.clone(),
+                operation_kind,
+                total_items,
+                total_bytes,
+                started_at: now,
+            }));
+            update_snapshot_status(&jobs, &task_job_id, JobStatus::Running, None, None);
 
-        std::thread::spawn(move || {
             let progress_jobs = jobs.clone();
+            let progress_base = sink.clone();
             let progress_sink = move |event: JobEvent| {
                 if let JobEvent::Progress(progress) = &event {
                     update_snapshot_progress(&progress_jobs, progress);
                 }
 
-                sink_for_thread(event);
+                progress_base(event);
             };
             let progress_sink = Arc::new(progress_sink) as Arc<FileOperationEventSink>;
-            let result = executor(&vfs, &plan, &thread_job_id, &token, &*progress_sink);
+            let result = executor(
+                &vfs,
+                &plan,
+                &task_job_id,
+                &token,
+                &pause_token,
+                &*progress_sink,
+            );
 
             match result {
                 Ok(()) => {
                     let completed_at = Utc::now();
                     telemetry::info(&format!(
                         "operation job completed job_id={} kind={:?}",
-                        thread_job_id.as_str(),
+                        task_job_id.as_str(),
                         operation_kind
                     ));
-                    update_snapshot_status(&jobs, &thread_job_id, JobStatus::Completed, None, None);
-                    history.update_terminal(thread_job_id.as_str(), JobStatus::Completed, None);
+                    update_snapshot_status(&jobs, &task_job_id, JobStatus::Completed, None, None);
+                    history.update_terminal(task_job_id.as_str(), JobStatus::Completed, None);
                     progress_sink(JobEvent::Completed(JobCompletedEvent {
-                        job_id: thread_job_id,
+                        job_id: task_job_id,
                         operation_kind,
                         completed_items: total_items,
                         completed_bytes: total_bytes.unwrap_or(0),
                         completed_at,
                     }));
                 }
+                Err(FileOperationError::Cancelled { .. }) if timed_out.load(Ordering::SeqCst) => {
+                    // The watchdog cancelled this job for inactivity; surface it
+                    // as a timeout failure rather than a user cancellation.
+                    let failed_at = Utc::now();
+                    let code = "timeout".to_string();
+                    let message =
+                        "The operation timed out after a period of inactivity.".to_string();
+                    telemetry::error(&format!(
+                        "operation job timed out job_id={} kind={:?}",
+                        task_job_id.as_str(),
+                        operation_kind
+                    ));
+                    update_snapshot_status(
+                        &jobs,
+                        &task_job_id,
+                        JobStatus::Failed,
+                        Some(code.clone()),
+                        Some(message.clone()),
+                    );
+                    history.update_terminal(task_job_id.as_str(), JobStatus::Failed, Some(&code));
+                    progress_sink(JobEvent::Failed(JobFailedEvent {
+                        job_id: task_job_id,
+                        operation_kind,
+                        error_code: code,
+                        message,
+                        failed_at,
+                    }));
+                }
                 Err(FileOperationError::Cancelled { .. }) => {
                     let cancelled_at = Utc::now();
                     telemetry::info(&format!(
                         "operation job cancelled job_id={} kind={:?}",
-                        thread_job_id.as_str(),
+                        task_job_id.as_str(),
                         operation_kind
                     ));
-                    update_snapshot_status(&jobs, &thread_job_id, JobStatus::Cancelled, None, None);
-                    history.update_terminal(thread_job_id.as_str(), JobStatus::Cancelled, None);
+                    update_snapshot_status(&jobs, &task_job_id, JobStatus::Cancelled, None, None);
+                    history.update_terminal(task_job_id.as_str(), JobStatus::Cancelled, None);
                     progress_sink(JobEvent::Cancelled(JobCancelledEvent {
-                        job_id: thread_job_id,
+                        job_id: task_job_id,
                         operation_kind,
                         cancelled_at,
                     }));
@@ -272,20 +366,20 @@ impl OperationRuntime {
                     let message = error.user_message();
                     telemetry::error(&format!(
                         "operation job failed job_id={} kind={:?} code={code}",
-                        thread_job_id.as_str(),
+                        task_job_id.as_str(),
                         operation_kind
                     ));
 
                     update_snapshot_status(
                         &jobs,
-                        &thread_job_id,
+                        &task_job_id,
                         JobStatus::Failed,
                         Some(code.clone()),
                         Some(message.clone()),
                     );
-                    history.update_terminal(thread_job_id.as_str(), JobStatus::Failed, Some(&code));
+                    history.update_terminal(task_job_id.as_str(), JobStatus::Failed, Some(&code));
                     progress_sink(JobEvent::Failed(JobFailedEvent {
-                        job_id: thread_job_id,
+                        job_id: task_job_id,
                         operation_kind,
                         error_code: code,
                         message,
@@ -293,7 +387,13 @@ impl OperationRuntime {
                     }));
                 }
             }
-        });
+        };
+
+        self.dispatch
+            .send(Box::new(task))
+            .map_err(|_| FileOperationError::Internal {
+                message: "operation runtime worker pool is unavailable".to_string(),
+            })?;
 
         Ok(snapshot)
     }
@@ -312,6 +412,52 @@ impl OperationRuntime {
         telemetry::info(&format!(
             "operation job cancellation requested job_id={job_id}"
         ));
+
+        Ok(state.snapshot.clone())
+    }
+
+    pub fn pause_job(&self, job_id: &str) -> Result<JobSnapshot, FileOperationError> {
+        let jobs = self.jobs.lock().map_err(|_| FileOperationError::Internal {
+            message: "job registry lock poisoned".to_string(),
+        })?;
+        let state = jobs
+            .get(job_id)
+            .ok_or_else(|| FileOperationError::NotFound {
+                uri: job_id.to_string(),
+            })?;
+
+        state.pause.pause();
+        update_snapshot_status(
+            &self.jobs,
+            &JobId::new(job_id.to_string()),
+            JobStatus::Paused,
+            None,
+            None,
+        );
+        telemetry::info(&format!("operation job paused job_id={job_id}"));
+
+        Ok(state.snapshot.clone())
+    }
+
+    pub fn resume_job(&self, job_id: &str) -> Result<JobSnapshot, FileOperationError> {
+        let jobs = self.jobs.lock().map_err(|_| FileOperationError::Internal {
+            message: "job registry lock poisoned".to_string(),
+        })?;
+        let state = jobs
+            .get(job_id)
+            .ok_or_else(|| FileOperationError::NotFound {
+                uri: job_id.to_string(),
+            })?;
+
+        state.pause.resume();
+        update_snapshot_status(
+            &self.jobs,
+            &JobId::new(job_id.to_string()),
+            JobStatus::Running,
+            None,
+            None,
+        );
+        telemetry::info(&format!("operation job resumed job_id={job_id}"));
 
         Ok(state.snapshot.clone())
     }
@@ -353,7 +499,65 @@ impl OperationRuntime {
 struct JobRuntimeState {
     snapshot: JobSnapshot,
     cancel: CancellationToken,
+    pause: PauseToken,
+    timed_out: Arc<AtomicBool>,
 }
+
+fn worker_loop(receiver: &Arc<Mutex<mpsc::Receiver<QueuedJob>>>) {
+    loop {
+        let task = {
+            let Ok(guard) = receiver.lock() else {
+                break;
+            };
+            guard.recv()
+        };
+
+        match task {
+            Ok(task) => task(),
+            // All senders dropped: the runtime is gone, so the worker exits.
+            Err(_) => break,
+        }
+    }
+}
+
+fn watchdog_loop(jobs: Arc<Mutex<HashMap<String, JobRuntimeState>>>, idle_timeout: Duration) {
+    let poll = (idle_timeout / 4).clamp(Duration::from_millis(10), Duration::from_secs(5));
+
+    loop {
+        std::thread::sleep(poll);
+        // Only the watchdog still references the job table: the runtime has been
+        // dropped, so stop polling and let this thread exit.
+        if Arc::strong_count(&jobs) == 1 {
+            break;
+        }
+
+        let now = Utc::now();
+        let Ok(jobs) = jobs.lock() else {
+            break;
+        };
+        for state in jobs.values() {
+            if state.snapshot.status != JobStatus::Running || state.timed_out.load(Ordering::SeqCst)
+            {
+                continue;
+            }
+
+            let idle = now.signed_duration_since(state.snapshot.updated_at);
+            let exceeded = idle
+                .to_std()
+                .map(|idle| idle >= idle_timeout)
+                .unwrap_or(false);
+            if exceeded {
+                state.timed_out.store(true, Ordering::SeqCst);
+                state.cancel.cancel();
+                telemetry::info(&format!(
+                    "operation job watchdog timeout job_id={}",
+                    state.snapshot.job_id.as_str()
+                ));
+            }
+        }
+    }
+}
+
 fn update_snapshot_progress(
     jobs: &Arc<Mutex<HashMap<String, JobRuntimeState>>>,
     progress: &jobs::JobProgressEvent,

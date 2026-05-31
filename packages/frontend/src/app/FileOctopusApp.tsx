@@ -14,6 +14,7 @@ import { isPreviewable, isTextPreviewable } from "../components/PreviewPanel";
 import type { FilePanelProps } from "../pane/FilePanel";
 import { ShellLayout } from "../shell/ShellLayout";
 import { buildPaletteEntries } from "../commands/paletteEntries";
+import { buildPaneLocationTargets } from "../navigation/driveTargets";
 import type { FileEntryDto } from "@fileoctopus/ts-api";
 import { isRemoteUri, profileIdFromRemoteUri } from "@fileoctopus/ts-api";
 
@@ -84,6 +85,7 @@ function FileOctopusAppInner({
     setClipboard,
     setContextMenu,
     setSearch,
+    setContentSearch,
     setPathFocusToken,
     setRenameFocusToken,
     setFilterFocusToken,
@@ -148,14 +150,26 @@ function FileOctopusAppInner({
     networkLocationsOpen,
     connectServerOpen,
     connectServerProfile,
+    connectServerInitial,
     removeServerProfile,
     setRemoveServerProfile,
     setVolumePickerOpen,
     setNetworkLocationsOpen,
     setConnectServerOpen,
     setConnectServerProfile,
+    setConnectServerInitial,
     toolbarCustomizeOpen,
     setToolbarCustomizeOpen,
+    diffOpen,
+    diffLeftUri,
+    diffRightUri,
+    diffLeftName,
+    diffRightName,
+    setDiffOpen,
+    setDiffLeftUri,
+    setDiffRightUri,
+    setDiffLeftName,
+    setDiffRightName,
     dialog,
     setSettingsOpen,
     setShortcutsOpen,
@@ -168,6 +182,14 @@ function FileOctopusAppInner({
     setDiagnosticsOpen,
     setHelpOpen,
     setDialog,
+    multiRenameOpen,
+    setMultiRenameOpen,
+    syncDirectoriesOpen,
+    setSyncDirectoriesOpen,
+    hotlistOpen,
+    setHotlistOpen,
+    manageHotlistOpen,
+    setManageHotlistOpen,
   } = useModals();
 
   const {
@@ -187,6 +209,8 @@ function FileOctopusAppInner({
     applyFolderSizeCompleted,
     applyRecursiveSearchMatch,
     applyRecursiveSearchCompleted,
+    applyContentSearchMatch,
+    applyContentSearchCompleted,
     clearHistory,
     exportDiagnostics,
   } = useEventHandlers({
@@ -200,6 +224,7 @@ function FileOctopusAppInner({
     setActivityCollapsed,
     setOperationError,
     setSearch,
+    setContentSearch,
     setAutostart,
     setFavorites,
     setRecentToday,
@@ -215,6 +240,11 @@ function FileOctopusAppInner({
     setDiagnosticsMessage,
     setExportingDiagnostics,
     syncTerminalCwd,
+    onOpenConnectionWizard: (prefill) => {
+      setConnectServerProfile(null);
+      setConnectServerInitial(prefill ?? null);
+      setConnectServerOpen(true);
+    },
   });
 
   const pendingPaneModeRef = useRef<"single" | "dual" | null>(null);
@@ -300,6 +330,8 @@ function FileOctopusAppInner({
     applyFolderSizeCompleted,
     applyRecursiveSearchMatch,
     applyRecursiveSearchCompleted,
+    applyContentSearchMatch,
+    applyContentSearchCompleted,
     setAutostart,
     setSettingsOpen,
     setShortcutsOpen,
@@ -356,6 +388,7 @@ function FileOctopusAppInner({
     state,
     dispatch,
     setSearch,
+    setContentSearch,
     setDialog,
     setClipboard,
     clipboard,
@@ -428,6 +461,7 @@ function FileOctopusAppInner({
     setNetworkLocationsOpen,
     setConnectServerOpen,
     setConnectServerProfile,
+    setConnectServerInitial,
     setFilterFocusToken,
     setRecursiveSearchFocusToken,
     setPreviewOpen,
@@ -544,6 +578,10 @@ function FileOctopusAppInner({
     toggleToolbar: () => {
       void updatePreference("toolbarVisible", String(!toolbarVisible));
     },
+    setMultiRenameOpen,
+    setSyncDirectoriesOpen,
+    setHotlistOpen,
+    setManageHotlistOpen,
     removeRecentEntry: async (uri: string) => {
       try {
         await client.navigation.removeRecent({ uri });
@@ -675,11 +713,20 @@ function FileOctopusAppInner({
     statusBarVisible,
     toolbarVisible,
     recentLocations: [...recentToday, ...recentWeek],
+    starredLocations: starred,
     onCustomizeToolbar: () => handleCommandSelect("app.customizeToolbar"),
   });
 
   function makeFilePanelProps(pid: "left" | "right"): FilePanelProps {
     const tab = activeTab(state.panels[pid]);
+    const locationTargets = buildPaneLocationTargets({
+      locations,
+      networkProfiles,
+      networkStatuses,
+      favorites,
+      starred,
+      recentEntries: [...recentToday, ...recentWeek],
+    });
     const runPanel = (
       commandId: string,
       context?: import("../commands/invokeContext").CommandInvokeArg,
@@ -692,6 +739,7 @@ function FileOctopusAppInner({
       active: state.activePanelId === pid,
       onActivate: () => dispatch({ type: "setActivePanel", panelId: pid }),
       onNavigate: (uri) => navigatePanel(pid, uri),
+      locationTargets,
       onSelect: (entryId) =>
         dispatch({ type: "setSelection", panelId: pid, entryId }),
       onEntrySelect: (entryId, mode) =>
@@ -787,6 +835,7 @@ function FileOctopusAppInner({
         handleCommandSelect("op.openTerminal", pid);
       },
       terminalDisabled: false,
+      fileTypeColorRules: preferences?.fileTypeColorRules,
     };
   }
 
@@ -803,6 +852,8 @@ function FileOctopusAppInner({
       }}
       state={state}
       activeTabUri={activeTab(state.panels[state.activePanelId]).uri}
+      leftPanelUri={activeTab(state.panels.left).uri}
+      rightPanelUri={activeTab(state.panels.right).uri}
       locations={locations}
       favorites={favorites}
       recentToday={recentToday}
@@ -846,6 +897,7 @@ function FileOctopusAppInner({
       networkLocationsOpen={networkLocationsOpen}
       connectServerOpen={connectServerOpen}
       connectServerProfile={connectServerProfile}
+      connectServerInitial={connectServerInitial}
       removeServerProfile={removeServerProfile}
       busyProfileIds={busyProfileIds}
       toolbarCustomizeOpen={toolbarCustomizeOpen}
@@ -860,6 +912,7 @@ function FileOctopusAppInner({
       setNetworkLocationsOpen={setNetworkLocationsOpen}
       setConnectServerOpen={setConnectServerOpen}
       setConnectServerProfile={setConnectServerProfile}
+      setConnectServerInitial={setConnectServerInitial}
       setRemoveServerProfile={setRemoveServerProfile}
       connectProfile={connectProfile}
       disconnectProfile={disconnectProfile}
@@ -878,6 +931,7 @@ function FileOctopusAppInner({
       diagnosticsMessage={diagnosticsMessage}
       exportingDiagnostics={exportingDiagnostics}
       isProductionBuild={isProductionBuild}
+      multiRenameOpen={multiRenameOpen}
       setSettingsOpen={setSettingsOpen}
       setShortcutsOpen={setShortcutsOpen}
       setCommandPaletteOpen={setCommandPaletteOpen}
@@ -886,6 +940,23 @@ function FileOctopusAppInner({
       setViewerEntry={setViewerEntry}
       setEditorOpen={setEditorOpen}
       setEditorEntry={setEditorEntry}
+      diffOpen={diffOpen}
+      diffLeftUri={diffLeftUri}
+      diffRightUri={diffRightUri}
+      diffLeftName={diffLeftName}
+      diffRightName={diffRightName}
+      setDiffOpen={setDiffOpen}
+      setDiffLeftUri={setDiffLeftUri}
+      setDiffRightUri={setDiffRightUri}
+      setDiffLeftName={setDiffLeftName}
+      setDiffRightName={setDiffRightName}
+      setMultiRenameOpen={setMultiRenameOpen}
+      syncDirectoriesOpen={syncDirectoriesOpen}
+      setSyncDirectoriesOpen={setSyncDirectoriesOpen}
+      hotlistOpen={hotlistOpen}
+      setHotlistOpen={setHotlistOpen}
+      manageHotlistOpen={manageHotlistOpen}
+      setManageHotlistOpen={setManageHotlistOpen}
       isTextEditable={isTextEditable}
       refreshActivePane={() => refreshPanel(state.activePanelId)}
       setDiagnosticsOpen={setDiagnosticsOpen}
@@ -936,6 +1007,7 @@ function FileOctopusAppInner({
       }}
       refreshNavigation={refreshNavigation}
       setOperationError={setOperationError}
+      runRecursiveSearch={runRecursiveSearch}
       applySplitRatioFn={applySplitRatio}
     />
   );

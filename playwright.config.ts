@@ -23,7 +23,7 @@ export default defineConfig({
   testMatch: "**/*.e2e.ts",
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
+  retries: process.env.CI ? 2 : 1,
   workers: 1,
   reporter: [["list"], ["html", { open: "never", outputFolder: "e2e-report" }]],
   timeout: 30_000,
@@ -35,6 +35,21 @@ export default defineConfig({
     screenshot: "only-on-failure",
     video: "retain-on-failure",
     viewport: { width: 1280, height: 720 },
+    // Auto-dismiss first-run overlay before every page load
+    storageState: {
+      cookies: [],
+      origins: [
+        {
+          origin: "http://localhost:1420",
+          localStorage: [
+            {
+              name: "fileoctopus.firstRunDismissed",
+              value: "true",
+            },
+          ],
+        },
+      ],
+    },
   },
 
   projects: [

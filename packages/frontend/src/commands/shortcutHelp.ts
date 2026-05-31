@@ -9,6 +9,7 @@ const GROUP_LABELS: Record<CommandGroup, string> = {
   clipboard: "Clipboard",
   selection: "Selection",
   app: "App",
+  tools: "Tools",
 };
 
 const EXCLUDED_COMMAND_IDS = new Set<string>([
@@ -164,6 +165,7 @@ export function buildShortcutHelpGroups(): ShortcutHelpGroup[] {
     "Clipboard",
     "Selection",
     "Create",
+    "Tools",
     "App",
   ];
 

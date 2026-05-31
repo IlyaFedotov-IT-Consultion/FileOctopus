@@ -73,7 +73,7 @@
 
 .fo-terminal-empty-hint {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--fo-font-size-md);
   line-height: 1.4;
 }
 
@@ -85,8 +85,8 @@
   overflow: hidden;
   border: 1px solid var(--fo-border);
   border-radius: 0;
-  background: #252526;
-  font-size: 12px;
+  background: var(--fo-surface);
+  font-size: var(--fo-font-size-md);
 }
 
 .fo-activity-collapsed {
@@ -117,7 +117,7 @@
   justify-content: space-between;
   gap: 8px;
   padding: 9px 10px;
-  border-bottom: 1px solid #1e1e1e;
+  border-bottom: 1px solid var(--fo-app-bg);
 }
 
 .fo-activity-header h2 {
@@ -125,14 +125,14 @@
   align-items: center;
   gap: 8px;
   margin: 0;
-  font-size: 13px;
+  font-size: var(--fo-font-size-lg);
   font-weight: 500;
 }
 
 .fo-activity-header p {
   margin: 4px 0 0;
   color: var(--fo-muted-text);
-  font-size: 11px;
+  font-size: var(--fo-font-size-sm);
 }
 
 .fo-activity-cards {
@@ -157,7 +157,7 @@
 .fo-activity-section-title {
   margin: 0 0 8px;
   color: var(--fo-muted-text);
-  font-size: 11px;
+  font-size: var(--fo-font-size-sm);
   font-weight: 700;
   letter-spacing: 0;
   text-transform: uppercase;
@@ -166,8 +166,8 @@
 .fo-job-card {
   padding: 8px;
   border: 1px solid var(--fo-border);
-  border-radius: 2px;
-  background: #1e1e1e;
+  border-radius: var(--fo-radius-xs);
+  background: var(--fo-app-bg);
 }
 
 .fo-job-card-running {
@@ -175,18 +175,23 @@
 }
 
 .fo-job-card-queued {
-  background: #4b3a16;
-  border-color: #8a6c00;
+  background: var(--fo-warning-bg);
+  border-color: var(--fo-warning-border);
 }
 
 .fo-job-card-completed {
-  background: #173f2a;
-  border-color: #2f6f44;
+  background: var(--fo-success-bg);
+  border-color: var(--fo-success-border);
 }
 
 .fo-job-card-failed {
   background: var(--fo-danger-bg);
   border-color: var(--fo-danger-border);
+}
+
+.fo-job-card-paused {
+  background: var(--fo-warning-bg);
+  border-color: var(--fo-warning-border);
 }
 
 .fo-job-card-title {
@@ -214,13 +219,13 @@
 .fo-job-card-percent {
   flex: 0 0 auto;
   color: var(--fo-muted-text);
-  font-size: 11px;
+  font-size: var(--fo-font-size-sm);
 }
 
 .fo-job-card-item {
   margin: 4px 0 0;
   color: var(--fo-muted-text);
-  font-size: 11px;
+  font-size: var(--fo-font-size-sm);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -229,7 +234,7 @@
 .fo-job-card-error {
   margin: 6px 0 0;
   color: var(--fo-danger-text);
-  font-size: 11px;
+  font-size: var(--fo-font-size-sm);
 }
 
 .fo-job-card-actions {
@@ -241,14 +246,14 @@
 .fo-job-card-bar {
   height: 6px;
   margin-top: 8px;
-  border-radius: 2px;
+  border-radius: var(--fo-radius-xs);
   background: var(--fo-border);
   overflow: hidden;
 }
 
 .fo-job-card-bar > div {
   height: 100%;
-  border-radius: 2px;
+  border-radius: var(--fo-radius-xs);
   background: var(--fo-accent);
 }
 
@@ -263,9 +268,9 @@
   max-height: 220px;
   overflow: auto;
   border: 1px solid var(--fo-border);
-  background: #1e1e1e;
+  background: var(--fo-app-bg);
   padding: 8px;
-  font-size: 12px;
+  font-size: var(--fo-font-size-md);
 }
 
 .fo-job-panel header,
@@ -300,7 +305,7 @@
   grid-template-columns: 72px 72px minmax(0, 1fr) 88px;
   min-height: 24px;
   color: var(--fo-muted-text);
-  font-size: 11px;
+  font-size: var(--fo-font-size-sm);
 }
 
 .fo-history-actions {
@@ -343,12 +348,12 @@
   min-width: 0;
   padding: 0;
   border: 0;
-  border-radius: 2px;
+  border-radius: var(--fo-radius-xs);
   background: transparent;
   box-shadow: none;
 }
 
 .fo-workspace[data-layout="medium"] .fo-activity-collapsed .fo-ui-btn {
-  border-radius: 2px;
-  box-shadow: 0 8px 24px var(--fo-menu-shadow);
+  border-radius: var(--fo-radius-xs);
+  box-shadow: var(--fo-elevation-popover);
 }

@@ -4,7 +4,7 @@
 
 This document describes the **Release Candidate (RC)** engineering scope for FileOctopus v0.1.0: what ships in RC, known gaps versus the original MVP vision, as-built crate boundaries, IPC contracts, persistence, testing expectations, and acceptance criteria. It is the RC counterpart to the historical MVP build plan—not a greenfield implementation guide.
 
-The RC is a high-performance local dual-pane file manager with safe job-based file operations. Post-RC capabilities (remote Git, tar archives, full job SQLite schema) are tracked explicitly in §3.2 and §17. Broader product vision items (cloud, plugins, AI) remain in §3.3.
+The RC is a high-performance local dual-pane file manager with safe job-based file operations. Post-RC capabilities (remote Git, tar archives, full job SQLite schema) are tracked explicitly in §3.2 and §17. Many originally post-RC items — cloud providers, plugins, diff/merge, ACL editor, SMB/S3, tag/label, saved searches, archive browsing, audio/video preview — have since been implemented on `main` and are reflected in [PROJECT_STATUS_AND_DOC_ALIGNMENT.md](../planning/PROJECT_STATUS_AND_DOC_ALIGNMENT.md).
 
 ### RC delivery matrix (2026-05-18)
 
@@ -17,6 +17,16 @@ The RC is a high-performance local dual-pane file manager with safe job-based fi
 | Terminal                   | **Partial**    | `fs_open_terminal` external emulator plus embedded local/SSH PTY panel via `terminal-core`                                                                                              | Manual remote smoke and polish                                                  |
 | UI                         | **Partial**    | Command palette (registry-driven), context menus, activity rail, preview, theme prefs, `MenuBar` on dispatch                                                                            | Keyboard/toolbar on registry; native menu; Menu spec parity                     |
 | Platform & release         | **Partial**    | Windows/macOS/Linux CI builds                                                                                                                                                           | Formal RC sign-off (§16, [mvp-rc-checklist.md](../release/mvp-rc-checklist.md)) |
+| Cloud providers            | **Delivered**  | `provider-gdrive`/`provider-dropbox`/`provider-onedrive` with OAuth; sidebar + settings wiring                                                                                          | Production hardening, rate-limit UX                                             |
+| SMB/S3 remote              | **Delivered**  | `provider-smb`/`provider-s3` crates; `network_*` IPC commands; ConnectServerDialog                                                                                                      | Integration testing, SMB auth edge cases                                        |
+| Plugins                    | **Delivered**  | `plugin-core` crate; `plugin_*` IPC commands; marketplace UI in settings                                                                                                                | Lua/WASM sandbox, community registry                                            |
+| ACL editor                 | **Delivered**  | `acl.rs` command handler; `fs_get_acl`/`fs_set_acl` IPC; `AclEditor` dialog                                                                                                             | Production testing on NFS/CIFS                                                  |
+| Diff/merge                 | **Delivered**  | `fs_diff_text` IPC; `DiffDialog` component                                                                                                                                              | Binary diff, three-way merge                                                    |
+| Sync directories           | **Delivered**  | `fs_sync_directories` IPC; `SyncDirectoriesDialog` component                                                                                                                            | Bidirectional sync, scheduling                                                  |
+| Tags/labels                | **Delivered**  | Tag/label storage and UI components                                                                                                                                                     | Search by tag, tag hierarchies                                                  |
+| Saved searches             | **Delivered**  | Saved search persistence and UI                                                                                                                                                         | Smart folders, conditional rules                                                |
+| Archive browsing           | **Delivered**  | `fs_list_archive` IPC; browse-without-extract UI                                                                                                                                        | Non-zip formats                                                                 |
+| Audio/video preview        | **Delivered**  | ViewerDialog audio/video playback                                                                                                                                                       | Codec coverage, metadata display                                                |
 
 **Authoritative references:**
 
@@ -138,21 +148,22 @@ FileOctopus RC should prove three things:
 
 ---
 
-## 3.2 RC known gaps
+## 3.2 RC known gaps (updated 2026-05-30)
 
-Items from the original MVP §3.1 that are **not** required for RC sign-off but may follow in 1.0:
+Items from the original MVP §3.1 that remain **not** required for RC sign-off:
 
 - Remote Git status.
 - Embedded terminal manual smoke and polish.
-- Tar and non-zip archive formats (RC ships zip create/extract only).
-- Native OS menu integration and remaining [Menu & Modal Spec](../plans/FileOctopus_Menu_and_Modal_Specification.md) parity work (the in-app `MenuBar` shell is present).
+- Additional archive formats beyond zip/tar/tar.gz/tar.bz2 and future archive browsing.
+- Remaining [Menu & Modal Spec](../plans/FileOctopus_Menu_and_Modal_Specification.md) polish; the in-app `MenuBar` and native Tauri menu are present.
 - Advanced session restore and tab persistence polish.
-- Last-path restore on startup.
-- Full conflict dialog parity (metadata compare and apply-to-all flow).
-- Pause/resume jobs; RC supports cancel only.
-- Checksum toolbar action parity; `fs_compute_hash` exists and hash is computed on selection.
 - Full `job` / `job_item_result` SQLite schema and per-item recovery.
 - Formal performance and RC checklist sign-off (MVP-PERF-\*, §16).
+
+**Resolved since original spec (now shipped):**
+
+- ~~Pause/resume jobs; RC supports cancel only.~~ → `pause_job` / `resume_job` commands implemented.
+- ~~Advanced ACL editing.~~ → `AclEditor` component and `fs_get_acl` / `fs_set_acl` commands shipped.
 
 ---
 
@@ -161,16 +172,16 @@ Items from the original MVP §3.1 that are **not** required for RC sign-off but 
 - Peer-to-peer sync.
 - AI semantic search.
 - Full content-addressed library model.
-- Plugin marketplace.
-- Full Lua/WASM plugin runtime.
-- Production cloud provider support.
-- SMB/SFTP/S3/Azure Blob production providers.
+- ~~Plugin marketplace.~~ → **Shipped**: `plugin-core` crate, marketplace UI, `plugin_install`/`plugin_list`/`plugin_toggle`/`plugin_uninstall` commands.
+- Full Lua/WASM plugin runtime (marketplace uses local crates for now).
+- ~~Production cloud provider support.~~ → **Shipped**: OAuth connectors for GDrive, Dropbox, OneDrive; `remote-core` crate with provider architecture.
+- ~~SMB/SFTP/S3/Azure Blob production providers.~~ → **Shipped**: `provider-smb`, `provider-sftp`, `provider-s3` crates in workspace. Azure Blob not yet.
 - Native shell extensions.
-- File content diff/merge.
+- ~~File content diff/merge.~~ → **Partially shipped**: `DiffDialog` component, `fs_compare_files` / `fs_diff_text` commands. Full merge not yet.
 - Multi-user collaboration.
 - Mobile clients.
-- Advanced ACL editing.
-- Full metadata editor.
+- ~~Advanced ACL editing.~~ → **Shipped**: see §3.2 above.
+- ~~Full metadata editor.~~ → **Shipped**: `PropertiesDialog` and `SelectionPropertiesDialog` with metadata display.
 
 ---
 
@@ -194,8 +205,8 @@ Items from the original MVP §3.1 that are **not** required for RC sign-off but 
 | MVP-JOB-004  | **Mostly met** | Restart persistence     | Operation history inspectable after restart; live jobs in-memory only.        |
 | MVP-GIT-001  | **Met**        | Git branch              | Active local repository panes display the current branch or detached HEAD.    |
 | MVP-GIT-002  | **Met**        | Git badges              | File rows show compact local Git status badges from `git.statusForDirectory`. |
-| MVP-ARC-001  | **Partial**    | Archive extraction      | Zip create/extract to destination; tar not implemented.                       |
-| MVP-ARC-002  | **Met**        | Archive safety          | Malicious archive path traversal is blocked (zip-slip tests).                 |
+| MVP-ARC-001  | **Mostly met** | Archive extraction      | Zip, tar, tar.gz/tgz, and tar.bz2/tbz2 create/extract to destination.         |
+| MVP-ARC-002  | **Met**        | Archive safety          | Malicious archive path traversal is blocked.                                  |
 | MVP-TERM-001 | **Partial**    | Terminal open           | External terminal plus embedded local/SSH terminal; manual smoke pending.     |
 | MVP-UI-001   | **Partial**    | Keyboard flow           | Shortcuts + command palette; menu bar shell partial.                          |
 | MVP-SEC-001  | **Met**        | No direct FS frontend   | Frontend has no unrestricted generic filesystem access (ADR-0002).            |
@@ -373,21 +384,32 @@ fileoctopus/
     desktop-tauri/
       src-tauri/src/
         lib.rs
-        commands/          # app_info, fs, file_operations, watch, navigation, …
+        commands/          # app_info, fs, file_operations, watch, navigation, git,
+                          # content_search, compare, network, plugin, terminal, …
         state.rs, emit.rs
       src/                 # mounts FileOctopusShell
     cli/                   # placeholder binary
 
   crates/
-    vfs/
+    vfs/                   # ResourceUri, VfsProvider trait, VfsRegistry
     fs-core/               # LocalFsProvider, file_ops/, metadata, search, …
-    jobs/
+    jobs/                  # JobEngine, CancellationToken, progress events
     app-core/              # boot, OperationRuntime, operation_history SQLite
-    app-ipc/
+    app-ipc/               # DTOs, error contracts, event constants
     config/                # preferences + navigation stores
     platform/              # minimal placeholder
     telemetry/
     test-support/          # fileoctopus-test-tree
+    git-intel/             # local git status (shipped post-M1)
+    terminal-core/         # local PTY + SSH terminal (shipped post-M4)
+    remote-core/           # remote connection lifecycle, OAuth base
+    plugin-core/           # plugin registry, install/list/toggle
+    provider-gdrive/       # Google Drive VFS provider
+    provider-dropbox/      # Dropbox VFS provider
+    provider-onedrive/     # OneDrive VFS provider
+    provider-s3/           # S3 VFS provider
+    provider-sftp/         # SFTP VFS provider
+    provider-smb/           # SMB VFS provider
 
   packages/
     frontend/src/
@@ -407,7 +429,7 @@ fileoctopus/
   pnpm-workspace.yaml
 ```
 
-**Post-RC crates (not in workspace):** `archive-core`, `indexer`, `content-id`. Backend `git-intel` and `terminal-core` are now in the workspace.
+**Post-RC crates (not in workspace):** `archive-core`, `indexer`, `content-id`.
 
 ---
 
@@ -521,7 +543,7 @@ pub async fn fs_stat(
 
 ### IPC commands (RC)
 
-The authoritative registry is [api-reference.md](api-reference.md) (**37 commands** as of 2026-05-17). Highlights:
+The authoritative registry is [api-reference.md](api-reference.md) (**77 commands** as of 2026-05-30). Highlights:
 
 ```text
 # Filesystem & listing
@@ -1088,7 +1110,7 @@ The subsections below retain illustrative DTO samples. Dotted names map through 
 
 The frontend consumes `@fileoctopus/ts-api` rather than raw Tauri invokes.
 
-**As implemented (RC, 2026-05-17):**
+**As implemented (2026-05-30):**
 
 ```text
 packages/ts-api/src/
@@ -1098,11 +1120,12 @@ packages/ts-api/src/
   normalizeError.ts
   types.ts
   clients/               # fs, fileOperations, jobs, history, diagnostics,
-                         # preferences, navigation, autostart
+                         # preferences, navigation, autostart, git,
+                         # terminal, network, plugin
   transports/            # tauri.ts, preview.ts
 ```
 
-**Post-RC** — optional `clients/git.ts`, `clients/terminal.ts` when embedded Git/PTY land. Archives stay on `FileOperationsClient` at RC.
+**Post-RC** — additional clients may be added as new IPC domains land. Archives stay on `FileOperationsClient` at RC.
 
 ### Client Example
 
@@ -1781,7 +1804,7 @@ Summary buckets:
 | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | Build        | `pnpm rc:validate`, `pnpm tauri:build` locally; artifact under `target/release/bundle`                                                      |
 | Automated QA | `pnpm test:backend:rc`, `pnpm test:frontend:rc`, `pnpm lint`, `pnpm build` (local); CI runs `typecheck` + `test` only when app paths change |
-| Manual QA    | `docs/qa/sprint-3-smoke-test.md`, `docs/qa/sprint-4-baseline-qa.md`, performance captures                                                   |
+| Manual QA    | `docs/archive/sprint-3-smoke-test.md`, `docs/archive/sprint-4-baseline-qa.md`, performance captures                                         |
 | Go/No-Go     | Owner, date, accepted non-blockers                                                                                                          |
 
 RC engineering gate: §4 criteria **Met** or **Deferred** with owner sign-off; zip-slip and ADR-0002 boundaries covered by automated tests.
@@ -1792,10 +1815,10 @@ RC engineering gate: §4 criteria **Met** or **Deferred** with owner sign-off; z
 
 Ordered backlog after RC (see also [PROJECT_STATUS_AND_DOC_ALIGNMENT.md](../planning/PROJECT_STATUS_AND_DOC_ALIGNMENT.md)):
 
-1. Complete menu bar wiring per [Menu & Modal Spec](../plans/FileOctopus_Menu_and_Modal_Specification.md).
+1. Complete remaining Menu & Modal Spec polish after in-app and native menu wiring.
 2. Remote Git exploration.
 3. Embedded terminal manual-smoke polish.
-4. Tar and additional archive formats; optional `archive-core` extraction.
+4. Additional archive formats, archive browsing, and optional `archive-core` extraction.
 5. Durable `job` / `job_item_result` SQLite schema and recovery.
 6. Formal MVP-PERF-\* sign-off per `docs/testing/`.
 7. 1.0 packaging, signing, and platform QA matrix.

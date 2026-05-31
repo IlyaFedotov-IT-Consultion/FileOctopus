@@ -2,11 +2,14 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import {
   DEFAULT_VISIBLE_COLUMNS,
   DEFAULT_COLUMN_WIDTHS,
+  storedColumnWidths,
   storedVisibleColumns,
   persistVisibleColumns,
   buildVisibleGridTemplate,
   buildVisibleHeaderGridTemplate,
   isValidVisibleColumns,
+  normalizeVisibleColumns,
+  reorderVisibleColumns,
   COLUMN_ORDER,
   type VisibleColumns,
   type ColumnWidths,
@@ -114,6 +117,38 @@ describe("isValidVisibleColumns", () => {
   });
 });
 
+describe("reorderVisibleColumns", () => {
+  it("keeps name first when a column is dropped on the name header slot", () => {
+    const visible: VisibleColumns = [
+      "name",
+      "extension",
+      "size",
+      "modified",
+      "kind",
+    ];
+    expect(reorderVisibleColumns(visible, 3, 0)).toEqual([
+      "name",
+      "modified",
+      "extension",
+      "size",
+      "kind",
+    ]);
+  });
+
+  it("ignores attempts to move the name column", () => {
+    const visible: VisibleColumns = ["name", "size", "modified"];
+    expect(reorderVisibleColumns(visible, 0, 2)).toEqual(visible);
+  });
+
+  it("normalizes columns if name is not first after reorder", () => {
+    expect(normalizeVisibleColumns(["size", "name", "modified"])).toEqual([
+      "name",
+      "size",
+      "modified",
+    ]);
+  });
+});
+
 describe("buildVisibleGridTemplate", () => {
   it("includes only visible columns in grid template", () => {
     const widths: ColumnWidths = { ...DEFAULT_COLUMN_WIDTHS };
@@ -135,12 +170,19 @@ describe("buildVisibleGridTemplate", () => {
     expect(result).toBe("minmax(220px, 1fr)");
   });
 
-  it("respects column order when subset is visible", () => {
+  it("respects the visible array order (not COLUMN_ORDER)", () => {
     const visible: VisibleColumns = ["name", "modified", "size"];
     const result = buildVisibleGridTemplate(DEFAULT_COLUMN_WIDTHS, visible);
-    // Should follow COLUMN_ORDER: name, extension, size, modified, kind
-    // Only name, size, modified are visible → name first, then size, then modified
-    expect(result).toBe("minmax(220px, 1fr) 78px 126px");
+    // Should follow the visible array order: name, modified, size
+    expect(result).toBe("minmax(220px, 1fr) 126px 78px");
+  });
+
+  it("follows COLUMN_ORDER when visible array is in default order", () => {
+    const result = buildVisibleGridTemplate(
+      DEFAULT_COLUMN_WIDTHS,
+      DEFAULT_VISIBLE_COLUMNS,
+    );
+    expect(result).toBe("minmax(220px, 1fr) 52px 78px 126px 110px");
   });
 });
 
@@ -169,5 +211,29 @@ describe("buildVisibleHeaderGridTemplate", () => {
     // 5 columns → 4 resize handles
     const handleCount = result.split(" ").filter((p) => p === "5px").length;
     expect(handleCount).toBe(4);
+  });
+});
+
+describe("storedColumnWidths / storedVisibleColumns readStorage error handling", () => {
+  it("storedColumnWidths returns defaults when localStorage.getItem throws", () => {
+    const spy = vi
+      .spyOn(Storage.prototype, "getItem")
+      .mockImplementation(() => {
+        throw new Error("SecurityError");
+      });
+    const result = storedColumnWidths();
+    expect(result).toEqual(DEFAULT_COLUMN_WIDTHS);
+    spy.mockRestore();
+  });
+
+  it("storedVisibleColumns returns defaults when localStorage.getItem throws", () => {
+    const spy = vi
+      .spyOn(Storage.prototype, "getItem")
+      .mockImplementation(() => {
+        throw new Error("SecurityError");
+      });
+    const result = storedVisibleColumns();
+    expect(result).toEqual(DEFAULT_VISIBLE_COLUMNS);
+    spy.mockRestore();
   });
 });

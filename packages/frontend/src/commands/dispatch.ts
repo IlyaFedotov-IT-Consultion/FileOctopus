@@ -51,6 +51,9 @@ export interface CommandDispatchDeps {
   setConnectServerProfile: (
     profile: import("@fileoctopus/ts-api").NetworkProfileDto | null,
   ) => void;
+  setConnectServerInitial?: (
+    profile: import("@fileoctopus/ts-api").NetworkConnectionDraftDto | null,
+  ) => void;
   setFilterFocusToken: Dispatch<SetStateAction<number>>;
   setRecursiveSearchFocusToken: Dispatch<SetStateAction<number>>;
   setPreviewOpen: (open: boolean) => void;
@@ -117,6 +120,10 @@ export interface CommandDispatchDeps {
   equalizePanes: () => void;
   toggleStatusBar: () => void;
   toggleToolbar: () => void;
+  setMultiRenameOpen: (open: boolean) => void;
+  setSyncDirectoriesOpen: (open: boolean) => void;
+  setHotlistOpen: (open: boolean) => void;
+  setManageHotlistOpen: (open: boolean) => void;
 }
 
 function resolveCommandId(id: string): string {
@@ -221,6 +228,23 @@ export function dispatchCommand(
       void deps.updatePreference("theme", theme);
       return true;
     }
+    case "preferences.cycleTheme": {
+      const current = deps.preferences?.theme ?? "system";
+      const next =
+        current === "system"
+          ? "light"
+          : current === "light"
+            ? "dark"
+            : "system";
+      deps.setTheme(next);
+      void deps.updatePreference("theme", next);
+      return true;
+    }
+    case "preferences.accentColor":
+    case "preferences.fontScale":
+    case "preferences.iconScale":
+      deps.setSettingsOpen(true);
+      return true;
     case "preferences.density": {
       const density = options?.preferenceValue ?? "comfortable";
       deps.setDensity(density as DensityPreference);
@@ -239,6 +263,14 @@ export function dispatchCommand(
     case "layout.swapPanes":
       deps.dispatch({ type: "swapPanes" });
       return true;
+    case "layout.togglePaneDirection": {
+      const current = deps.preferences?.paneDirection ?? "horizontal";
+      void deps.updatePreference(
+        "paneDirection",
+        current === "horizontal" ? "vertical" : "horizontal",
+      );
+      return true;
+    }
     case "nav.back":
       void deps.goHistory(panelId, "back");
       return true;
@@ -282,16 +314,18 @@ export function dispatchCommand(
       deps.setVolumePickerOpen(true);
       return true;
     case "nav.networkLocations":
-      deps.setNetworkLocationsOpen(true);
+      void deps.navigatePanel(panelId, "network:///");
       return true;
     case "nav.addServer":
       deps.setConnectServerProfile(null);
+      deps.setConnectServerInitial?.(null);
       deps.setConnectServerOpen(true);
       return true;
     case "nav.connectServer": {
       const profile = options?.networkProfile;
       if (profile) {
         deps.setConnectServerProfile(profile);
+        deps.setConnectServerInitial?.(null);
         deps.setConnectServerOpen(true);
         return true;
       }
@@ -481,6 +515,18 @@ export function dispatchCommand(
       return true;
     case "selection.clear":
       deps.dispatch({ type: "clearSelection", panelId });
+      return true;
+    case "tools.multiRename":
+      deps.setMultiRenameOpen(true);
+      return true;
+    case "tools.syncDirectories":
+      deps.setSyncDirectoriesOpen(true);
+      return true;
+    case "tools.openHotlist":
+      deps.setHotlistOpen(true);
+      return true;
+    case "tools.manageHotlist":
+      deps.setManageHotlistOpen(true);
       return true;
     default:
       return false;

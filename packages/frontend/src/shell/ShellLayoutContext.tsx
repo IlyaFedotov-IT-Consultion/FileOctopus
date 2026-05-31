@@ -14,6 +14,7 @@ import type {
   JobSnapshot,
   OperationHistoryRecordDto,
   NetworkConnectionStatusDto,
+  NetworkConnectionDraftDto,
   NetworkProfileDto,
   RecentEntryDto,
   StarredEntryDto,
@@ -39,6 +40,8 @@ export interface ShellLayoutContextValue {
   windowControls?: WindowControlHandlers;
   state: FileOctopusState;
   activeTabUri: string;
+  leftPanelUri: string;
+  rightPanelUri: string;
   locations: StandardLocationDto[];
   favorites: FavoriteEntryDto[];
   recentToday: RecentEntryDto[];
@@ -90,6 +93,7 @@ export interface ShellLayoutContextValue {
   networkLocationsOpen: boolean;
   connectServerOpen: boolean;
   connectServerProfile: NetworkProfileDto | null;
+  connectServerInitial: NetworkConnectionDraftDto | null;
   removeServerProfile: NetworkProfileDto | null;
   toolbarCustomizeOpen: boolean;
   busyProfileIds: Set<string>;
@@ -104,6 +108,7 @@ export interface ShellLayoutContextValue {
   setNetworkLocationsOpen: (v: boolean) => void;
   setConnectServerOpen: (v: boolean) => void;
   setConnectServerProfile: (profile: NetworkProfileDto | null) => void;
+  setConnectServerInitial: (profile: NetworkConnectionDraftDto | null) => void;
   setRemoveServerProfile: (profile: NetworkProfileDto | null) => void;
   connectProfile: (profileId: string) => Promise<void>;
   disconnectProfile: (profileId: string) => Promise<void>;
@@ -111,12 +116,12 @@ export interface ShellLayoutContextValue {
   forgetFingerprint: (profileId: string) => Promise<void>;
   saveProfile: (payload: {
     id?: string;
-    scheme: "sftp" | "ssh";
+    scheme: "sftp" | "ssh" | "smb" | "s3" | "webdav";
     label: string;
     host: string;
     port: number;
     username: string;
-    authKind: "password" | "privateKey";
+    authKind: "password" | "privateKey" | "accessKey";
     privateKeyPath: string | null;
     defaultPath: string;
     password: string;
@@ -137,6 +142,10 @@ export interface ShellLayoutContextValue {
   diagnosticsMessage: string | null;
   exportingDiagnostics: boolean;
   isProductionBuild: boolean;
+  multiRenameOpen: boolean;
+  syncDirectoriesOpen: boolean;
+  hotlistOpen: boolean;
+  manageHotlistOpen: boolean;
   setSettingsOpen: (v: boolean) => void;
   setShortcutsOpen: (v: boolean) => void;
   setCommandPaletteOpen: (v: boolean) => void;
@@ -145,6 +154,20 @@ export interface ShellLayoutContextValue {
   setViewerEntry: (entry: FileEntryDto | null) => void;
   setEditorOpen: (v: boolean) => void;
   setEditorEntry: (entry: FileEntryDto | null) => void;
+  diffOpen: boolean;
+  diffLeftUri: string;
+  diffRightUri: string;
+  diffLeftName: string;
+  diffRightName: string;
+  setDiffOpen: (v: boolean) => void;
+  setDiffLeftUri: (v: string) => void;
+  setDiffRightUri: (v: string) => void;
+  setDiffLeftName: (v: string) => void;
+  setDiffRightName: (v: string) => void;
+  setMultiRenameOpen: (v: boolean) => void;
+  setSyncDirectoriesOpen: (v: boolean) => void;
+  setHotlistOpen: (v: boolean) => void;
+  setManageHotlistOpen: (v: boolean) => void;
   isTextEditable: (entry: FileEntryDto | null) => boolean;
   refreshActivePane: () => void;
   setDiagnosticsOpen: (v: boolean) => void;
@@ -214,6 +237,7 @@ export interface ShellLayoutContextValue {
   navigateOtherPane: (uri: string) => void;
   refreshNavigation: () => Promise<void>;
   setOperationError: (error: string | null) => void;
+  runRecursiveSearch: (panelId: PanelId) => Promise<void>;
   applySplitRatioFn: (ratio: number) => number;
 }
 

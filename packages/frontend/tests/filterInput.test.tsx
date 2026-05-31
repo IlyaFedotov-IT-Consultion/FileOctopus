@@ -162,6 +162,9 @@ vi.mock("@fileoctopus/ts-api", async (importOriginal) => {
         onRecursiveSearchCompleted,
         computeHash,
         openTerminal,
+        discoverVolumes: vi.fn(async () => ({ volumes: [] })),
+        onContentSearchMatch: vi.fn(async () => () => {}),
+        onContentSearchCompleted: vi.fn(async () => () => {}),
       },
       terminal: mockTerminalClient(),
       fileOperations: {
@@ -172,6 +175,8 @@ vi.mock("@fileoctopus/ts-api", async (importOriginal) => {
         onJobCompleted,
         onJobFailed: subscribeJob,
         onJobCancelled: subscribeJob,
+        onJobPaused: subscribeJob,
+        onJobResumed: subscribeJob,
       },
       jobs: { cancelJob },
       operationHistory: { listRecentOperations, clearOperationHistory },

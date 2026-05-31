@@ -1,7 +1,7 @@
 use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 
-use jobs::{CancellationToken, JobId};
+use jobs::{CancellationToken, JobId, PauseToken};
 use vfs::{ConflictPolicy, FileOperationError, FileOperationPlan};
 use zip::write::FileOptions;
 
@@ -9,10 +9,39 @@ use super::execution::{check_cancelled, resolve_conflict_path, ExecutionProgress
 use super::paths::map_std_io_error;
 use super::FileOperationEventSink;
 
+pub(super) enum ArchiveFormat {
+    Zip,
+    Tar,
+    TarGz,
+    TarBz2,
+}
+
+pub(super) fn detect_archive_format(path: &Path) -> Result<ArchiveFormat, FileOperationError> {
+    let name = path
+        .file_name()
+        .map(|n| n.to_string_lossy().to_string())
+        .unwrap_or_default()
+        .to_lowercase();
+    if name.ends_with(".tar.gz") || name.ends_with(".tgz") {
+        Ok(ArchiveFormat::TarGz)
+    } else if name.ends_with(".tar.bz2") || name.ends_with(".tbz2") {
+        Ok(ArchiveFormat::TarBz2)
+    } else if name.ends_with(".tar") {
+        Ok(ArchiveFormat::Tar)
+    } else if name.ends_with(".zip") {
+        Ok(ArchiveFormat::Zip)
+    } else {
+        Err(FileOperationError::InvalidRequest {
+            message: format!("unsupported archive format: {name}"),
+        })
+    }
+}
+
 pub(super) fn execute_create_archive(
     plan: &FileOperationPlan,
     job_id: &JobId,
     cancel: &CancellationToken,
+    pause: &PauseToken,
     sink: &FileOperationEventSink,
 ) -> Result<(), FileOperationError> {
     let destination =
@@ -33,39 +62,162 @@ pub(super) fn execute_create_archive(
         fs::create_dir_all(parent).map_err(|error| map_std_io_error(parent, error))?;
     }
 
-    let file = File::create(&destination_path)
-        .map_err(|error| map_std_io_error(&destination_path, error))?;
-    let mut archive = zip::ZipWriter::new(file);
-    let options = FileOptions::default().compression_method(zip::CompressionMethod::Deflated);
+    let format = detect_archive_format(&destination_path)?;
     let mut progress = ExecutionProgress::new(plan);
 
-    for item in &plan.items {
-        check_cancelled(cancel, job_id)?;
-        let source = item
-            .source
-            .as_ref()
-            .ok_or_else(|| FileOperationError::InvalidRequest {
-                message: "archive item has no source".to_string(),
+    match format {
+        ArchiveFormat::Zip => {
+            let file = File::create(&destination_path)
+                .map_err(|error| map_std_io_error(&destination_path, error))?;
+            let mut archive = zip::ZipWriter::new(file);
+            let options =
+                FileOptions::default().compression_method(zip::CompressionMethod::Deflated);
+
+            for item in &plan.items {
+                check_cancelled(cancel, pause, job_id)?;
+                let source =
+                    item.source
+                        .as_ref()
+                        .ok_or_else(|| FileOperationError::InvalidRequest {
+                            message: "archive item has no source".to_string(),
+                        })?;
+                let source_path = source.to_local_path()?;
+                let entry_name = archive_entry_name(plan, &source_path)?;
+
+                archive.start_file(&entry_name, options).map_err(|error| {
+                    FileOperationError::io(format!("failed to add file to archive: {error}"))
+                })?;
+
+                let mut input = File::open(&source_path)
+                    .map_err(|error| map_std_io_error(&source_path, error))?;
+                let copied = std::io::copy(&mut input, &mut archive).map_err(|error| {
+                    FileOperationError::io(format!("failed to write file to archive: {error}"))
+                })?;
+                progress.completed_bytes += copied;
+                progress.complete_item(item, job_id, sink);
+            }
+
+            archive.finish().map_err(|error| {
+                FileOperationError::io(format!("failed to finalize archive: {error}"))
             })?;
-        let source_path = source.to_local_path()?;
-        let entry_name = archive_entry_name(plan, &source_path)?;
+        }
+        ArchiveFormat::TarGz => {
+            let file = File::create(&destination_path)
+                .map_err(|error| map_std_io_error(&destination_path, error))?;
+            let gz = flate2::write::GzEncoder::new(file, flate2::Compression::default());
+            let mut archive = tar::Builder::new(gz);
 
-        archive.start_file(&entry_name, options).map_err(|error| {
-            FileOperationError::io(format!("failed to add file to archive: {error}"))
-        })?;
+            for item in &plan.items {
+                check_cancelled(cancel, pause, job_id)?;
+                let source =
+                    item.source
+                        .as_ref()
+                        .ok_or_else(|| FileOperationError::InvalidRequest {
+                            message: "archive item has no source".to_string(),
+                        })?;
+                let source_path = source.to_local_path()?;
+                let entry_name = archive_entry_name(plan, &source_path)?;
 
-        let mut input =
-            File::open(&source_path).map_err(|error| map_std_io_error(&source_path, error))?;
-        let copied = std::io::copy(&mut input, &mut archive).map_err(|error| {
-            FileOperationError::io(format!("failed to write file to archive: {error}"))
-        })?;
-        progress.completed_bytes += copied;
-        progress.complete_item(item, job_id, sink);
+                let mut input = File::open(&source_path)
+                    .map_err(|error| map_std_io_error(&source_path, error))?;
+                archive
+                    .append_file(&entry_name, &mut input)
+                    .map_err(|error| {
+                        FileOperationError::io(format!(
+                            "failed to add file to tar archive: {error}"
+                        ))
+                    })?;
+                let copied = fs::metadata(&source_path).map(|m| m.len()).unwrap_or(0);
+                progress.completed_bytes += copied;
+                progress.complete_item(item, job_id, sink);
+            }
+
+            archive
+                .into_inner()
+                .map_err(|error| {
+                    FileOperationError::io(format!("failed to finalize tar.gz archive: {error}"))
+                })?
+                .finish()
+                .map_err(|error| {
+                    FileOperationError::io(format!("failed to finalize gzip stream: {error}"))
+                })?;
+        }
+        ArchiveFormat::TarBz2 => {
+            let file = File::create(&destination_path)
+                .map_err(|error| map_std_io_error(&destination_path, error))?;
+            let bz = bzip2::write::BzEncoder::new(file, bzip2::Compression::default());
+            let mut archive = tar::Builder::new(bz);
+
+            for item in &plan.items {
+                check_cancelled(cancel, pause, job_id)?;
+                let source =
+                    item.source
+                        .as_ref()
+                        .ok_or_else(|| FileOperationError::InvalidRequest {
+                            message: "archive item has no source".to_string(),
+                        })?;
+                let source_path = source.to_local_path()?;
+                let entry_name = archive_entry_name(plan, &source_path)?;
+
+                let mut input = File::open(&source_path)
+                    .map_err(|error| map_std_io_error(&source_path, error))?;
+                archive
+                    .append_file(&entry_name, &mut input)
+                    .map_err(|error| {
+                        FileOperationError::io(format!(
+                            "failed to add file to tar archive: {error}"
+                        ))
+                    })?;
+                let copied = fs::metadata(&source_path).map(|m| m.len()).unwrap_or(0);
+                progress.completed_bytes += copied;
+                progress.complete_item(item, job_id, sink);
+            }
+
+            archive
+                .into_inner()
+                .map_err(|error| {
+                    FileOperationError::io(format!("failed to finalize tar.bz2 archive: {error}"))
+                })?
+                .finish()
+                .map_err(|error| {
+                    FileOperationError::io(format!("failed to finalize bzip2 stream: {error}"))
+                })?;
+        }
+        ArchiveFormat::Tar => {
+            let file = File::create(&destination_path)
+                .map_err(|error| map_std_io_error(&destination_path, error))?;
+            let mut archive = tar::Builder::new(file);
+
+            for item in &plan.items {
+                check_cancelled(cancel, pause, job_id)?;
+                let source =
+                    item.source
+                        .as_ref()
+                        .ok_or_else(|| FileOperationError::InvalidRequest {
+                            message: "archive item has no source".to_string(),
+                        })?;
+                let source_path = source.to_local_path()?;
+                let entry_name = archive_entry_name(plan, &source_path)?;
+
+                let mut input = File::open(&source_path)
+                    .map_err(|error| map_std_io_error(&source_path, error))?;
+                archive
+                    .append_file(&entry_name, &mut input)
+                    .map_err(|error| {
+                        FileOperationError::io(format!(
+                            "failed to add file to tar archive: {error}"
+                        ))
+                    })?;
+                let copied = fs::metadata(&source_path).map(|m| m.len()).unwrap_or(0);
+                progress.completed_bytes += copied;
+                progress.complete_item(item, job_id, sink);
+            }
+
+            archive.into_inner().map_err(|error| {
+                FileOperationError::io(format!("failed to finalize tar archive: {error}"))
+            })?;
+        }
     }
-
-    archive
-        .finish()
-        .map_err(|error| FileOperationError::io(format!("failed to finalize archive: {error}")))?;
 
     Ok(())
 }
@@ -74,6 +226,7 @@ pub(super) fn execute_extract_archive(
     plan: &FileOperationPlan,
     job_id: &JobId,
     cancel: &CancellationToken,
+    pause: &PauseToken,
     sink: &FileOperationEventSink,
 ) -> Result<(), FileOperationError> {
     let source = plan
@@ -94,53 +247,230 @@ pub(super) fn execute_extract_archive(
     fs::create_dir_all(&destination_root)
         .map_err(|error| map_std_io_error(&destination_root, error))?;
 
-    let file = File::open(&source_path).map_err(|error| map_std_io_error(&source_path, error))?;
-    let mut archive = zip::ZipArchive::new(file)
-        .map_err(|error| FileOperationError::io(format!("failed to read archive: {error}")))?;
+    let format = detect_archive_format(&source_path)?;
     let mut progress = ExecutionProgress::new(plan);
     let mut planned_items = plan.items.iter();
 
-    for index in 0..archive.len() {
-        check_cancelled(cancel, job_id)?;
-        let mut entry = archive.by_index(index).map_err(|error| {
-            FileOperationError::io(format!("failed to read archive entry {index}: {error}"))
-        })?;
-        let entry_name = entry.name().to_string();
-
-        if entry_name.ends_with('/') {
-            continue;
-        }
-
-        let item = planned_items
-            .next()
-            .ok_or_else(|| FileOperationError::Internal {
-                message: "archive extract plan no longer matches archive contents".to_string(),
+    match format {
+        ArchiveFormat::Zip => {
+            let file =
+                File::open(&source_path).map_err(|error| map_std_io_error(&source_path, error))?;
+            let mut archive = zip::ZipArchive::new(file).map_err(|error| {
+                FileOperationError::io(format!("failed to read archive: {error}"))
             })?;
-        let destination =
-            item.destination
-                .as_ref()
-                .ok_or_else(|| FileOperationError::InvalidRequest {
-                    message: "extract item has no destination".to_string(),
+
+            for index in 0..archive.len() {
+                check_cancelled(cancel, pause, job_id)?;
+                let mut entry = archive.by_index(index).map_err(|error| {
+                    FileOperationError::io(format!("failed to read archive entry {index}: {error}"))
                 })?;
-        let destination_path = destination.to_local_path()?;
+                let entry_name = entry.name().to_string();
 
-        if destination_path.exists() && plan.conflict_policy == ConflictPolicy::Skip {
-            progress.complete_item(item, job_id, sink);
-            continue;
+                if entry_name.ends_with('/') {
+                    continue;
+                }
+
+                let item = planned_items
+                    .next()
+                    .ok_or_else(|| FileOperationError::Internal {
+                        message: "archive extract plan no longer matches archive contents"
+                            .to_string(),
+                    })?;
+                let destination = item.destination.as_ref().ok_or_else(|| {
+                    FileOperationError::InvalidRequest {
+                        message: "extract item has no destination".to_string(),
+                    }
+                })?;
+                let destination_path = destination.to_local_path()?;
+
+                if destination_path.exists() && plan.conflict_policy == ConflictPolicy::Skip {
+                    progress.complete_item(item, job_id, sink);
+                    continue;
+                }
+
+                let destination_path =
+                    resolve_conflict_path(destination_path, plan.conflict_policy)?;
+
+                if let Some(parent) = destination_path.parent() {
+                    fs::create_dir_all(parent).map_err(|error| map_std_io_error(parent, error))?;
+                }
+
+                let mut output = File::create(&destination_path)
+                    .map_err(|error| map_std_io_error(&destination_path, error))?;
+                let copied = std::io::copy(&mut entry, &mut output).map_err(|error| {
+                    FileOperationError::io(format!("failed to extract file: {error}"))
+                })?;
+                progress.completed_bytes += copied;
+                progress.complete_item(item, job_id, sink);
+            }
         }
+        ArchiveFormat::TarGz => {
+            let file =
+                File::open(&source_path).map_err(|error| map_std_io_error(&source_path, error))?;
+            let gz = flate2::read::GzDecoder::new(file);
+            let mut archive = tar::Archive::new(gz);
 
-        let destination_path = resolve_conflict_path(destination_path, plan.conflict_policy)?;
+            for entry_result in archive.entries().map_err(|error| {
+                FileOperationError::io(format!("failed to read tar.gz archive: {error}"))
+            })? {
+                check_cancelled(cancel, pause, job_id)?;
+                let mut entry = entry_result.map_err(|error| {
+                    FileOperationError::io(format!("failed to read tar.gz entry: {error}"))
+                })?;
+                let entry_name = entry.path().map_err(|error| {
+                    FileOperationError::io(format!("failed to read tar.gz entry path: {error}"))
+                })?;
+                let entry_name = entry_name.to_string_lossy().to_string();
 
-        if let Some(parent) = destination_path.parent() {
-            fs::create_dir_all(parent).map_err(|error| map_std_io_error(parent, error))?;
+                if entry_name.ends_with('/') {
+                    continue;
+                }
+
+                let item = planned_items
+                    .next()
+                    .ok_or_else(|| FileOperationError::Internal {
+                        message: "archive extract plan no longer matches archive contents"
+                            .to_string(),
+                    })?;
+                let destination = item.destination.as_ref().ok_or_else(|| {
+                    FileOperationError::InvalidRequest {
+                        message: "extract item has no destination".to_string(),
+                    }
+                })?;
+                let destination_path = destination.to_local_path()?;
+
+                if destination_path.exists() && plan.conflict_policy == ConflictPolicy::Skip {
+                    progress.complete_item(item, job_id, sink);
+                    continue;
+                }
+
+                let destination_path =
+                    resolve_conflict_path(destination_path, plan.conflict_policy)?;
+
+                if let Some(parent) = destination_path.parent() {
+                    fs::create_dir_all(parent).map_err(|error| map_std_io_error(parent, error))?;
+                }
+
+                let mut output = File::create(&destination_path)
+                    .map_err(|error| map_std_io_error(&destination_path, error))?;
+                let copied = std::io::copy(&mut entry, &mut output).map_err(|error| {
+                    FileOperationError::io(format!("failed to extract file: {error}"))
+                })?;
+                progress.completed_bytes += copied;
+                progress.complete_item(item, job_id, sink);
+            }
         }
+        ArchiveFormat::TarBz2 => {
+            let file =
+                File::open(&source_path).map_err(|error| map_std_io_error(&source_path, error))?;
+            let bz = bzip2::read::BzDecoder::new(file);
+            let mut archive = tar::Archive::new(bz);
 
-        let mut output = File::create(&destination_path)
-            .map_err(|error| map_std_io_error(&destination_path, error))?;
-        let copied = std::io::copy(&mut entry, &mut output)
-            .map_err(|error| FileOperationError::io(format!("failed to extract file: {error}")))?;
-        progress.completed_bytes += copied;
-        progress.complete_item(item, job_id, sink);
+            for entry_result in archive.entries().map_err(|error| {
+                FileOperationError::io(format!("failed to read tar.bz2 archive: {error}"))
+            })? {
+                check_cancelled(cancel, pause, job_id)?;
+                let mut entry = entry_result.map_err(|error| {
+                    FileOperationError::io(format!("failed to read tar.bz2 entry: {error}"))
+                })?;
+                let entry_name = entry.path().map_err(|error| {
+                    FileOperationError::io(format!("failed to read tar.bz2 entry path: {error}"))
+                })?;
+                let entry_name = entry_name.to_string_lossy().to_string();
+
+                if entry_name.ends_with('/') {
+                    continue;
+                }
+
+                let item = planned_items
+                    .next()
+                    .ok_or_else(|| FileOperationError::Internal {
+                        message: "archive extract plan no longer matches archive contents"
+                            .to_string(),
+                    })?;
+                let destination = item.destination.as_ref().ok_or_else(|| {
+                    FileOperationError::InvalidRequest {
+                        message: "extract item has no destination".to_string(),
+                    }
+                })?;
+                let destination_path = destination.to_local_path()?;
+
+                if destination_path.exists() && plan.conflict_policy == ConflictPolicy::Skip {
+                    progress.complete_item(item, job_id, sink);
+                    continue;
+                }
+
+                let destination_path =
+                    resolve_conflict_path(destination_path, plan.conflict_policy)?;
+
+                if let Some(parent) = destination_path.parent() {
+                    fs::create_dir_all(parent).map_err(|error| map_std_io_error(parent, error))?;
+                }
+
+                let mut output = File::create(&destination_path)
+                    .map_err(|error| map_std_io_error(&destination_path, error))?;
+                let copied = std::io::copy(&mut entry, &mut output).map_err(|error| {
+                    FileOperationError::io(format!("failed to extract file: {error}"))
+                })?;
+                progress.completed_bytes += copied;
+                progress.complete_item(item, job_id, sink);
+            }
+        }
+        ArchiveFormat::Tar => {
+            let file =
+                File::open(&source_path).map_err(|error| map_std_io_error(&source_path, error))?;
+            let mut archive = tar::Archive::new(file);
+
+            for entry_result in archive.entries().map_err(|error| {
+                FileOperationError::io(format!("failed to read tar archive: {error}"))
+            })? {
+                check_cancelled(cancel, pause, job_id)?;
+                let mut entry = entry_result.map_err(|error| {
+                    FileOperationError::io(format!("failed to read tar entry: {error}"))
+                })?;
+                let entry_name = entry.path().map_err(|error| {
+                    FileOperationError::io(format!("failed to read tar entry path: {error}"))
+                })?;
+                let entry_name = entry_name.to_string_lossy().to_string();
+
+                if entry_name.ends_with('/') {
+                    continue;
+                }
+
+                let item = planned_items
+                    .next()
+                    .ok_or_else(|| FileOperationError::Internal {
+                        message: "archive extract plan no longer matches archive contents"
+                            .to_string(),
+                    })?;
+                let destination = item.destination.as_ref().ok_or_else(|| {
+                    FileOperationError::InvalidRequest {
+                        message: "extract item has no destination".to_string(),
+                    }
+                })?;
+                let destination_path = destination.to_local_path()?;
+
+                if destination_path.exists() && plan.conflict_policy == ConflictPolicy::Skip {
+                    progress.complete_item(item, job_id, sink);
+                    continue;
+                }
+
+                let destination_path =
+                    resolve_conflict_path(destination_path, plan.conflict_policy)?;
+
+                if let Some(parent) = destination_path.parent() {
+                    fs::create_dir_all(parent).map_err(|error| map_std_io_error(parent, error))?;
+                }
+
+                let mut output = File::create(&destination_path)
+                    .map_err(|error| map_std_io_error(&destination_path, error))?;
+                let copied = std::io::copy(&mut entry, &mut output).map_err(|error| {
+                    FileOperationError::io(format!("failed to extract file: {error}"))
+                })?;
+                progress.completed_bytes += copied;
+                progress.complete_item(item, job_id, sink);
+            }
+        }
     }
 
     Ok(())

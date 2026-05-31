@@ -48,6 +48,14 @@ function persistValue(key: string, value: string) {
   }
 }
 
+function readStorage(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
 export function reduceSortFilter(
   state: FileOctopusState,
   action: SortFilterAction,
@@ -74,14 +82,14 @@ export function reduceSortFilter(
           field: action.field,
           direction,
         };
-        persistJson("fileoctopus.sort", sort);
+        persistJson(`fileoctopus.sort.${action.panelId}`, sort);
         return {
           ...tab,
           sort,
         };
       });
     case "setViewMode":
-      persistValue("fileoctopus.viewMode", action.viewMode);
+      persistValue(`fileoctopus.viewMode.${action.panelId}`, action.viewMode);
       return updatePanel(state, action.panelId, (tab) => ({
         ...tab,
         viewMode: action.viewMode,
@@ -89,7 +97,10 @@ export function reduceSortFilter(
     case "toggleHidden":
       return updatePanel(state, action.panelId, (tab) => {
         const showHidden = !tab.showHidden;
-        persistValue("fileoctopus.showHidden", String(showHidden));
+        persistValue(
+          `fileoctopus.showHidden.${action.panelId}`,
+          String(showHidden),
+        );
         return {
           ...tab,
           showHidden,
@@ -106,22 +117,27 @@ export function reduceSortFilter(
           errorCode: null,
         };
       });
-    case "hydratePreferences":
-      persistValue("fileoctopus.viewMode", action.viewMode);
-      persistValue("fileoctopus.showHidden", String(action.showHidden));
+    case "hydratePreferences": {
       return {
         ...state,
         panels: (Object.keys(state.panels) as PanelId[]).reduce(
           (panels, panelId) => {
             const panel = state.panels[panelId];
+            // Read per-pane values from localStorage, falling back to global prefs
+            const storedVm = readStorage(`fileoctopus.viewMode.${panelId}`);
+            const storedSh = readStorage(`fileoctopus.showHidden.${panelId}`);
+            const paneViewMode = storedVm || action.viewMode;
+            const paneShowHidden =
+              storedSh !== null ? storedSh === "true" : action.showHidden;
+
             panels[panelId] = {
               ...panel,
               tabs: {
                 ...panel.tabs,
                 [panel.activeTabId]: {
                   ...activeTab(panel),
-                  showHidden: action.showHidden,
-                  viewMode: action.viewMode,
+                  showHidden: paneShowHidden,
+                  viewMode: paneViewMode as ViewMode,
                 },
               },
             };
@@ -130,6 +146,7 @@ export function reduceSortFilter(
           { ...state.panels },
         ),
       };
+    }
     case "setHash":
       return updatePanel(state, action.panelId, (tab) => ({
         ...tab,

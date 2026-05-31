@@ -1,6 +1,13 @@
-export const REMOTE_URI_SCHEMES = ["sftp", "smb", "webdav"] as const;
+export const REMOTE_URI_SCHEMES = ["sftp", "smb", "s3", "webdav"] as const;
 
 export type RemoteUriScheme = (typeof REMOTE_URI_SCHEMES)[number];
+
+const NETWORK_URI_LABELS: Record<string, string> = {
+  cloud: "Cloud Storage",
+  lan: "Local Network",
+  saved: "Saved Connections",
+  add: "Add Connection",
+};
 
 export interface UriBreadcrumbSegment {
   label: string;
@@ -22,8 +29,12 @@ export function isRemoteUri(uri: string): boolean {
   );
 }
 
+export function isNetworkUri(uri: string): boolean {
+  return uriScheme(uri) === "network" && uri.startsWith("network:///");
+}
+
 export function isSupportedNavigationUri(uri: string): boolean {
-  return uri.startsWith("local://") || isRemoteUri(uri);
+  return uri.startsWith("local://") || isRemoteUri(uri) || isNetworkUri(uri);
 }
 
 export function profileIdFromRemoteUri(uri: string): string | null {
@@ -67,6 +78,14 @@ export function buildRemoteUri(
 }
 
 export function displayPathFromUri(uri: string): string {
+  if (isNetworkUri(uri)) {
+    const parts = networkPathParts(uri);
+    if (parts.length === 0) {
+      return "Network";
+    }
+    return ["Network", ...parts.map(networkPartLabel)].join(" / ");
+  }
+
   if (isRemoteUri(uri)) {
     return remotePathFromUri(uri) ?? uri;
   }
@@ -74,6 +93,17 @@ export function displayPathFromUri(uri: string): string {
 }
 
 export function parentUriFromUri(uri: string): string | null {
+  if (isNetworkUri(uri)) {
+    const parts = networkPathParts(uri);
+    if (parts.length === 0) {
+      return null;
+    }
+    if (parts.length === 1) {
+      return "network:///";
+    }
+    return networkUriFromParts(parts.slice(0, -1));
+  }
+
   if (isRemoteUri(uri)) {
     const scheme = uriScheme(uri);
     const profileId = profileIdFromRemoteUri(uri);
@@ -107,6 +137,10 @@ export function parentUriFromUri(uri: string): string | null {
 }
 
 export function rootUriForUri(uri: string): string {
+  if (isNetworkUri(uri)) {
+    return "network:///";
+  }
+
   if (isRemoteUri(uri)) {
     const scheme = uriScheme(uri);
     const profileId = profileIdFromRemoteUri(uri);
@@ -126,6 +160,22 @@ export function rootUriForUri(uri: string): string {
 }
 
 export function breadcrumbSegmentsFromUri(uri: string): UriBreadcrumbSegment[] {
+  if (isNetworkUri(uri)) {
+    const parts = networkPathParts(uri);
+    const segments: UriBreadcrumbSegment[] = [
+      { label: "Network", uri: "network:///" },
+    ];
+    let current: string[] = [];
+    for (const part of parts) {
+      current = [...current, part];
+      segments.push({
+        label: networkPartLabel(part),
+        uri: networkUriFromParts(current),
+      });
+    }
+    return segments;
+  }
+
   if (isRemoteUri(uri)) {
     const scheme = uriScheme(uri);
     const profileId = profileIdFromRemoteUri(uri);
@@ -164,4 +214,26 @@ export function breadcrumbSegmentsFromUri(uri: string): UriBreadcrumbSegment[] {
   }
 
   return result.length > 0 ? result : [{ label: uri, uri }];
+}
+
+function networkPathParts(uri: string): string[] {
+  return uri
+    .replace(/^network:\/\//, "")
+    .split("/")
+    .filter(Boolean);
+}
+
+function networkUriFromParts(parts: string[]): string {
+  return parts.length === 0 ? "network:///" : `network:///${parts.join("/")}`;
+}
+
+function networkPartLabel(part: string): string {
+  return (
+    NETWORK_URI_LABELS[part] ??
+    part
+      .split(/[-_]/)
+      .filter(Boolean)
+      .map((value) => value.charAt(0).toUpperCase() + value.slice(1))
+      .join(" ")
+  );
 }

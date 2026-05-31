@@ -8,6 +8,8 @@
 
 **Implementation status (2026-05-18):** Pane toolbars, context menus, most modals, and the in-app `MenuBar` from this spec exist in `packages/frontend`. Remaining gaps are native OS menu integration and a smaller set of parity items such as Recent Locations management dialogs, richer destination chooser behavior, and other menu-specific polish. Align delivery tracking with [PROJECT_STATUS_AND_DOC_ALIGNMENT.md](../planning/PROJECT_STATUS_AND_DOC_ALIGNMENT.md).
 
+**Visual/premium polish source of truth (2026-05-30):** This document defines the menu and modal _contract_ (structure, actions, enablement, behavior). For the _visual finish_ of every menu, context menu, overflow menu, dialog, wizard, and toolbar — colors, tokens, spacing, typography, the shared `DialogShell`/`WizardShell`/`MenuSurface` frames, focus rings, active-pane treatment, and theme parity — defer to the **[UI Premium Polish & Improvement Plan](../ui-premium-polish-improvement-plan.md)**. In particular: the shared dialog frame and canonical footer button order are specified by `UPP-E1`; the shared menu/popover frame and keyboard navigation by `UPP-D1`/`UPP-D2`; the command-surface ownership matrix (which prevents toolbar/menu/F-key/palette drift) by `UPP-B1`; and the rule that all menu/modal color must come from `--fo-*` tokens (no hard-coded hex) is mandatory. Where a visual detail here and in the polish plan differ, the polish plan wins; where behavior/enablement differs, this spec wins.
+
 ---
 
 ## 1. Scope
@@ -1026,30 +1028,89 @@ Actions
 **Navigation sections:**
 
 ```text
-Appearance
+General
+├─ Start on system startup
+└─ Diagnostics export path
+
+Display
 ├─ Theme: System / Light / Dark
 ├─ Density: Compact / Comfortable / Spacious
 ├─ Font size
 └─ Icon size
 
-File List
-├─ Default view mode: Details / List / Icons
-├─ Show hidden/system files
-├─ Sort default
-└─ Show file extensions [future/optional]
+Colors
+├─ Accent color (8 preset swatches)
+└─ File type color rules (add/edit/delete/reorder)
 
 Layout
 ├─ Single pane / Dual pane
+├─ Split direction: Horizontal / Vertical
 ├─ Sidebar visibility
 ├─ Status bar visibility
 ├─ Toolbar visibility
+├─ Remember last used panes
+├─ Job drawer behavior
 └─ Reset layout…
+
+Layout Profiles
+├─ Save current layout as profile
+├─ Apply / delete / export / import profiles
+└─ Named snapshots with date
+
+File List
+├─ Default view mode: Details / List / Icons / Columns
+├─ Show hidden/system files
+├─ Sort default
+├─ Show file extensions [future/optional]
+└─ Column presets
 
 Operations
 ├─ Confirm move to trash
-├─ Confirm paste with conflicts
-├─ Show job activity automatically
-└─ Operation history retention [future]
+├─ Confirm permanent delete
+├─ Use trash by default
+├─ Confirm overwrite
+├─ Default conflict policy: Fail / Skip / Overwrite / Rename New / Rename Existing
+├─ Show advanced copy options
+└─ Show job activity automatically
+
+Terminal
+├─ Shell program
+├─ Launch arguments
+├─ Open pane terminal expanded
+├─ Cd on navigate
+└─ Confirm close pane with terminal
+
+Keyboard
+├─ Filterable shortcut list (grouped by category)
+├─ Per-shortcut recording/editing with conflict detection
+└─ Reset individual / reset all
+
+Network [planned — SET-NET]
+├─ Connection timeout (ms)
+├─ Auto-reconnect
+├─ Default protocol: SFTP / SMB / S3
+└─ SSH key path override
+
+Editor [planned — SET-EDIT]
+├─ Font family
+├─ Font size
+├─ Tab size
+├─ Word wrap
+├─ Auto-save
+├─ Syntax highlighting theme
+└─ Line numbers
+
+Viewer [planned — SET-VIEW]
+├─ Default view mode: Text / Hex
+├─ Image zoom behavior: Fit / Fill / Actual
+├─ Media autoplay
+└─ Max preview file size (MB)
+
+Advanced [planned — SET-ADV]
+├─ Log level: Error / Warn / Info / Debug
+├─ Enable experimental features
+├─ Cache size limit (MB)
+└─ File operation thread count
 
 Diagnostics
 ├─ Diagnostics visibility
