@@ -11,7 +11,16 @@ export function useToolbarOverflowTier(
 
   useEffect(() => {
     const element = containerRef.current;
-    if (!element || typeof ResizeObserver === "undefined") {
+    if (!element) {
+      return;
+    }
+
+    // Always take an initial measurement, even where ResizeObserver is
+    // unavailable (e.g. jsdom), so the tier reflects the container width
+    // immediately rather than staying at the "full" default.
+    setTier(resolveToolbarOverflowTier(element.clientWidth));
+
+    if (typeof ResizeObserver === "undefined") {
       return;
     }
 
@@ -21,7 +30,6 @@ export function useToolbarOverflowTier(
     });
 
     observer.observe(element);
-    setTier(resolveToolbarOverflowTier(element.clientWidth));
 
     return () => observer.disconnect();
   }, [containerRef]);

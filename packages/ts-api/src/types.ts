@@ -162,6 +162,17 @@ export interface ReadImageAsDataUriResponse {
   mimeType: string;
 }
 
+export interface ReadFileAsDataUriRequest {
+  uri: string;
+  maxBytes?: number;
+}
+
+export interface ReadFileAsDataUriResponse {
+  dataUri: string;
+  byteSize: number;
+  mimeType: string;
+}
+
 export interface ReadFileRangeRequest {
   uri: string;
   offset: number;
@@ -203,6 +214,63 @@ export interface OpenTerminalRequest {
 
 export interface OpenTerminalResponse {
   success: boolean;
+}
+
+export interface GetAclRequest {
+  uri: string;
+}
+
+export interface AclEntry {
+  principal: string;
+  read: boolean;
+  write: boolean;
+  execute: boolean;
+}
+
+export interface GetAclResponse {
+  owner: string | null;
+  group: string | null;
+  entries: AclEntry[];
+  octal: string;
+}
+
+export interface SetAclRequest {
+  uri: string;
+  octal: string;
+  recursive: boolean;
+}
+
+export interface SetAclResponse {
+  success: boolean;
+}
+
+export interface DiffTextRequest {
+  leftUri: string;
+  rightUri: string;
+  maxBytes?: number;
+}
+
+export interface DiffLine {
+  kind: "equal" | "delete" | "insert";
+  content: string;
+  oldLine?: number | null;
+  newLine?: number | null;
+}
+
+export interface DiffHunk {
+  oldStart: number;
+  oldCount: number;
+  newStart: number;
+  newCount: number;
+  lines: DiffLine[];
+}
+
+export interface DiffTextResponse {
+  hunks: DiffHunk[];
+  leftLineCount: number;
+  rightLineCount: number;
+  leftTruncated: boolean;
+  rightTruncated: boolean;
 }
 
 export interface GitDiscoverRequest {
@@ -317,6 +385,7 @@ export interface UserPreferencesDto {
   toolbarVisible: boolean;
   toolbarEntries: string;
   paneMode: string;
+  paneDirection: string;
   jobDrawerBehavior: string;
   showAdvancedCopyOptions: boolean;
   paneTerminalHeightLeft: number;
@@ -328,6 +397,35 @@ export interface UserPreferencesDto {
   terminalArgs: string;
   rememberLastUsedPanes: boolean;
   diagnosticsExportPath: string;
+  customShortcuts: string;
+  fileTypeColorRules: string;
+  layoutProfiles: string;
+  columnPresets: string;
+  tabSessions: string;
+  hotlistEntries: string;
+  leftDefaultViewMode: string;
+  rightDefaultViewMode: string;
+  leftDefaultSortField: string;
+  rightDefaultSortField: string;
+  logLevel: string;
+  experimentalFeatures: boolean;
+  cacheSizeLimit: number;
+  fileOperationThreads: number;
+  networkConnectionTimeout: number;
+  networkAutoReconnect: boolean;
+  networkDefaultProtocol: string;
+  networkSshKeyPath: string;
+  editorFontFamily: string;
+  editorFontSize: number;
+  editorTabSize: number;
+  editorWordWrap: boolean;
+  editorAutoSave: boolean;
+  editorSyntaxHighlighting: boolean;
+  editorLineNumbers: boolean;
+  viewerDefaultViewMode: string;
+  viewerImageZoom: string;
+  viewerMediaAutoplay: boolean;
+  viewerMaxPreviewSize: number;
 }
 
 export interface AutostartStatusDto {
@@ -451,6 +549,14 @@ export interface DiscoverVolumesResponse {
   volumes: VolumeDto[];
 }
 
+export interface EjectVolumeRequest {
+  mountPoint: string;
+}
+
+export interface EjectVolumeResponse {
+  success: boolean;
+}
+
 export interface NetworkProfileDto {
   id: string;
   label: string;
@@ -523,12 +629,28 @@ export interface NetworkProfileSetSecretRequest {
   value: string;
 }
 
+export interface NetworkConnectionDraftDto {
+  scheme?: string | null;
+  host?: string | null;
+  label?: string | null;
+  defaultPath?: string | null;
+}
+
 export interface NetworkProfileActionRequest {
   id: string;
 }
 
 export interface NetworkConnectionStatusResponse {
   statuses: NetworkConnectionStatusDto[];
+}
+
+export interface NetworkNeighborhoodRequest {
+  uri: string;
+}
+
+export interface NetworkNeighborhoodResponse {
+  uri: string;
+  entries: FileEntryDto[];
 }
 
 export interface PathRequest {
@@ -637,6 +759,56 @@ export interface RecursiveSearchCompletedEventDto {
   result: RecursiveSearchResultDto;
 }
 
+export interface ContentSearchRequest {
+  uri: string;
+  query: string;
+  limit?: number;
+  case_sensitive?: boolean;
+  use_regex?: boolean;
+  file_pattern?: string;
+}
+
+export interface ContentSearchMatchDto {
+  uri: string;
+  parentUri: string;
+  name: string;
+  kind: FileKind;
+  size?: number | null;
+  modifiedAt?: string | null;
+  lineNumber: number;
+  lineContent: string;
+  matchStart: number;
+  matchEnd: number;
+}
+
+export interface ContentSearchResultDto {
+  matches: ContentSearchMatchDto[];
+  warnings: string[];
+  incomplete: boolean;
+}
+
+export interface ContentSearchResponse {
+  result: ContentSearchResultDto;
+}
+
+export interface ContentSearchJobResponse {
+  job: JobSnapshot;
+}
+
+export interface ContentSearchMatchEventDto {
+  jobId: string;
+  uri: string;
+  query: string;
+  item: ContentSearchMatchDto;
+}
+
+export interface ContentSearchCompletedEventDto {
+  jobId: string;
+  uri: string;
+  query: string;
+  result: ContentSearchResultDto;
+}
+
 export interface WatchStartRequest {
   uri: string;
 }
@@ -666,6 +838,11 @@ export interface FileEntryDto {
   canRename: boolean;
   permissions?: string | null;
   owner?: string | null;
+  targetUri?: string | null;
+  virtualKind?: string | null;
+  protocol?: string | null;
+  status?: string | null;
+  description?: string | null;
 }
 
 export interface DirectoryBatchEventDto {
@@ -677,6 +854,27 @@ export interface DirectoryBatchEventDto {
   isComplete: boolean;
   totalHint?: number | null;
   error?: IpcError | null;
+}
+
+export interface ListDirectoriesRequest {
+  uri: string;
+}
+
+export interface DirectoryEntryDto {
+  name: string;
+  uri: string;
+}
+
+export interface ListDirectoriesResponse {
+  directories: DirectoryEntryDto[];
+}
+
+export interface ListArchiveRequest {
+  uri: string;
+}
+
+export interface ListArchiveResponse {
+  entries: FileEntryDto[];
 }
 
 export type FileOperationKind =
@@ -733,6 +931,14 @@ export interface StartFileOperationResponse {
 }
 
 export interface CancelJobRequest {
+  jobId: string;
+}
+
+export interface PauseJobRequest {
+  jobId: string;
+}
+
+export interface ResumeJobRequest {
   jobId: string;
 }
 
@@ -841,6 +1047,18 @@ export interface JobCancelledEvent {
   cancelledAt: string;
 }
 
+export interface JobPausedEvent {
+  jobId: string;
+  operationKind: FileOperationKind;
+  pausedAt: string;
+}
+
+export interface JobResumedEvent {
+  jobId: string;
+  operationKind: FileOperationKind;
+  resumedAt: string;
+}
+
 export interface OperationHistoryRecordDto {
   jobId: string;
   operationKind: string;
@@ -851,4 +1069,108 @@ export interface OperationHistoryRecordDto {
   startedAt: string;
   completedAt?: string | null;
   errorCode?: string | null;
+}
+
+export interface PluginManifestDto {
+  id: string;
+  name: string;
+  version: string;
+  description: string;
+  author: string;
+  entryPoint: string;
+  permissions: string[];
+  minAppVersion?: string | null;
+}
+
+export interface InstalledPluginDto {
+  manifest: PluginManifestDto;
+  installPath: string;
+  enabled: boolean;
+}
+
+export interface PluginListResponse {
+  plugins: InstalledPluginDto[];
+}
+
+export interface PluginInstallRequest {
+  sourcePath: string;
+}
+
+export interface PluginInstallResponse {
+  plugin: InstalledPluginDto;
+}
+
+export interface PluginUninstallRequest {
+  pluginId: string;
+}
+
+export interface PluginToggleRequest {
+  pluginId: string;
+  enabled: boolean;
+}
+
+export interface PluginToggleResponse {
+  plugin: InstalledPluginDto;
+}
+
+export interface CompareFilesRequest {
+  leftUri: string;
+  rightUri: string;
+  mode: string;
+}
+
+export interface DiffLineDto {
+  lineNumberLeft: number | null;
+  lineNumberRight: number | null;
+  content: string;
+  lineType: string;
+}
+
+export interface DiffHunkDto {
+  oldStart: number;
+  oldCount: number;
+  newStart: number;
+  newCount: number;
+  lines: DiffLineDto[];
+}
+
+export interface ByteDifferenceDto {
+  offset: number;
+  leftByte: number;
+  rightByte: number;
+}
+
+export interface CompareFilesResponse {
+  identical: boolean;
+  hunks: DiffHunkDto[];
+  byteDifferences: ByteDifferenceDto[];
+}
+
+// ── Directory Sync ──────────────────────────────────────────────
+
+export interface SyncDirectoriesRequest {
+  leftUri: string;
+  rightUri: string;
+  comparison: "name" | "size" | "date";
+  recursive: boolean;
+}
+
+export interface SyncEntryDto {
+  name: string;
+  leftUri: string | null;
+  rightUri: string | null;
+  leftSize: number | null;
+  rightSize: number | null;
+  leftModified: string | null;
+  rightModified: string | null;
+  leftIsDir: boolean;
+  rightIsDir: boolean;
+  status: string;
+}
+
+export interface SyncDirectoriesResponse {
+  leftUri: string;
+  rightUri: string;
+  entries: SyncEntryDto[];
+  recursive: boolean;
 }

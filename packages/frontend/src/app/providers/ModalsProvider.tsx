@@ -8,7 +8,11 @@ import {
   type SetStateAction,
 } from "react";
 import type { OperationDialog } from "../../dialogs/OperationDialogView";
-import type { FileEntryDto, NetworkProfileDto } from "@fileoctopus/ts-api";
+import type {
+  FileEntryDto,
+  NetworkConnectionDraftDto,
+  NetworkProfileDto,
+} from "@fileoctopus/ts-api";
 
 export interface ModalsContextValue {
   settingsOpen: boolean;
@@ -33,9 +37,19 @@ export interface ModalsContextValue {
   networkLocationsOpen: boolean;
   connectServerOpen: boolean;
   connectServerProfile: NetworkProfileDto | null;
+  connectServerInitial: NetworkConnectionDraftDto | null;
   removeServerProfile: NetworkProfileDto | null;
   toolbarCustomizeOpen: boolean;
+  diffOpen: boolean;
+  diffLeftUri: string;
+  diffRightUri: string;
+  diffLeftName: string;
+  diffRightName: string;
   dialog: OperationDialog | null;
+  multiRenameOpen: boolean;
+  syncDirectoriesOpen: boolean;
+  hotlistOpen: boolean;
+  manageHotlistOpen: boolean;
   setSettingsOpen: Dispatch<SetStateAction<boolean>>;
   setShortcutsOpen: Dispatch<SetStateAction<boolean>>;
   setCommandPaletteOpen: Dispatch<SetStateAction<boolean>>;
@@ -58,9 +72,21 @@ export interface ModalsContextValue {
   setNetworkLocationsOpen: Dispatch<SetStateAction<boolean>>;
   setConnectServerOpen: Dispatch<SetStateAction<boolean>>;
   setConnectServerProfile: Dispatch<SetStateAction<NetworkProfileDto | null>>;
+  setConnectServerInitial: Dispatch<
+    SetStateAction<NetworkConnectionDraftDto | null>
+  >;
   setRemoveServerProfile: Dispatch<SetStateAction<NetworkProfileDto | null>>;
   setToolbarCustomizeOpen: Dispatch<SetStateAction<boolean>>;
+  setDiffOpen: Dispatch<SetStateAction<boolean>>;
+  setDiffLeftUri: Dispatch<SetStateAction<string>>;
+  setDiffRightUri: Dispatch<SetStateAction<string>>;
+  setDiffLeftName: Dispatch<SetStateAction<string>>;
+  setDiffRightName: Dispatch<SetStateAction<string>>;
   setDialog: Dispatch<SetStateAction<OperationDialog | null>>;
+  setMultiRenameOpen: Dispatch<SetStateAction<boolean>>;
+  setSyncDirectoriesOpen: Dispatch<SetStateAction<boolean>>;
+  setHotlistOpen: Dispatch<SetStateAction<boolean>>;
+  setManageHotlistOpen: Dispatch<SetStateAction<boolean>>;
 }
 
 const ModalsContext = createContext<ModalsContextValue | null>(null);
@@ -99,10 +125,21 @@ export function ModalsProvider({ children }: { children: ReactNode }) {
   const [connectServerOpen, setConnectServerOpen] = useState(false);
   const [connectServerProfile, setConnectServerProfile] =
     useState<NetworkProfileDto | null>(null);
+  const [connectServerInitial, setConnectServerInitial] =
+    useState<NetworkConnectionDraftDto | null>(null);
   const [removeServerProfile, setRemoveServerProfile] =
     useState<NetworkProfileDto | null>(null);
   const [toolbarCustomizeOpen, setToolbarCustomizeOpen] = useState(false);
+  const [diffOpen, setDiffOpen] = useState(false);
+  const [diffLeftUri, setDiffLeftUri] = useState("");
+  const [diffRightUri, setDiffRightUri] = useState("");
+  const [diffLeftName, setDiffLeftName] = useState("");
+  const [diffRightName, setDiffRightName] = useState("");
   const [dialog, setDialog] = useState<OperationDialog | null>(null);
+  const [multiRenameOpen, setMultiRenameOpen] = useState(false);
+  const [syncDirectoriesOpen, setSyncDirectoriesOpen] = useState(false);
+  const [hotlistOpen, setHotlistOpen] = useState(false);
+  const [manageHotlistOpen, setManageHotlistOpen] = useState(false);
 
   const value = useMemo<ModalsContextValue>(
     () => ({
@@ -128,9 +165,19 @@ export function ModalsProvider({ children }: { children: ReactNode }) {
       networkLocationsOpen,
       connectServerOpen,
       connectServerProfile,
+      connectServerInitial,
       removeServerProfile,
       toolbarCustomizeOpen,
+      diffOpen,
+      diffLeftUri,
+      diffRightUri,
+      diffLeftName,
+      diffRightName,
       dialog,
+      multiRenameOpen,
+      syncDirectoriesOpen,
+      hotlistOpen,
+      manageHotlistOpen,
       setSettingsOpen,
       setShortcutsOpen,
       setCommandPaletteOpen,
@@ -153,9 +200,19 @@ export function ModalsProvider({ children }: { children: ReactNode }) {
       setNetworkLocationsOpen,
       setConnectServerOpen,
       setConnectServerProfile,
+      setConnectServerInitial,
       setRemoveServerProfile,
       setToolbarCustomizeOpen,
+      setDiffOpen,
+      setDiffLeftUri,
+      setDiffRightUri,
+      setDiffLeftName,
+      setDiffRightName,
       setDialog,
+      setMultiRenameOpen,
+      setSyncDirectoriesOpen,
+      setHotlistOpen,
+      setManageHotlistOpen,
     }),
     [
       settingsOpen,
@@ -180,9 +237,19 @@ export function ModalsProvider({ children }: { children: ReactNode }) {
       networkLocationsOpen,
       connectServerOpen,
       connectServerProfile,
+      connectServerInitial,
       removeServerProfile,
       toolbarCustomizeOpen,
+      diffOpen,
+      diffLeftUri,
+      diffRightUri,
+      diffLeftName,
+      diffRightName,
       dialog,
+      multiRenameOpen,
+      syncDirectoriesOpen,
+      hotlistOpen,
+      manageHotlistOpen,
     ],
   );
 

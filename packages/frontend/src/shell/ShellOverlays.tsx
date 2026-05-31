@@ -1,13 +1,54 @@
+import { useMemo, useState } from "react";
+import { FirstRunOverlay } from "../components/FirstRunOverlay";
 import { DialogOverlayGroup } from "../components/DialogOverlayGroup";
 import { ContextMenuOverlay } from "../components/ContextMenuOverlay";
 import { ToastStack } from "../components/ToastStack";
+import {
+  markFirstRunOverlayDismissed,
+  shouldShowFirstRunOverlay,
+} from "../onboarding/firstRun";
 import { useShellLayout } from "./ShellLayoutContext";
+import { activeTab, selectVisibleEntries } from "../panelStore";
+import { isImagePreviewable } from "../components/PreviewPanel";
 
 export function ShellOverlays() {
   const ctx = useShellLayout();
+  const [firstRunOpen, setFirstRunOpen] = useState(shouldShowFirstRunOverlay);
+
+  const dismissFirstRun = () => {
+    markFirstRunOverlayDismissed();
+    setFirstRunOpen(false);
+  };
+
+  const viewerSiblings = useMemo(() => {
+    if (!ctx.viewerEntry) return [];
+    const tab = activeTab(ctx.state.panels[ctx.state.activePanelId]);
+    return selectVisibleEntries(tab).filter(isImagePreviewable);
+  }, [ctx.state, ctx.viewerEntry]);
+
+  const multiRenameEntries = useMemo(() => {
+    const tab = activeTab(ctx.state.panels[ctx.state.activePanelId]);
+    const selectedIds = tab.selectedIds;
+    if (selectedIds.length === 0) {
+      const focused = tab.selectedId ? tab.entriesById[tab.selectedId] : null;
+      return focused ? [focused] : [];
+    }
+    return selectedIds
+      .map((id) => tab.entriesById[id])
+      .filter(Boolean) as import("@fileoctopus/ts-api").FileEntryDto[];
+  }, [ctx.state]);
 
   return (
     <>
+      <FirstRunOverlay
+        open={firstRunOpen}
+        onDismiss={dismissFirstRun}
+        onOpenSettings={() => ctx.setSettingsOpen(true)}
+        onOpenShortcuts={() => ctx.setShortcutsOpen(true)}
+        onOpenNetwork={() =>
+          ctx.navigatePanel(ctx.state.activePanelId, "network:///")
+        }
+      />
       <ToastStack
         toasts={ctx.toasts}
         onDismiss={(id) =>
@@ -23,10 +64,27 @@ export function ShellOverlays() {
         viewerOpen={ctx.viewerOpen}
         viewerEntry={ctx.viewerEntry}
         setViewerOpen={ctx.setViewerOpen}
+        viewerSiblings={viewerSiblings}
+        onViewerNavigate={ctx.setViewerEntry}
         editorOpen={ctx.editorOpen}
         editorEntry={ctx.editorEntry}
         setEditorOpen={ctx.setEditorOpen}
         refreshActivePane={ctx.refreshActivePane}
+        diffOpen={ctx.diffOpen}
+        diffLeftUri={ctx.diffLeftUri}
+        diffRightUri={ctx.diffRightUri}
+        diffLeftName={ctx.diffLeftName}
+        diffRightName={ctx.diffRightName}
+        setDiffOpen={ctx.setDiffOpen}
+        multiRenameOpen={ctx.multiRenameOpen}
+        setMultiRenameOpen={ctx.setMultiRenameOpen}
+        syncDirectoriesOpen={ctx.syncDirectoriesOpen}
+        setSyncDirectoriesOpen={ctx.setSyncDirectoriesOpen}
+        hotlistOpen={ctx.hotlistOpen}
+        setHotlistOpen={ctx.setHotlistOpen}
+        manageHotlistOpen={ctx.manageHotlistOpen}
+        setManageHotlistOpen={ctx.setManageHotlistOpen}
+        multiRenameEntries={multiRenameEntries}
         diagnosticsOpen={ctx.diagnosticsOpen}
         aboutOpen={ctx.aboutOpen}
         goToLocationOpen={ctx.goToLocationOpen}
@@ -38,6 +96,8 @@ export function ShellOverlays() {
         settingsPreferenceChange={ctx.settingsPreferenceChange}
         onConfirmClosePaneWithTerminal={ctx.onConfirmClosePaneWithTerminal}
         goToLocationInitialUri={ctx.activeTabUri}
+        leftPanelUri={ctx.leftPanelUri}
+        rightPanelUri={ctx.rightPanelUri}
         favorites={ctx.favorites}
         operationError={ctx.operationError}
         operationHistoryOpen={ctx.operationHistoryOpen}
@@ -45,6 +105,7 @@ export function ShellOverlays() {
         networkLocationsOpen={ctx.networkLocationsOpen}
         connectServerOpen={ctx.connectServerOpen}
         connectServerProfile={ctx.connectServerProfile}
+        connectServerInitial={ctx.connectServerInitial}
         removeServerProfile={ctx.removeServerProfile}
         networkProfiles={ctx.networkProfiles}
         networkStatuses={ctx.networkStatuses}
@@ -60,6 +121,7 @@ export function ShellOverlays() {
         exportingDiagnostics={ctx.exportingDiagnostics}
         isProductionBuild={ctx.isProductionBuild}
         fs={ctx.client.fs}
+        pluginClient={ctx.client.plugin}
         updatePreference={ctx.updatePreference}
         handleSetAutostart={ctx.handleSetAutostart}
         onCustomizeToolbar={() =>
@@ -82,6 +144,7 @@ export function ShellOverlays() {
         setNetworkLocationsOpen={ctx.setNetworkLocationsOpen}
         setConnectServerOpen={ctx.setConnectServerOpen}
         setConnectServerProfile={ctx.setConnectServerProfile}
+        setConnectServerInitial={ctx.setConnectServerInitial}
         setRemoveServerProfile={ctx.setRemoveServerProfile}
         connectProfile={ctx.connectProfile}
         disconnectProfile={ctx.disconnectProfile}

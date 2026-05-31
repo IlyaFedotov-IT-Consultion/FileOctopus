@@ -10,12 +10,14 @@ import {
   PreviewPanel,
   isTextPreviewable,
   isImagePreviewable,
+  isPdfPreviewable,
+  isMediaPreviewable,
   isPreviewable,
 } from "../src/components/PreviewPanel";
 import type {
   FileEntryDto,
+  ReadFileAsDataUriResponse,
   ReadTextFileResponse,
-  ReadImageAsDataUriResponse,
 } from "@fileoctopus/ts-api";
 
 function makeEntry(overrides: Partial<FileEntryDto> = {}): FileEntryDto {
@@ -30,7 +32,7 @@ function makeEntry(overrides: Partial<FileEntryDto> = {}): FileEntryDto {
 function createMockFs() {
   return {
     readTextFile: vi.fn<() => Promise<ReadTextFileResponse>>(),
-    readImageAsDataUri: vi.fn<() => Promise<ReadImageAsDataUriResponse>>(),
+    readFileAsDataUri: vi.fn<() => Promise<ReadFileAsDataUriResponse>>(),
   };
 }
 
@@ -272,6 +274,35 @@ describe("isImagePreviewable", () => {
   });
 });
 
+// ─── isPdfPreviewable ───
+
+describe("isPdfPreviewable", () => {
+  it("returns false for null", () => {
+    expect(isPdfPreviewable(null)).toBe(false);
+  });
+
+  it("returns false for directories", () => {
+    expect(
+      isPdfPreviewable(makeEntry({ kind: "directory", name: "folder" })),
+    ).toBe(false);
+  });
+
+  it("returns true for .pdf extension", () => {
+    expect(isPdfPreviewable(makeEntry({ name: "doc.pdf" }))).toBe(true);
+  });
+
+  it("is case-insensitive", () => {
+    expect(isPdfPreviewable(makeEntry({ name: "report.PDF" }))).toBe(true);
+    expect(isPdfPreviewable(makeEntry({ name: "manual.Pdf" }))).toBe(true);
+  });
+
+  it("returns false for non-PDF files", () => {
+    expect(isPdfPreviewable(makeEntry({ name: "file.txt" }))).toBe(false);
+    expect(isPdfPreviewable(makeEntry({ name: "photo.png" }))).toBe(false);
+    expect(isPdfPreviewable(makeEntry({ name: "archive.zip" }))).toBe(false);
+  });
+});
+
 // ─── isPreviewable (combined) ───
 
 describe("isPreviewable", () => {
@@ -283,6 +314,10 @@ describe("isPreviewable", () => {
   it("returns true for image files", () => {
     expect(isPreviewable(makeEntry({ name: "photo.png" }))).toBe(true);
     expect(isPreviewable(makeEntry({ name: "banner.jpg" }))).toBe(true);
+  });
+
+  it("returns true for PDF files", () => {
+    expect(isPreviewable(makeEntry({ name: "document.pdf" }))).toBe(true);
   });
 
   it("returns false for non-previewable files", () => {
@@ -300,7 +335,7 @@ describe("isPreviewable", () => {
 describe("PreviewPanel image preview", () => {
   it("renders image preview for image files", async () => {
     const mockFs = createMockFs();
-    mockFs.readImageAsDataUri.mockResolvedValue({
+    mockFs.readFileAsDataUri.mockResolvedValue({
       dataUri: "data:image/png;base64,iVBOR",
       byteSize: 12345,
       mimeType: "image/png",
@@ -330,14 +365,15 @@ describe("PreviewPanel image preview", () => {
       expect(img.src.indexOf("data:image/png;base64,iVBOR") !== -1).toBe(true);
     });
 
-    expect(mockFs.readImageAsDataUri).toHaveBeenCalledWith({
+    expect(mockFs.readFileAsDataUri).toHaveBeenCalledWith({
       uri: "local:///home/user/photo.png",
+      maxBytes: 20971520,
     });
   });
 
   it("shows error when image load fails", async () => {
     const mockFs = createMockFs();
-    mockFs.readImageAsDataUri.mockRejectedValue(new Error("File too large"));
+    mockFs.readFileAsDataUri.mockRejectedValue(new Error("File too large"));
 
     const onClose = vi.fn();
     render(
@@ -363,5 +399,134 @@ describe("PreviewPanel image preview", () => {
       />,
     );
     expect(container.querySelector(".fo-preview-panel")).toBeNull();
+  });
+});
+
+// ─── isMediaPreviewable ───
+
+describe("isMediaPreviewable", () => {
+  it("returns false for null", () => {
+    expect(isMediaPreviewable(null)).toBe(false);
+  });
+
+  it("returns false for directories", () => {
+    expect(
+      isMediaPreviewable(makeEntry({ kind: "directory", name: "folder" })),
+    ).toBe(false);
+  });
+
+  it("returns true for audio extensions", () => {
+    const exts = [".mp3", ".ogg", ".wav", ".flac", ".aac", ".m4a"];
+    for (const ext of exts) {
+      expect(isMediaPreviewable(makeEntry({ name: `audio${ext}` }))).toBe(true);
+    }
+  });
+
+  it("returns true for video extensions", () => {
+    const exts = [".mp4", ".webm", ".mkv", ".avi", ".mov"];
+    for (const ext of exts) {
+      expect(isMediaPreviewable(makeEntry({ name: `video${ext}` }))).toBe(true);
+    }
+  });
+
+  it("returns false for non-media extensions", () => {
+    expect(isMediaPreviewable(makeEntry({ name: "file.txt" }))).toBe(false);
+    expect(isMediaPreviewable(makeEntry({ name: "photo.png" }))).toBe(false);
+    expect(isMediaPreviewable(makeEntry({ name: "archive.zip" }))).toBe(false);
+  });
+});
+
+// ─── isPreviewable with media ───
+
+describe("isPreviewable includes media", () => {
+  it("returns true for audio files", () => {
+    expect(isPreviewable(makeEntry({ name: "song.mp3" }))).toBe(true);
+    expect(isPreviewable(makeEntry({ name: "podcast.ogg" }))).toBe(true);
+  });
+
+  it("returns true for video files", () => {
+    expect(isPreviewable(makeEntry({ name: "clip.mp4" }))).toBe(true);
+    expect(isPreviewable(makeEntry({ name: "movie.webm" }))).toBe(true);
+  });
+});
+
+// ─── PreviewPanel media preview ───
+
+describe("PreviewPanel media preview", () => {
+  it("renders audio element for mp3 files", async () => {
+    const mockFs = createMockFs();
+    mockFs.readFileAsDataUri.mockResolvedValue({
+      dataUri: "data:audio/mpeg;base64,abc",
+      byteSize: 54321,
+      mimeType: "audio/mpeg",
+    });
+
+    const onClose = vi.fn();
+    const { container } = render(
+      <PreviewPanel
+        entry={makeEntry({
+          name: "song.mp3",
+          uri: "local:///home/user/Music/song.mp3",
+        })}
+        fs={mockFs}
+        onClose={onClose}
+      />,
+    );
+
+    await waitFor(() => {
+      const audio = container.querySelector(".fo-preview-audio");
+      expect(audio).toBeTruthy();
+      expect(audio?.tagName.toLowerCase()).toBe("audio");
+    });
+
+    expect(mockFs.readFileAsDataUri).toHaveBeenCalledWith({
+      uri: "local:///home/user/Music/song.mp3",
+      maxBytes: 20971520,
+    });
+  });
+
+  it("renders video element for mp4 files", async () => {
+    const mockFs = createMockFs();
+    mockFs.readFileAsDataUri.mockResolvedValue({
+      dataUri: "data:video/mp4;base64,abc",
+      byteSize: 999999,
+      mimeType: "video/mp4",
+    });
+
+    const onClose = vi.fn();
+    const { container } = render(
+      <PreviewPanel
+        entry={makeEntry({
+          name: "clip.mp4",
+          uri: "local:///home/user/Videos/clip.mp4",
+        })}
+        fs={mockFs}
+        onClose={onClose}
+      />,
+    );
+
+    await waitFor(() => {
+      const video = container.querySelector(".fo-preview-video");
+      expect(video).toBeTruthy();
+      expect(video?.tagName.toLowerCase()).toBe("video");
+    });
+  });
+
+  it("shows error when media load fails", async () => {
+    const mockFs = createMockFs();
+    mockFs.readFileAsDataUri.mockRejectedValue(new Error("Too large"));
+
+    const onClose = vi.fn();
+    render(
+      <PreviewPanel
+        entry={makeEntry({ name: "big.mp4" })}
+        fs={mockFs}
+        onClose={onClose}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Too large")).toBeTruthy();
+    });
   });
 });

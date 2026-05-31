@@ -9,6 +9,7 @@ import {
 } from "react";
 import { formatDate, formatSize } from "./fileTableUtils";
 import type { ViewMode } from "../panelStore";
+import type { TagColor } from "../utils/tagStore";
 
 const URI_MIME = "application/x-fileoctopus-uri";
 
@@ -27,6 +28,7 @@ export interface FileRowProps {
   panelId?: string;
   selectedUris?: string[];
   gitStatus?: GitFileStatusDto;
+  fileTypeColor?: string | null;
   onSubmitRename?: (newName: string) => void;
   onCancelRename?: () => void;
   onSelect: (entryId: string | null) => void;
@@ -36,6 +38,7 @@ export interface FileRowProps {
     event: MouseEvent<HTMLElement>,
     entry: FileEntryDto | null,
   ) => void;
+  tagColors?: TagColor[];
 }
 
 export function FileRow({
@@ -53,12 +56,14 @@ export function FileRow({
   panelId,
   selectedUris,
   gitStatus,
+  fileTypeColor,
   onSubmitRename,
   onCancelRename,
   onSelect,
   onEntrySelect,
   onEntryActivate,
   onContextMenu,
+  tagColors,
 }: FileRowProps) {
   const [draftName, setDraftName] = useState(entry.name);
   const renameInputRef = useRef<HTMLInputElement | null>(null);
@@ -71,12 +76,21 @@ export function FileRow({
     }
   }, [renaming, entry.name]);
 
-  const typeLabel =
-    entry.kind === "directory"
-      ? "Folder"
-      : entry.extension
-        ? entry.extension.toUpperCase()
-        : "File";
+  const typeLabel = entry.isSymlink
+    ? "Symlink"
+    : entry.virtualKind === "cloudDrive"
+      ? "Cloud"
+      : entry.virtualKind === "savedConnection"
+        ? "Saved"
+        : entry.virtualKind === "discoveredService"
+          ? (entry.protocol ?? "Network").toUpperCase()
+          : entry.virtualKind === "addConnection"
+            ? "Action"
+            : entry.kind === "directory"
+              ? "Folder"
+              : entry.extension
+                ? entry.extension.toUpperCase()
+                : "File";
   const extensionLabel =
     entry.kind === "directory" ? "" : (entry.extension ?? "").toLowerCase();
   const showMetadata =
@@ -84,7 +98,7 @@ export function FileRow({
 
   const ariaLabel = [
     entry.name,
-    typeLabel,
+    entry.isSymlink ? "symlink" : typeLabel,
     entry.kind === "directory" ? "" : formatSize(entry.size),
     entry.modifiedAt ? formatDate(entry.modifiedAt) : "",
   ]
@@ -175,7 +189,11 @@ export function FileRow({
             onBlur={() => onSubmitRename?.(draftName)}
           />
         ) : (
-          <span className="fo-row-text" title={entry.name}>
+          <span
+            className="fo-row-text"
+            title={entry.name}
+            style={fileTypeColor ? { color: fileTypeColor } : undefined}
+          >
             {entry.name}
           </span>
         )}
@@ -188,36 +206,78 @@ export function FileRow({
             {gitStatusLabel(gitStatus)}
           </span>
         ) : null}
+        {tagColors && tagColors.length > 0
+          ? tagColors.map((color) => (
+              <span
+                key={color}
+                className={`fo-row-tag-badge fo-row-tag-${color}`}
+                aria-label={`Tag: ${color}`}
+                title={`Tag: ${color}`}
+              />
+            ))
+          : null}
+        {entry.isSymlink ? (
+          <span
+            className="fo-row-symlink-badge"
+            aria-label="Symlink"
+            title={`Symlink${entry.symlinkTarget ? ` → ${entry.symlinkTarget}` : ""}`}
+          >
+            ↗
+          </span>
+        ) : null}
+        {entry.status ? (
+          <span
+            className={`fo-row-network-badge fo-row-network-badge-${entry.status}`}
+            aria-label={`Network status: ${entry.status}`}
+            title={entry.description ?? entry.status}
+          >
+            {networkStatusLabel(entry.status)}
+          </span>
+        ) : null}
       </span>
       {showMetadata ? (
         viewMode === "details" ? (
           <>
-            {(!visibleColumns ||
-              visibleColumns.indexOf("extension") !== -1) && (
-              <span>{extensionLabel}</span>
-            )}
-            {(!visibleColumns || visibleColumns.indexOf("size") !== -1) && (
-              <span>
-                {entry.kind === "directory"
-                  ? isParentEntry
-                    ? "—"
-                    : "DIR"
-                  : formatSize(entry.size)}
-              </span>
-            )}
-            {(!visibleColumns || visibleColumns.indexOf("modified") !== -1) && (
-              <span title={entry.modifiedAt ?? undefined}>
-                {formatDate(entry.modifiedAt)}
-              </span>
-            )}
-            {(!visibleColumns || visibleColumns.indexOf("kind") !== -1) && (
-              <span>
-                {isParentEntry
-                  ? "parent"
-                  : entry.kind === "directory"
-                    ? "folder"
-                    : typeLabel}
-              </span>
+            {(visibleColumns ?? ["extension", "size", "modified", "kind"]).map(
+              (colId) => {
+                switch (colId) {
+                  case "extension":
+                    return <span key="extension">{extensionLabel}</span>;
+                  case "size":
+                    return (
+                      <span key="size">
+                        {entry.kind === "directory"
+                          ? isParentEntry
+                            ? "—"
+                            : "DIR"
+                          : formatSize(entry.size)}
+                      </span>
+                    );
+                  case "modified":
+                    return (
+                      <span
+                        key="modified"
+                        title={entry.modifiedAt ?? undefined}
+                      >
+                        {formatDate(entry.modifiedAt)}
+                      </span>
+                    );
+                  case "kind":
+                    return (
+                      <span key="kind">
+                        {isParentEntry
+                          ? "parent"
+                          : entry.isSymlink
+                            ? "symlink"
+                            : entry.kind === "directory"
+                              ? "folder"
+                              : typeLabel}
+                      </span>
+                    );
+                  default:
+                    return null;
+                }
+              },
             )}
           </>
         ) : (
@@ -234,6 +294,21 @@ export function FileRow({
       ) : null}
     </div>
   );
+}
+
+function networkStatusLabel(status: string): string {
+  switch (status) {
+    case "available":
+      return "OK";
+    case "saved":
+      return "SAVED";
+    case "credentialsRequired":
+      return "AUTH";
+    case "unavailable":
+      return "OFF";
+    default:
+      return status.toUpperCase();
+  }
 }
 
 function gitStatusLabel(status: GitFileStatusDto): string {

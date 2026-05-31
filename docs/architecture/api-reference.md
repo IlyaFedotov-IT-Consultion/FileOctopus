@@ -2,7 +2,7 @@
 
 This document is the authoritative description of FileOctopus's runtime API surface: the Tauri IPC commands, the events streamed back from Rust, the `@fileoctopus/ts-api` client that wraps them, and the domain types that flow across the boundary. It is the contract every change to filesystem behaviour must respect (see ADR-0002 and ADR-0003).
 
-> **Doc freshness (2026-05-23):** Command registry aligned with `generate_handler!` in `lib.rs` and `commandMap.ts` (59 handlers). Event channels aligned with `crates/app-ipc/src/lib.rs` and `packages/ts-api/src/events.ts` (14 channels). `packages/ts-api/tests/catalogs.test.ts` now guards the command count, command map, error codes, warning codes, and event constants.
+> **Doc freshness (2026-05-30):** Command registry aligned with `generate_handler!` in `lib.rs` and `commandMap.ts` (77 handlers). Event channels aligned with `crates/app-ipc/src/lib.rs` and `packages/ts-api/src/events.ts` (14 channels). `packages/ts-api/tests/catalogs.test.ts` now guards the command count, command map, error codes, warning codes, and event constants.
 
 - Source of truth (Rust): `apps/desktop-tauri/src-tauri/src/lib.rs` (handler registration), `apps/desktop-tauri/src-tauri/src/commands/*.rs`, `crates/app-ipc/src/lib.rs`, `crates/app-core/src/{lib,runtime,history,paths}.rs`, `crates/vfs/src/lib.rs`, `crates/jobs/src/lib.rs`, `crates/remote-core/src/lib.rs`, `crates/provider-sftp/src/lib.rs`, `crates/config/src/network.rs`, `crates/platform/src/lib.rs`, `crates/fs-core/src/file_ops/mod.rs` (and `metadata`, `search`, `locations`, `external_open`, `direct_ops` for non-job FS helpers).
 - Source of truth (TypeScript): `packages/ts-api/src/{client,types,commandMap,events,normalizeError,uri}.ts`, `packages/ts-api/src/clients/*.ts`, `packages/ts-api/src/transports/{tauri,preview}.ts`.
@@ -42,11 +42,11 @@ Each IPC payload is a `serde(rename_all = "camelCase")` DTO defined in `crates/a
 
 ## Tauri command catalog
 
-The desktop shell registers these commands from `apps/desktop-tauri/src-tauri/src/lib.rs` (`tauri::generate_handler!` with `commands::*` paths). Handler bodies live in `apps/desktop-tauri/src-tauri/src/commands/{app_info,fs,git,folder_size,recursive_search,watch,preferences,autostart,navigation,network,file_operations,diagnostics}.rs`. Dotted names are what `packages/ts-api` passes to `commandMap`; see `packages/ts-api/src/commandMap.ts` and the per-domain methods in `packages/ts-api/src/clients/*.ts`.
+The desktop shell registers these commands from `apps/desktop-tauri/src-tauri/src/lib.rs` (`tauri::generate_handler!` with `commands::*` paths). Handler bodies live in `apps/desktop-tauri/src-tauri/src/commands/{app_info,fs,git,folder_size,recursive_search,content_search,watch,preferences,autostart,navigation,network,file_operations,diagnostics,acl,compare,plugin,sync,terminal}.rs`. Dotted names are what `packages/ts-api` passes to `commandMap`; see `packages/ts-api/src/commandMap.ts` and the per-domain methods in `packages/ts-api/src/clients/*.ts`.
 
-### Full registry (2026-05-23)
+### Full registry (2026-05-30)
 
-**59 commands** — verified by `packages/ts-api/tests/catalogs.test.ts`, which compares `generate_handler!`, `commandMap.ts`, and this advertised count.
+**77 commands** — verified by `packages/ts-api/tests/catalogs.test.ts`, which compares `generate_handler!`, `commandMap.ts`, and this advertised count.
 
 | Tauri command                        | TS dotted name (typical)           | Client area              |
 | ------------------------------------ | ---------------------------------- | ------------------------ |
@@ -54,6 +54,7 @@ The desktop shell registers these commands from `apps/desktop-tauri/src-tauri/sr
 | `fs_stat`                            | `fs.stat`                          | `FsClient`               |
 | `fs_read_text_file`                  | `fs.read_text_file`                | `FsClient`               |
 | `fs_read_file_range`                 | `fs.read_file_range`               | `FsClient`               |
+| `fs_read_file_as_data_uri`           | `fs.read_file_as_data_uri`         | `FsClient`               |
 | `fs_read_image_as_data_uri`          | `fs.read_image_as_data_uri`        | `FsClient`               |
 | `fs_write_text_file`                 | `fs.write_text_file`               | `FsClient`               |
 | `fs_compute_hash`                    | `fs.compute_hash`                  | `FsClient`               |
@@ -65,6 +66,10 @@ The desktop shell registers these commands from `apps/desktop-tauri/src-tauri/sr
 | `fs_list_start`                      | `fs.list_start`                    | `FsClient`               |
 | `fs_standard_locations`              | `fs.standard_locations`            | `FsClient`               |
 | `fs_discover_volumes`                | `fs.discover_volumes`              | `FsClient`               |
+| `fs_eject_volume`                    | `fs.eject_volume`                  | `FsClient`               |
+| `fs_list_archive`                    | `fs.list_archive`                  | `FsClient`               |
+| `fs_diff_text`                       | `fs.diff_text`                     | `FsClient`               |
+| `fs_list_directories`                | `fs.list_directories`              | `FsClient`               |
 | `fs_open_default`                    | `fs.open_default`                  | `FsClient`               |
 | `fs_reveal`                          | `fs.reveal`                        | `FsClient`               |
 | `fs_properties`                      | `fs.properties`                    | `FsClient`               |
@@ -74,6 +79,8 @@ The desktop shell registers these commands from `apps/desktop-tauri/src-tauri/sr
 | `fs_folder_size_start`               | `fs.folder_size_start`             | `FsClient`               |
 | `fs_recursive_search`                | `fs.recursive_search`              | `FsClient`               |
 | `fs_recursive_search_start`          | `fs.recursive_search_start`        | `FsClient`               |
+| `fs_content_search`                  | `fs.content_search`                | `FsClient`               |
+| `fs_content_search_start`            | `fs.content_search_start`          | `FsClient`               |
 | `fs_watch_start`                     | `fs.watch_start`                   | `FsClient`               |
 | `fs_watch_stop`                      | `fs.watch_stop`                    | `FsClient`               |
 | `get_preferences`                    | `preferences.get`                  | `PreferencesClient`      |
@@ -99,16 +106,27 @@ The desktop shell registers these commands from `apps/desktop-tauri/src-tauri/sr
 | `network_connect`                    | `network.connect`                  | `NetworkClient`          |
 | `network_disconnect`                 | `network.disconnect`               | `NetworkClient`          |
 | `network_connection_status`          | `network.connectionStatus`         | `NetworkClient`          |
+| `network_discover_neighborhood`      | `network.discoverNeighborhood`     | `NetworkClient`          |
 | `network_profile_forget_fingerprint` | `network.profileForgetFingerprint` | `NetworkClient`          |
 | `network_validate_uri`               | `network.validateUri`              | `NetworkClient`          |
 | `plan_file_operation`                | `fileOperation.plan`               | `FileOperationsClient`   |
 | `start_file_operation`               | `fileOperation.start`              | `FileOperationsClient`   |
+| `pause_job`                          | `job.pause`                        | `JobsClient`             |
+| `resume_job`                         | `job.resume`                       | `JobsClient`             |
 | `cancel_job`                         | `job.cancel`                       | `JobsClient`             |
 | `get_job_status`                     | `job.status`                       | `JobsClient`             |
 | `list_recent_operations`             | `operationHistory.listRecent`      | `OperationHistoryClient` |
 | `clear_operation_history`            | `operationHistory.clear`           | `OperationHistoryClient` |
 | `diagnostics_app_data_health`        | `diagnostics.appDataHealth`        | `DiagnosticsClient`      |
 | `export_diagnostics_bundle`          | `diagnostics.exportBundle`         | `DiagnosticsClient`      |
+| `plugin_list`                        | `plugin.list`                      | `PluginClient`           |
+| `plugin_install`                     | `plugin.install`                   | `PluginClient`           |
+| `plugin_uninstall`                   | `plugin.uninstall`                 | `PluginClient`           |
+| `plugin_toggle`                      | `plugin.toggle`                    | `PluginClient`           |
+| `fs_get_acl`                         | `fs.get_acl`                       | `FsClient`               |
+| `fs_set_acl`                         | `fs.set_acl`                       | `FsClient`               |
+| `fs_compare_files`                   | `fs.compare_files`                 | `FsClient`               |
+| `fs_sync_directories`                | `fs.sync_directories`              | `FsClient`               |
 
 Per-command request/response detail below covers the **core** surface first; extend subsections when you add handlers.
 
@@ -210,20 +228,22 @@ Git commands are local-only metadata helpers backed by `crates/git-intel`. They 
 
 Folder size and recursive search support synchronous commands for small/preview usage and job-backed commands for longer work. Job-backed metadata commands emit the same `fileOperation:job:*` lifecycle events as file mutations, but their `operationKind` is `folderSize` or `recursiveSearch` and they are tracked in desktop in-memory metadata job state, not persisted to operation history.
 
-| Command                                                   | Request                  | Response      | Extra events                                                    |
-| --------------------------------------------------------- | ------------------------ | ------------- | --------------------------------------------------------------- |
-| `fs_folder_size` / `fs.folder_size`                       | `{ uri }`                | `{ summary }` | none                                                            |
-| `fs_folder_size_start` / `fs.folder_size_start`           | `{ uri }`                | `{ job }`     | `fs:folderSize:completed` with `{ jobId, uri, summary }`        |
-| `fs_recursive_search` / `fs.recursive_search`             | `{ uri, query, limit? }` | `{ result }`  | none                                                            |
-| `fs_recursive_search_start` / `fs.recursive_search_start` | `{ uri, query, limit? }` | `{ job }`     | `fs:recursiveSearch:match`, then `fs:recursiveSearch:completed` |
-| `fs_watch_start` / `fs.watch_start`                       | `{ uri }`                | `{ ok }`      | `fs:watch:changed` while active                                 |
-| `fs_watch_stop` / `fs.watch_stop`                         | none                     | `{ ok }`      | stops the single active folder watcher                          |
+| Command                                                   | Request                                                           | Response      | Extra events                                                    |
+| --------------------------------------------------------- | ----------------------------------------------------------------- | ------------- | --------------------------------------------------------------- |
+| `fs_folder_size` / `fs.folder_size`                       | `{ uri }`                                                         | `{ summary }` | none                                                            |
+| `fs_folder_size_start` / `fs.folder_size_start`           | `{ uri }`                                                         | `{ job }`     | `fs:folderSize:completed` with `{ jobId, uri, summary }`        |
+| `fs_recursive_search` / `fs.recursive_search`             | `{ uri, query, limit? }`                                          | `{ result }`  | none                                                            |
+| `fs_recursive_search_start` / `fs.recursive_search_start` | `{ uri, query, limit? }`                                          | `{ job }`     | `fs:recursiveSearch:match`, then `fs:recursiveSearch:completed` |
+| `fs_content_search` / `fs.content_search`                 | `{ uri, query, limit?, caseSensitive?, useRegex?, filePattern? }` | `{ result }`  | none                                                            |
+| `fs_content_search_start` / `fs.content_search_start`     | `{ uri, query, limit?, caseSensitive?, useRegex?, filePattern? }` | `{ job }`     | `fs:contentSearch:match`, then `fs:contentSearch:completed`     |
+| `fs_watch_start` / `fs.watch_start`                       | `{ uri }`                                                         | `{ ok }`      | `fs:watch:changed` while active                                 |
+| `fs_watch_stop` / `fs.watch_stop`                         | none                                                              | `{ ok }`      | stops the single active folder watcher                          |
 
 `FolderSizeSummaryDto` is `{ totalSize, itemCount, fileCount, directoryCount, warnings, incomplete }`. Recursive search defaults `limit` to 500, trims the query, returns an empty result for an empty query, and clamps traversal to at least one result slot. `SearchMatchDto` is `{ uri, parentUri, name, kind, size?, modifiedAt? }`.
 
 ### `get_preferences` / `set_preference`
 
-Preferences persist in SQLite (`preferences.sqlite` under the app data directory). Keys include `theme` (`system` \| `light` \| `dark`), `density` (`compact` \| `comfortable` \| `spacious`), `defaultViewMode`, `showHiddenFiles` (boolean string), `sidebarWidth`, `splitRatio`, `activityPanelVisible`, `activityPanelWidth`, `confirmDelete`, `confirmPermanentDelete`, `useTrashByDefault`, `defaultConflictPolicy`, `accentColor`, `fontScale`, `iconScale`, `confirmOverwrite`, `sidebarVisible`, `statusBarVisible`, `toolbarVisible`, `toolbarEntries`, `paneMode`, `jobDrawerBehavior`, `showAdvancedCopyOptions`, pane terminal settings, `terminalShell`, `terminalArgs`, `rememberLastUsedPanes`, and `diagnosticsExportPath`.
+Preferences persist in SQLite (`preferences.sqlite` under the app data directory). Keys include `theme` (`system` \| `light` \| `dark`), `density` (`compact` \| `comfortable` \| `spacious`), `defaultViewMode`, `showHiddenFiles` (boolean string), `sidebarWidth`, `splitRatio`, `activityPanelVisible`, `activityPanelWidth`, `confirmDelete`, `confirmPermanentDelete`, `useTrashByDefault`, `defaultConflictPolicy`, `accentColor`, `fontScale`, `iconScale`, `confirmOverwrite`, `sidebarVisible`, `statusBarVisible`, `toolbarVisible`, `toolbarEntries`, `paneMode`, `splitDirection`, `jobDrawerBehavior`, `showAdvancedCopyOptions`, pane terminal settings, `terminalShell`, `terminalArgs`, `rememberLastUsedPanes`, and `diagnosticsExportPath`. Planned keys for Network tab: `networkTimeout`, `networkAutoReconnect`, `networkDefaultProtocol`, `networkSshKeyPath`. Planned keys for Editor tab: `editorFontFamily`, `editorFontSize`, `editorTabSize`, `editorWordWrap`, `editorAutoSave`, `editorSyntaxTheme`, `editorLineNumbers`. Planned keys for Viewer tab: `viewerDefaultMode`, `viewerImageZoom`, `viewerMediaAutoplay`, `viewerMaxPreviewSize`. Planned keys for Advanced tab: `logLevel`, `enableExperimentalFeatures`, `cacheSizeLimit`, `operationThreadCount`.
 
 ```ts
 const { preferences } = await client.preferences.get();
@@ -302,6 +322,7 @@ Network commands manage saved SFTP server profiles in `network.sqlite` under the
 | `network_connect`                    | `network.connect`                  | Eager connect and validate credentials for `{ id }`.                                                      |
 | `network_disconnect`                 | `network.disconnect`               | Drop active session for `{ id }`.                                                                         |
 | `network_connection_status`          | `network.connectionStatus`         | Returns `{ statuses: NetworkConnectionStatusDto[] }` with `connected`, `disconnected`, or `error`.        |
+| `network_discover_neighborhood`      | `network.discoverNeighborhood`     | Lists virtual `network:///` entries for cloud drives, LAN services, saved profiles, and add-connection.   |
 | `network_profile_forget_fingerprint` | `network.profileForgetFingerprint` | Clears pinned host-key fingerprint for `{ id }`.                                                          |
 | `network_validate_uri`               | `network.validateUri`              | Parse-check a remote `ResourceUri`.                                                                       |
 
@@ -337,6 +358,8 @@ Rust pushes events via `app.emit(name, payload)`. The TS client wraps them in `t
 | `fs:folderSize:completed` (`FOLDER_SIZE_COMPLETED_EVENT`)           | `FolderSizeCompletedEventDto`      | Folder-size metadata job                  |
 | `fs:recursiveSearch:match` (`RECURSIVE_SEARCH_MATCH_EVENT`)         | `RecursiveSearchMatchEventDto`     | Recursive-search metadata job             |
 | `fs:recursiveSearch:completed` (`RECURSIVE_SEARCH_COMPLETED_EVENT`) | `RecursiveSearchCompletedEventDto` | Recursive-search metadata job             |
+| `fs:contentSearch:match` (`CONTENT_SEARCH_MATCH_EVENT`)             | `ContentSearchMatchEventDto`       | Content-search metadata job               |
+| `fs:contentSearch:completed` (`CONTENT_SEARCH_COMPLETED_EVENT`)     | `ContentSearchCompletedEventDto`   | Content-search metadata job               |
 | `terminal:output` (`TERMINAL_OUTPUT_EVENT`)                         | `TerminalOutputEventDto`           | Local and SSH PTY output chunk            |
 | `terminal:exit` (`TERMINAL_EXIT_EVENT`)                             | `TerminalExitEventDto`             | Local and SSH PTY session exit            |
 | `nativeMenu:command` (`NATIVE_MENU_COMMAND_EVENT`)                  | `NativeMenuCommandEventDto`        | Native Tauri application menu selection   |

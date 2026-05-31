@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import { createInitialState, activeTab } from "../src/panelStore";
-import { createCommanderActions } from "../src/shell/commanderActions";
+import {
+  createCommanderActions,
+  COMMANDER_FUNCTION_ITEMS,
+  commanderItemDisabled,
+} from "../src/shell/commanderActions";
 
 function baseDeps(overrides: Record<string, unknown> = {}) {
   const state = createInitialState();
@@ -110,6 +114,39 @@ describe("createCommanderActions", () => {
 
     expect(setOperationError).toHaveBeenCalledWith(null);
     expect(setViewerOpen).toHaveBeenCalledWith(true);
+  });
+
+  it("exposes the full F1-F10 Norton function-key layout", () => {
+    const keys = COMMANDER_FUNCTION_ITEMS.map((item) => item.key);
+    expect(keys).toEqual([
+      "F1",
+      "F2",
+      "F3",
+      "F4",
+      "F5",
+      "F6",
+      "F7",
+      "F8",
+      "F9",
+      "F10",
+    ]);
+  });
+
+  it("dispatches help and menu for F1 and F10, always enabled", () => {
+    const handleCommandSelect = vi.fn();
+    const commander = createCommanderActions(baseDeps({ handleCommandSelect }));
+
+    commander.help();
+    expect(handleCommandSelect).toHaveBeenCalledWith("app.shortcuts", "left");
+
+    commander.menu();
+    expect(handleCommandSelect).toHaveBeenCalledWith(
+      "app.commandPalette",
+      "left",
+    );
+
+    expect(commanderItemDisabled("help", commander)).toBe(false);
+    expect(commanderItemDisabled("menu", commander)).toBe(false);
   });
 
   it("creates a folder from F7 action", () => {

@@ -10,6 +10,7 @@ const GROUP_LABELS: Record<CommandGroup, string> = {
   clipboard: "Clipboard",
   selection: "Selection",
   app: "App",
+  tools: "Tools",
 };
 
 const PALETTE_EXCLUDED = new Set<string>([
@@ -19,6 +20,9 @@ const PALETTE_EXCLUDED = new Set<string>([
   "view.sortDescending",
   "preferences.theme",
   "preferences.density",
+  "preferences.accentColor",
+  "preferences.fontScale",
+  "preferences.iconScale",
   "layout.switchPane",
   "layout.equalizePanes",
   "nav.openUri",

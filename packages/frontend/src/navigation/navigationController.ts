@@ -1,6 +1,7 @@
 import type { Dispatch, SetStateAction } from "react";
 import {
   isRemoteUri,
+  isNetworkUri,
   isSupportedNavigationUri,
   normalizeIpcError,
   type FileOctopusClient,
@@ -8,6 +9,7 @@ import {
 import type {
   FavoriteEntryDto,
   FileEntryDto,
+  NetworkConnectionDraftDto,
   RecentEntryDto,
   StarredEntryDto,
 } from "@fileoctopus/ts-api";
@@ -20,6 +22,7 @@ import {
 } from "../panelStore";
 import { createRequestId, loadStateFromBatchError } from "../paneTypes";
 import { localPathFromUri } from "../utils/paneUtils";
+import { isArchiveFile } from "../utils/archiveUtils";
 import { operationErrorMessage } from "../dialogs/OperationDialogView";
 import type { SearchState } from "../pane/PaneFilterBar";
 
@@ -34,6 +37,7 @@ export interface NavigationControllerDeps {
   setStarred: Dispatch<SetStateAction<StarredEntryDto[]>>;
   setOperationError: Dispatch<SetStateAction<string | null>>;
   syncTerminalCwd?: (panelId: PanelId, uri: string) => void;
+  onOpenConnectionWizard?: (prefill?: NetworkConnectionDraftDto) => void;
 }
 
 export interface NavigateOptions {
@@ -75,6 +79,7 @@ export function createNavigationController(
     setStarred,
     setOperationError,
     syncTerminalCwd,
+    onOpenConnectionWizard,
   } = deps;
 
   async function openExternal(entry: FileEntryDto) {
@@ -111,6 +116,29 @@ export function createNavigationController(
         panelId,
         sessionId: response.sessionId,
         requestId: response.requestId,
+      });
+    } catch (error) {
+      const normalized = normalizeIpcError(error);
+      dispatch({
+        type: "setPaneError",
+        panelId,
+        error: normalized.message,
+        errorCode: normalized.code,
+        loadState: loadStateFromBatchError(normalized),
+      });
+    }
+  }
+
+  async function loadNetworkNeighborhood(panelId: PanelId, uri: string) {
+    const requestId = createRequestId();
+    dispatch({ type: "startRequest", panelId, requestId });
+    try {
+      const response = await client.network.discoverNeighborhood({ uri });
+      dispatch({
+        type: "setArchiveEntries",
+        panelId,
+        uri: response.uri,
+        entries: response.entries,
       });
     } catch (error) {
       const normalized = normalizeIpcError(error);
@@ -174,9 +202,15 @@ export function createNavigationController(
       );
     }
 
-    await startListing(panelId, uri, options.includeHidden ?? tab.showHidden);
+    if (isNetworkUri(uri)) {
+      await loadNetworkNeighborhood(panelId, uri);
+    } else {
+      await startListing(panelId, uri, options.includeHidden ?? tab.showHidden);
+    }
     if (!options.softRefresh) {
-      syncTerminalCwd?.(panelId, uri);
+      if (!isNetworkUri(uri)) {
+        syncTerminalCwd?.(panelId, uri);
+      }
       void client.navigation
         .recordVisit({
           uri,
@@ -199,7 +233,11 @@ export function createNavigationController(
     }
 
     dispatch({ type: direction === "back" ? "goBack" : "goForward", panelId });
-    await startListing(panelId, uri, tab.showHidden);
+    if (isNetworkUri(uri)) {
+      await loadNetworkNeighborhood(panelId, uri);
+    } else {
+      await startListing(panelId, uri, tab.showHidden);
+    }
   }
 
   function refreshPanel(panelId: PanelId, options: NavigateOptions = {}) {
@@ -222,12 +260,56 @@ export function createNavigationController(
       return;
     }
 
+    if (entry.virtualKind === "addConnection") {
+      onOpenConnectionWizard?.();
+      return;
+    }
+
+    if (entry.status === "credentialsRequired" && entry.protocol) {
+      onOpenConnectionWizard?.({
+        scheme: entry.protocol,
+        host: entry.name,
+        label: entry.name,
+        defaultPath: "/",
+      });
+      return;
+    }
+
+    const openUri = entry.targetUri ?? entry.uri;
+
     if (entry.kind === "directory") {
-      void navigatePanel(panelId, entry.uri);
+      void navigatePanel(panelId, openUri);
+      return;
+    }
+
+    if (isArchiveFile(entry.name)) {
+      void navigateArchive(panelId, entry);
       return;
     }
 
     void openExternal(entry);
+  }
+
+  async function navigateArchive(panelId: PanelId, entry: FileEntryDto) {
+    dispatch({ type: "navigate", panelId, uri: entry.uri });
+    try {
+      const response = await client.fs.listArchive({ uri: entry.uri });
+      dispatch({
+        type: "setArchiveEntries",
+        panelId,
+        uri: entry.uri,
+        entries: response.entries,
+      });
+    } catch (error) {
+      const normalized = normalizeIpcError(error);
+      dispatch({
+        type: "setPaneError",
+        panelId,
+        error: normalized.message,
+        errorCode: normalized.code,
+        loadState: "error",
+      });
+    }
   }
 
   return {

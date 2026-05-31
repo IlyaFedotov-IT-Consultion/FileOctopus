@@ -45,6 +45,7 @@ export function createPreviewTransport(): IpcTransport {
     toolbarVisible: true,
     toolbarEntries: "",
     paneMode: "dual",
+    paneDirection: "horizontal",
     jobDrawerBehavior: "manual",
     showAdvancedCopyOptions: false,
     paneTerminalHeightLeft: 0.35,
@@ -56,6 +57,35 @@ export function createPreviewTransport(): IpcTransport {
     terminalArgs: "",
     rememberLastUsedPanes: true,
     diagnosticsExportPath: "/tmp/fileoctopus-diagnostics.zip",
+    customShortcuts: "",
+    fileTypeColorRules: "",
+    layoutProfiles: "",
+    columnPresets: "",
+    tabSessions: "",
+    hotlistEntries: "",
+    leftDefaultViewMode: "details",
+    rightDefaultViewMode: "details",
+    leftDefaultSortField: "name",
+    rightDefaultSortField: "name",
+    logLevel: "warn",
+    experimentalFeatures: false,
+    cacheSizeLimit: 256,
+    fileOperationThreads: 4,
+    networkConnectionTimeout: 30,
+    networkAutoReconnect: true,
+    networkDefaultProtocol: "sftp",
+    networkSshKeyPath: "",
+    editorFontFamily: "monospace",
+    editorFontSize: 14,
+    editorTabSize: 4,
+    editorWordWrap: true,
+    editorAutoSave: false,
+    editorSyntaxHighlighting: true,
+    editorLineNumbers: true,
+    viewerDefaultViewMode: "text",
+    viewerImageZoom: "fit",
+    viewerMediaAutoplay: false,
+    viewerMaxPreviewSize: 10,
   };
   const batchHandlers = new Set<(payload: DirectoryBatchEventDto) => void>();
   const folderSizeHandlers = new Set<
@@ -190,6 +220,14 @@ export function createPreviewTransport(): IpcTransport {
         } as TResponse;
       }
 
+      if (command === "network.discoverNeighborhood") {
+        const request = args?.request as { uri?: string } | undefined;
+        return {
+          uri: request?.uri ?? "network:///",
+          entries: previewNetworkEntries(request?.uri ?? "network:///"),
+        } as TResponse;
+      }
+
       if (
         command === "network.profileAdd" ||
         command === "network.profileUpdate"
@@ -293,6 +331,26 @@ export function createPreviewTransport(): IpcTransport {
         command === "fs.watch_stop"
       ) {
         return { ok: true } as TResponse;
+      }
+
+      if (command === "fs.read_file_as_data_uri") {
+        const request = args?.request as { uri?: string } | undefined;
+        const uri = request?.uri ?? "local:///Users/ilya/Documents/manual.pdf";
+        const lower = uri.toLowerCase();
+        const mimeType = lower.endsWith(".png")
+          ? "image/png"
+          : lower.endsWith(".jpg") || lower.endsWith(".jpeg")
+            ? "image/jpeg"
+            : lower.endsWith(".mp3")
+              ? "audio/mpeg"
+              : lower.endsWith(".mp4")
+                ? "video/mp4"
+                : "application/pdf";
+        return {
+          dataUri: `data:${mimeType};base64,JVBERi0xLjQK`,
+          byteSize: 1024,
+          mimeType,
+        } as TResponse;
       }
 
       if (command === "fs.properties") {
@@ -479,6 +537,68 @@ export function createPreviewTransport(): IpcTransport {
         return { success: true } as TResponse;
       }
 
+      if (command === "plugin.list") {
+        return { plugins: [] } as TResponse;
+      }
+
+      if (command === "plugin.install") {
+        return {
+          plugin: {
+            manifest: {
+              id: "preview",
+              name: "Preview Plugin",
+              version: "0.0.1",
+              description: "Preview mock",
+              author: "FileOctopus",
+              entryPoint: "main.js",
+              permissions: [],
+            },
+            installPath: "/tmp/preview-plugin",
+            enabled: true,
+          },
+        } as TResponse;
+      }
+
+      if (command === "plugin.uninstall") {
+        return { ok: true } as TResponse;
+      }
+
+      if (command === "plugin.toggle") {
+        return {
+          plugin: {
+            manifest: {
+              id: "preview",
+              name: "Preview Plugin",
+              version: "0.0.1",
+              description: "Preview mock",
+              author: "FileOctopus",
+              entryPoint: "main.js",
+              permissions: [],
+            },
+            installPath: "/tmp/preview-plugin",
+            enabled:
+              (args?.request as Record<string, unknown>)?.enabled ?? true,
+          },
+        } as TResponse;
+      }
+
+      if (command === "fs.get_acl") {
+        return {
+          owner: "user",
+          group: "user",
+          entries: [
+            { principal: "owner", read: true, write: true, execute: false },
+            { principal: "group", read: true, write: false, execute: false },
+            { principal: "other", read: true, write: false, execute: false },
+          ],
+          octal: "644",
+        } as TResponse;
+      }
+
+      if (command === "fs.set_acl") {
+        return { success: true } as TResponse;
+      }
+
       throw {
         code: IPC_ERROR_CODES.TAURI_UNAVAILABLE,
         message: "Tauri IPC is unavailable in browser preview",
@@ -590,5 +710,100 @@ function previewEntriesForUri(uri: string): FileEntryDto[] {
     entry("Pictures", "directory", null),
     entry("FileOctopus", "directory", null),
     entry("README.md", "file", 8200, "md"),
+  ];
+}
+
+function previewNetworkEntries(uri: string): FileEntryDto[] {
+  const entry = (
+    uri: string,
+    name: string,
+    virtualKind: string,
+    targetUri: string | null = null,
+    protocol: string | null = null,
+    status: string | null = "available",
+    description: string | null = null,
+  ): FileEntryDto => ({
+    uri,
+    name,
+    extension: null,
+    kind: virtualKind === "addConnection" ? "virtual" : "directory",
+    size: null,
+    modifiedAt: null,
+    createdAt: null,
+    accessedAt: null,
+    isHidden: false,
+    isSymlink: false,
+    symlinkTarget: null,
+    providerId: "network",
+    canRead: targetUri !== null,
+    canList: virtualKind !== "addConnection",
+    canWrite: false,
+    canDelete: false,
+    canRename: false,
+    targetUri,
+    virtualKind,
+    protocol,
+    status,
+    description,
+  });
+
+  if (uri === "network:///cloud") {
+    return [
+      entry(
+        "network:///cloud/google-drive",
+        "Google Drive",
+        "cloudDrive",
+        "local:///Users/you/Library/CloudStorage/GoogleDrive-user@example.com",
+        "cloud",
+      ),
+      entry(
+        "network:///cloud/onedrive",
+        "OneDrive",
+        "cloudDrive",
+        "local:///Users/you/Library/CloudStorage/OneDrive-Personal",
+        "cloud",
+      ),
+      entry(
+        "network:///cloud/icloud",
+        "iCloud Drive",
+        "cloudDrive",
+        "local:///Users/you/Library/Mobile Documents/com~apple~CloudDocs",
+        "cloud",
+      ),
+    ];
+  }
+
+  if (uri === "network:///lan") {
+    return [
+      entry(
+        "network:///lan/smb/fileserver",
+        "fileserver.local",
+        "discoveredService",
+        null,
+        "smb",
+        "credentialsRequired",
+        "SMB service discovered on the local network",
+      ),
+    ];
+  }
+
+  if (uri === "network:///saved") {
+    return [
+      entry(
+        "network:///saved/550e8400-e29b-41d4-a716-446655440000",
+        "Preview SFTP",
+        "savedConnection",
+        "sftp://550e8400-e29b-41d4-a716-446655440000/home/deploy",
+        "sftp",
+        "credentialsRequired",
+      ),
+    ];
+  }
+
+  return [
+    entry("network:///cloud", "Cloud Storage", "group", null, "cloud"),
+    entry("network:///lan", "Local Network", "group", null, "lan"),
+    entry("network:///saved", "Saved Connections", "group", null, "profile"),
+    entry("network:///add", "Add Connection", "addConnection"),
   ];
 }

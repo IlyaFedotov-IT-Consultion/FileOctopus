@@ -127,6 +127,61 @@ describe("VolumePickerDialog", () => {
     await screen.findByText("No volumes found");
   });
 
+  it("shows network neighborhood even when no volumes are mounted", async () => {
+    const onClose = vi.fn();
+    const onSelect = vi.fn();
+    const onOpenNetwork = vi.fn();
+    render(
+      <VolumePickerDialog
+        open={true}
+        fs={createMockFs([])}
+        onClose={onClose}
+        onSelect={onSelect}
+        onOpenNetwork={onOpenNetwork}
+      />,
+    );
+
+    await screen.findByRole("button", { name: /Network servers/i });
+    expect(screen.queryByText("No volumes found")).toBeNull();
+  });
+
+  it("falls back to the empty state when onOpenNetwork is omitted", async () => {
+    const onClose = vi.fn();
+    const onSelect = vi.fn();
+    render(
+      <VolumePickerDialog
+        open={true}
+        fs={createMockFs([])}
+        onClose={onClose}
+        onSelect={onSelect}
+      />,
+    );
+
+    await screen.findByText("No volumes found");
+    expect(screen.queryByRole("button", { name: /Network/i })).toBeNull();
+    expect(screen.queryByText("Network neighborhood")).toBeNull();
+  });
+
+  it("opens network neighborhood from the picker", async () => {
+    const onClose = vi.fn();
+    const onSelect = vi.fn();
+    const onOpenNetwork = vi.fn();
+    render(
+      <VolumePickerDialog
+        open={true}
+        fs={createMockFs([])}
+        onClose={onClose}
+        onSelect={onSelect}
+        onOpenNetwork={onOpenNetwork}
+      />,
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: /Network/i }));
+
+    expect(onOpenNetwork).toHaveBeenCalledOnce();
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
   it("shows filesystem type for each volume", async () => {
     const onClose = vi.fn();
     const onSelect = vi.fn();

@@ -10,7 +10,9 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct ResourceUri(String);
 
-pub const REMOTE_SCHEMES: &[&str] = &["sftp"];
+pub const REMOTE_SCHEMES: &[&str] = &[
+    "sftp", "smb", "s3", "webdav", "gdrive", "dropbox", "onedrive",
+];
 
 impl ResourceUri {
     pub fn parse(input: &str) -> Result<Self, VfsError> {
@@ -22,6 +24,11 @@ impl ResourceUri {
             "local" => {
                 if !is_valid_local_uri_body(body) {
                     return Err(VfsError::invalid_uri(input, "invalid local URI path"));
+                }
+            }
+            "network" => {
+                if !body.starts_with('/') {
+                    return Err(VfsError::invalid_uri(input, "invalid network URI path"));
                 }
             }
             scheme if REMOTE_SCHEMES.contains(&scheme) => {
@@ -64,7 +71,7 @@ impl ResourceUri {
     }
 
     pub fn remote_authority(&self) -> Option<&str> {
-        if self.scheme() == "local" {
+        if self.scheme() == "local" || self.scheme() == "network" {
             return None;
         }
 
@@ -73,7 +80,7 @@ impl ResourceUri {
     }
 
     pub fn remote_path(&self) -> Option<String> {
-        if self.scheme() == "local" {
+        if self.scheme() == "local" || self.scheme() == "network" {
             return None;
         }
 
@@ -122,6 +129,13 @@ impl ResourceUri {
             return self
                 .0
                 .strip_prefix("local://")
+                .unwrap_or(self.0.as_str())
+                .to_string();
+        }
+        if self.scheme() == "network" {
+            return self
+                .0
+                .strip_prefix("network://")
                 .unwrap_or(self.0.as_str())
                 .to_string();
         }
@@ -992,6 +1006,68 @@ mod tests {
     }
 
     #[test]
+    fn parses_network_virtual_uri() {
+        let root = ResourceUri::parse("network:///").unwrap();
+        let cloud = ResourceUri::parse("network:///cloud").unwrap();
+
+        assert_eq!(root.scheme(), "network");
+        assert_eq!(root.display_path(), "/");
+        assert_eq!(cloud.display_path(), "/cloud");
+        assert!(!cloud.is_remote());
+    }
+
+    #[test]
+    fn rejects_network_uri_without_leading_slash() {
+        let error = ResourceUri::parse("network://cloud").unwrap_err();
+
+        assert_eq!(error.code(), "invalid_uri");
+    }
+
+    #[test]
+    fn network_uri_has_no_remote_authority_or_path() {
+        let nested = ResourceUri::parse("network:///cloud/icloud").unwrap();
+
+        assert!(nested.remote_authority().is_none());
+        assert!(nested.remote_path().is_none());
+    }
+
+    #[test]
+    fn webdav_is_a_recognised_remote_scheme() {
+        assert!(REMOTE_SCHEMES.contains(&"webdav"));
+
+        let uri = ResourceUri::parse(
+            "webdav://550e8400-e29b-41d4-a716-446655440000/remote.php/dav/files/user",
+        )
+        .expect("webdav URI should parse");
+
+        assert_eq!(uri.scheme(), "webdav");
+        assert!(uri.is_remote());
+        assert_eq!(
+            uri.remote_authority(),
+            Some("550e8400-e29b-41d4-a716-446655440000")
+        );
+        assert_eq!(
+            uri.remote_path(),
+            Some("/remote.php/dav/files/user".to_string())
+        );
+    }
+
+    #[test]
+    fn builds_webdav_uri_from_profile() {
+        let uri = ResourceUri::from_remote_profile(
+            "webdav",
+            "550e8400-e29b-41d4-a716-446655440000",
+            "/remote.php/dav/files/user",
+        )
+        .unwrap();
+
+        assert_eq!(
+            uri.as_str(),
+            "webdav://550e8400-e29b-41d4-a716-446655440000/remote.php/dav/files/user"
+        );
+    }
+
+    #[test]
     fn rejects_invalid_scheme() {
         let error = ResourceUri::parse("ftp:///Users/ilya").unwrap_err();
 
@@ -1000,7 +1076,7 @@ mod tests {
 
     #[test]
     fn rejects_unregistered_remote_scheme() {
-        for scheme in ["smb", "webdav", "ftp"] {
+        for scheme in ["ftp", "nfs"] {
             let uri = format!("{scheme}://550e8400-e29b-41d4-a716-446655440000/");
             let error = ResourceUri::parse(&uri).unwrap_err();
             assert_eq!(error.code(), "unsupported_provider", "scheme = {scheme}");

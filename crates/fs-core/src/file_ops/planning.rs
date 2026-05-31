@@ -6,7 +6,7 @@ use vfs::{
     FileOperationWarning, ResourceUri, REMOTE_SCHEMES,
 };
 
-use super::archive::sanitize_archive_entry_path;
+use super::archive::{detect_archive_format, sanitize_archive_entry_path, ArchiveFormat};
 use super::paths::{
     canonical_existing_path, file_kind, map_io_error, map_std_io_error, reject_self_or_descendant,
     require_existing_directory,
@@ -249,31 +249,135 @@ pub(super) fn plan_extract_archive_items(
         });
     }
 
-    let file = File::open(&source_path).map_err(|error| map_std_io_error(&source_path, error))?;
-    let mut archive = zip::ZipArchive::new(file)
-        .map_err(|error| FileOperationError::io(format!("failed to read archive: {error}")))?;
+    let format = detect_archive_format(&source_path)?;
     let mut items = Vec::new();
 
-    for index in 0..archive.len() {
-        let entry = archive.by_index(index).map_err(|error| {
-            FileOperationError::io(format!("failed to read archive entry {index}: {error}"))
-        })?;
-        let entry_name = entry.name().to_string();
+    match format {
+        ArchiveFormat::Zip => {
+            let file =
+                File::open(&source_path).map_err(|error| map_std_io_error(&source_path, error))?;
+            let mut archive = zip::ZipArchive::new(file).map_err(|error| {
+                FileOperationError::io(format!("failed to read archive: {error}"))
+            })?;
 
-        if entry_name.ends_with('/') {
-            continue;
+            for index in 0..archive.len() {
+                let entry = archive.by_index(index).map_err(|error| {
+                    FileOperationError::io(format!("failed to read archive entry {index}: {error}"))
+                })?;
+                let entry_name = entry.name().to_string();
+
+                if entry_name.ends_with('/') {
+                    continue;
+                }
+
+                let target_path = sanitize_archive_entry_path(&entry_name, &destination_path)?;
+                let target_uri = ResourceUri::from_local_path(&target_path)?;
+
+                items.push(FileOperationItem {
+                    source: Some(source.clone()),
+                    destination: Some(target_uri),
+                    kind: FileKind::File,
+                    size: Some(entry.size()),
+                    recursive: false,
+                });
+            }
         }
-
-        let target_path = sanitize_archive_entry_path(&entry_name, &destination_path)?;
-        let target_uri = ResourceUri::from_local_path(&target_path)?;
-
-        items.push(FileOperationItem {
-            source: Some(source.clone()),
-            destination: Some(target_uri),
-            kind: FileKind::File,
-            size: Some(entry.size()),
-            recursive: false,
-        });
+        _ => {
+            let file =
+                File::open(&source_path).map_err(|error| map_std_io_error(&source_path, error))?;
+            match format {
+                ArchiveFormat::Tar => {
+                    let mut archive = tar::Archive::new(file);
+                    for entry_result in archive.entries().map_err(|error| {
+                        FileOperationError::io(format!("failed to read tar archive: {error}"))
+                    })? {
+                        let entry = entry_result.map_err(|error| {
+                            FileOperationError::io(format!("failed to read tar entry: {error}"))
+                        })?;
+                        let entry_name = entry.path().map_err(|error| {
+                            FileOperationError::io(format!(
+                                "failed to read tar entry path: {error}"
+                            ))
+                        })?;
+                        let entry_name = entry_name.to_string_lossy().to_string();
+                        if entry_name.ends_with('/') {
+                            continue;
+                        }
+                        let target_path =
+                            sanitize_archive_entry_path(&entry_name, &destination_path)?;
+                        let target_uri = ResourceUri::from_local_path(&target_path)?;
+                        items.push(FileOperationItem {
+                            source: Some(source.clone()),
+                            destination: Some(target_uri),
+                            kind: FileKind::File,
+                            size: Some(entry.size()),
+                            recursive: false,
+                        });
+                    }
+                }
+                ArchiveFormat::TarGz => {
+                    let decoder = flate2::read::GzDecoder::new(file);
+                    let mut archive = tar::Archive::new(decoder);
+                    for entry_result in archive.entries().map_err(|error| {
+                        FileOperationError::io(format!("failed to read tar.gz archive: {error}"))
+                    })? {
+                        let entry = entry_result.map_err(|error| {
+                            FileOperationError::io(format!("failed to read tar.gz entry: {error}"))
+                        })?;
+                        let entry_name = entry.path().map_err(|error| {
+                            FileOperationError::io(format!(
+                                "failed to read tar.gz entry path: {error}"
+                            ))
+                        })?;
+                        let entry_name = entry_name.to_string_lossy().to_string();
+                        if entry_name.ends_with('/') {
+                            continue;
+                        }
+                        let target_path =
+                            sanitize_archive_entry_path(&entry_name, &destination_path)?;
+                        let target_uri = ResourceUri::from_local_path(&target_path)?;
+                        items.push(FileOperationItem {
+                            source: Some(source.clone()),
+                            destination: Some(target_uri),
+                            kind: FileKind::File,
+                            size: Some(entry.size()),
+                            recursive: false,
+                        });
+                    }
+                }
+                ArchiveFormat::TarBz2 => {
+                    let decoder = bzip2::read::BzDecoder::new(file);
+                    let mut archive = tar::Archive::new(decoder);
+                    for entry_result in archive.entries().map_err(|error| {
+                        FileOperationError::io(format!("failed to read tar.bz2 archive: {error}"))
+                    })? {
+                        let entry = entry_result.map_err(|error| {
+                            FileOperationError::io(format!("failed to read tar.bz2 entry: {error}"))
+                        })?;
+                        let entry_name = entry.path().map_err(|error| {
+                            FileOperationError::io(format!(
+                                "failed to read tar.bz2 entry path: {error}"
+                            ))
+                        })?;
+                        let entry_name = entry_name.to_string_lossy().to_string();
+                        if entry_name.ends_with('/') {
+                            continue;
+                        }
+                        let target_path =
+                            sanitize_archive_entry_path(&entry_name, &destination_path)?;
+                        let target_uri = ResourceUri::from_local_path(&target_path)?;
+                        items.push(FileOperationItem {
+                            source: Some(source.clone()),
+                            destination: Some(target_uri),
+                            kind: FileKind::File,
+                            size: Some(entry.size()),
+                            recursive: false,
+                        });
+                    }
+                }
+                ArchiveFormat::Zip => unreachable!(),
+            }
+        }
     }
 
     Ok(items)

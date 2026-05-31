@@ -1,12 +1,17 @@
+use std::io::Read;
+use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
 
 use app_core::AppState;
 use app_ipc::{
-    error_codes, ComputeHashRequest, ComputeHashResponse, DirectoryBatchEventDto,
-    DiscoverVolumesResponse, IpcError, ListStartRequest, ListStartResponse, OkResponse,
-    OpenTerminalRequest, OpenTerminalResponse, PathPropertiesDto, PathPropertiesRequest,
-    PathPropertiesResponse, PathRequest, ReadFileRangeRequest, ReadFileRangeResponse,
+    error_codes, ComputeHashRequest, ComputeHashResponse, DiffHunk, DiffLine, DiffTextRequest,
+    DiffTextResponse, DirectoryBatchEventDto, DirectoryEntryDto, DiscoverVolumesResponse,
+    EjectVolumeRequest, EjectVolumeResponse, FileEntryDto, IpcError, ListArchiveRequest,
+    ListArchiveResponse, ListDirectoriesRequest, ListDirectoriesResponse, ListStartRequest,
+    ListStartResponse, OkResponse, OpenTerminalRequest, OpenTerminalResponse, PathPropertiesDto,
+    PathPropertiesRequest, PathPropertiesResponse, PathRequest, ReadFileAsDataUriRequest,
+    ReadFileAsDataUriResponse, ReadFileRangeRequest, ReadFileRangeResponse,
     ReadImageAsDataUriRequest, ReadImageAsDataUriResponse, ReadTextFileRequest,
     ReadTextFileResponse, StandardLocationDto, StandardLocationsResponse, StatRequest,
     StatResponse, WriteTextFileRequest, WriteTextFileResponse, DIRECTORY_BATCH_EVENT,
@@ -326,9 +331,11 @@ pub async fn fs_properties(
 }
 
 const MAX_IMAGE_BYTES: u64 = 20 * 1024 * 1024; // 20 MB
+const MAX_DATA_URI_BYTES: u64 = 20 * 1024 * 1024; // 20 MB
 
 fn mime_for_extension(ext: &str) -> &'static str {
     match ext {
+        ".pdf" => "application/pdf",
         ".png" => "image/png",
         ".jpg" | ".jpeg" => "image/jpeg",
         ".gif" => "image/gif",
@@ -336,8 +343,73 @@ fn mime_for_extension(ext: &str) -> &'static str {
         ".webp" => "image/webp",
         ".svg" => "image/svg+xml",
         ".ico" => "image/x-icon",
+        ".mp3" => "audio/mpeg",
+        ".ogg" | ".oga" => "audio/ogg",
+        ".wav" => "audio/wav",
+        ".flac" => "audio/flac",
+        ".aac" => "audio/aac",
+        ".m4a" => "audio/mp4",
+        ".opus" => "audio/opus",
+        ".mp4" | ".m4v" => "video/mp4",
+        ".webm" => "video/webm",
+        ".mkv" => "video/x-matroska",
+        ".mov" => "video/quicktime",
+        ".avi" => "video/x-msvideo",
+        ".wmv" => "video/x-ms-wmv",
+        ".mpg" | ".mpeg" => "video/mpeg",
+        ".3gp" => "video/3gpp",
         _ => "application/octet-stream",
     }
+}
+
+#[tauri::command]
+pub async fn fs_read_file_as_data_uri(
+    request: ReadFileAsDataUriRequest,
+    state: State<'_, Arc<AppState>>,
+) -> Result<ReadFileAsDataUriResponse, IpcError> {
+    let uri = ResourceUri::parse(&request.uri).map_err(IpcError::from)?;
+    let entry = state.vfs().stat(&uri).await.map_err(IpcError::from)?;
+
+    if entry.kind == FileKind::Directory {
+        return Err(IpcError::is_directory(
+            "cannot read a directory as data URI",
+        ));
+    }
+
+    let max_bytes = request
+        .max_bytes
+        .unwrap_or(MAX_DATA_URI_BYTES)
+        .min(MAX_DATA_URI_BYTES);
+
+    if entry.size.is_some_and(|size| size > max_bytes) {
+        return Err(IpcError::file_too_large(format!(
+            "file too large: {} bytes (max {} bytes)",
+            entry.size.unwrap_or(0),
+            max_bytes
+        )));
+    }
+
+    let vfs = VfsFilesystem::with_sessions(state.sessions(), state.vfs());
+    let read_len = entry.size.unwrap_or(max_bytes);
+    let buf = vfs
+        .read_file_prefix(&uri, read_len)
+        .map_err(IpcError::from)?;
+    let byte_size = entry.size.unwrap_or(buf.len() as u64);
+
+    let b64 = base64::Engine::encode(&base64::engine::general_purpose::STANDARD, &buf);
+
+    let ext = entry
+        .extension
+        .as_deref()
+        .map(|e| format!(".{}", e.to_lowercase()))
+        .unwrap_or_default();
+    let mime = mime_for_extension(&ext);
+
+    Ok(ReadFileAsDataUriResponse {
+        data_uri: format!("data:{};base64,{}", mime, b64),
+        byte_size,
+        mime_type: mime.to_string(),
+    })
 }
 
 #[tauri::command]
@@ -384,9 +456,22 @@ pub async fn fs_read_image_as_data_uri(
     })
 }
 
+#[cfg(test)]
+mod tests {
+    use super::mime_for_extension;
+
+    #[test]
+    fn mime_for_extension_maps_pdf() {
+        assert_eq!(mime_for_extension(".pdf"), "application/pdf");
+    }
+}
+
 #[tauri::command]
 pub async fn fs_discover_volumes() -> Result<DiscoverVolumesResponse, IpcError> {
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(target_os = "macos")]
+    let volumes = discover_macos_volumes();
+
+    #[cfg(all(not(target_os = "linux"), not(target_os = "macos")))]
     let volumes = Vec::new();
 
     #[cfg(target_os = "linux")]
@@ -462,6 +547,99 @@ pub async fn fs_discover_volumes() -> Result<DiscoverVolumesResponse, IpcError> 
     Ok(DiscoverVolumesResponse { volumes })
 }
 
+#[cfg(target_os = "macos")]
+fn discover_macos_volumes() -> Vec<app_ipc::VolumeDto> {
+    let mut volumes = Vec::new();
+    let mut paths = vec![std::path::PathBuf::from("/")];
+    if let Ok(read_dir) = std::fs::read_dir("/Volumes") {
+        for entry in read_dir.flatten() {
+            paths.push(entry.path());
+        }
+    }
+
+    paths.sort();
+    paths.dedup();
+
+    for path in paths {
+        if !path.exists() {
+            continue;
+        }
+        let name = if path == std::path::Path::new("/") {
+            "Macintosh HD".to_string()
+        } else {
+            path.file_name()
+                .and_then(|value| value.to_str())
+                .unwrap_or("Volume")
+                .to_string()
+        };
+        let uri = match ResourceUri::from_local_path(&path) {
+            Ok(uri) => uri.as_str().to_string(),
+            Err(_) => continue,
+        };
+        let lowered = name.to_lowercase();
+        let is_network = lowered.contains("google")
+            || lowered.contains("onedrive")
+            || lowered.contains("icloud")
+            || lowered.contains("smb")
+            || lowered.contains("share");
+        volumes.push(app_ipc::VolumeDto {
+            name,
+            mount_uri: uri,
+            total_bytes: None,
+            available_bytes: None,
+            file_system_type: Some("apfs".to_string()),
+            is_removable: false,
+            is_network,
+        });
+    }
+
+    volumes
+}
+
+#[tauri::command]
+pub async fn fs_eject_volume(
+    request: EjectVolumeRequest,
+    _state: State<'_, Arc<AppState>>,
+) -> Result<EjectVolumeResponse, IpcError> {
+    telemetry::debug(&format!(
+        "fs.eject_volume requested: {}",
+        request.mount_point
+    ));
+
+    let mount_point = request.mount_point;
+
+    #[cfg(target_os = "linux")]
+    {
+        let output = std::process::Command::new("umount")
+            .arg(&mount_point)
+            .output()
+            .map_err(|e| IpcError::io(format!("failed to execute umount: {}", e)))?;
+
+        if output.status.success() {
+            return Ok(EjectVolumeResponse { success: true });
+        }
+
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        if stderr.contains("not found") || stderr.contains("not mounted") {
+            return Ok(EjectVolumeResponse { success: true });
+        }
+
+        Err(IpcError::new(
+            error_codes::PERMISSION_DENIED,
+            format!("umount failed: {}", stderr.trim()),
+        ))
+    }
+
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = mount_point;
+        Err(IpcError::new(
+            error_codes::NOT_FOUND,
+            "eject is not supported on this platform",
+        ))
+    }
+}
+
 const MAX_WRITE_TEXT_BYTES_DEFAULT: u64 = 10 * 1024 * 1024; // 10 MiB
 
 #[tauri::command]
@@ -523,4 +701,389 @@ pub async fn fs_write_text_file(
             "write_text_file received a non-terminal completion event",
         )),
     }
+}
+
+#[tauri::command]
+pub async fn fs_list_directories(
+    request: ListDirectoriesRequest,
+    _state: State<'_, Arc<AppState>>,
+) -> Result<ListDirectoriesResponse, IpcError> {
+    let uri = ResourceUri::parse(&request.uri).map_err(IpcError::from)?;
+    let path = uri.to_local_path().map_err(IpcError::from)?;
+
+    if !path.is_dir() {
+        return Err(IpcError::is_directory(format!(
+            "not a directory: {}",
+            path.display()
+        )));
+    }
+
+    let mut dirs: Vec<DirectoryEntryDto> = Vec::new();
+    let entries = std::fs::read_dir(&path).map_err(|e| IpcError::io(e.to_string()))?;
+
+    for entry in entries {
+        let entry = entry.map_err(|e| IpcError::io(e.to_string()))?;
+        let file_type = entry.file_type().map_err(|e| IpcError::io(e.to_string()))?;
+        if !file_type.is_dir() {
+            continue;
+        }
+        let name = entry.file_name().to_string_lossy().to_string();
+        let child_path = entry.path();
+        let child_uri = format!("local://{}", child_path.display());
+        dirs.push(DirectoryEntryDto {
+            name,
+            uri: child_uri,
+        });
+    }
+
+    dirs.sort_by_key(|a| a.name.to_lowercase());
+
+    Ok(ListDirectoriesResponse { directories: dirs })
+}
+
+#[tauri::command]
+pub async fn fs_list_archive(request: ListArchiveRequest) -> Result<ListArchiveResponse, IpcError> {
+    let uri = ResourceUri::parse(&request.uri).map_err(IpcError::from)?;
+    let path = uri.to_local_path().map_err(IpcError::from)?;
+
+    let metadata = std::fs::metadata(&path).map_err(|e| {
+        if e.kind() == std::io::ErrorKind::NotFound {
+            IpcError::not_found(path.to_string_lossy().to_string())
+        } else {
+            IpcError::io(e.to_string())
+        }
+    })?;
+
+    if metadata.is_dir() {
+        return Err(IpcError::is_directory(
+            "cannot list archive contents of a directory",
+        ));
+    }
+
+    let name = path
+        .file_name()
+        .map(|n| n.to_string_lossy().to_string())
+        .unwrap_or_default()
+        .to_lowercase();
+
+    let entries = if name.ends_with(".zip") {
+        list_zip_entries(&path)?
+    } else if name.ends_with(".tar.gz") || name.ends_with(".tgz") {
+        list_tar_gz_entries(&path)?
+    } else if name.ends_with(".tar.bz2") || name.ends_with(".tbz2") {
+        list_tar_bz2_entries(&path)?
+    } else if name.ends_with(".tar") {
+        list_tar_entries_inner(&path)?
+    } else {
+        return Err(IpcError::invalid_request(format!(
+            "unsupported archive format: {name}"
+        )));
+    };
+
+    Ok(ListArchiveResponse { entries })
+}
+
+fn extension_for_archive_name(name: &str, is_dir: bool) -> Option<String> {
+    if is_dir {
+        return None;
+    }
+    let file_name = name.trim_end_matches('/');
+    let file_name = file_name.split('/').next_back().unwrap_or(file_name);
+    Path::new(file_name)
+        .extension()
+        .map(|e| e.to_string_lossy().to_string())
+}
+
+fn list_zip_entries(path: &std::path::Path) -> Result<Vec<FileEntryDto>, IpcError> {
+    let file = std::fs::File::open(path).map_err(|e| IpcError::io(e.to_string()))?;
+    let mut archive = zip::ZipArchive::new(file)
+        .map_err(|e| IpcError::io(format!("failed to read zip archive: {e}")))?;
+
+    let mut entries = Vec::new();
+    for index in 0..archive.len() {
+        let entry = archive
+            .by_index(index)
+            .map_err(|e| IpcError::io(format!("failed to read zip entry {index}: {e}")))?;
+        let entry_name = entry.name().to_string();
+        let is_dir = entry_name.ends_with('/');
+        let name = entry_name
+            .trim_end_matches('/')
+            .split('/')
+            .next_back()
+            .unwrap_or("")
+            .to_string();
+
+        if name.is_empty() {
+            continue;
+        }
+
+        let entry_uri = format!("archive://{}!/{}", path.display(), entry_name);
+
+        entries.push(FileEntryDto {
+            uri: entry_uri,
+            name,
+            extension: extension_for_archive_name(&entry_name, is_dir),
+            kind: if is_dir {
+                FileKind::Directory
+            } else {
+                FileKind::File
+            },
+            size: if is_dir { None } else { Some(entry.size()) },
+            modified_at: None,
+            created_at: None,
+            accessed_at: None,
+            is_hidden: false,
+            is_symlink: false,
+            symlink_target: None,
+            provider_id: "archive".to_string(),
+            can_read: true,
+            can_list: is_dir,
+            can_write: false,
+            can_delete: false,
+            can_rename: false,
+            permissions: None,
+            owner: None,
+            target_uri: None,
+            virtual_kind: None,
+            protocol: None,
+            status: None,
+            description: None,
+        });
+    }
+
+    Ok(entries)
+}
+
+fn list_tar_reader<R: Read>(
+    archive: &mut tar::Archive<R>,
+    archive_prefix: &str,
+) -> Result<Vec<FileEntryDto>, IpcError> {
+    let mut entries = Vec::new();
+    let iter = archive
+        .entries()
+        .map_err(|e| IpcError::io(format!("failed to read tar entries: {e}")))?;
+
+    for entry_result in iter {
+        let entry =
+            entry_result.map_err(|e| IpcError::io(format!("failed to read tar entry: {e}")))?;
+        let entry_path = entry
+            .path()
+            .map_err(|e| IpcError::io(format!("failed to read tar entry path: {e}")))?;
+        let entry_name = entry_path.to_string_lossy().to_string();
+        let is_dir = entry_name.ends_with('/');
+        let name = entry_name
+            .trim_end_matches('/')
+            .split('/')
+            .next_back()
+            .unwrap_or("")
+            .to_string();
+
+        if name.is_empty() {
+            continue;
+        }
+
+        let entry_uri = format!("archive://{archive_prefix}!/{entry_name}");
+
+        entries.push(FileEntryDto {
+            uri: entry_uri,
+            name,
+            extension: extension_for_archive_name(&entry_name, is_dir),
+            kind: if is_dir {
+                FileKind::Directory
+            } else {
+                FileKind::File
+            },
+            size: if is_dir { None } else { Some(entry.size()) },
+            modified_at: None,
+            created_at: None,
+            accessed_at: None,
+            is_hidden: false,
+            is_symlink: entry.link_name().ok().flatten().is_some(),
+            symlink_target: entry
+                .link_name()
+                .ok()
+                .flatten()
+                .map(|p| p.to_string_lossy().to_string()),
+            provider_id: "archive".to_string(),
+            can_read: true,
+            can_list: is_dir,
+            can_write: false,
+            can_delete: false,
+            can_rename: false,
+            permissions: None,
+            owner: None,
+            target_uri: None,
+            virtual_kind: None,
+            protocol: None,
+            status: None,
+            description: None,
+        });
+    }
+
+    Ok(entries)
+}
+
+fn list_tar_gz_entries(path: &std::path::Path) -> Result<Vec<FileEntryDto>, IpcError> {
+    let file = std::fs::File::open(path).map_err(|e| IpcError::io(e.to_string()))?;
+    let gz = flate2::read::GzDecoder::new(file);
+    let mut archive = tar::Archive::new(gz);
+    list_tar_reader(&mut archive, &path.display().to_string())
+}
+
+fn list_tar_bz2_entries(path: &std::path::Path) -> Result<Vec<FileEntryDto>, IpcError> {
+    let file = std::fs::File::open(path).map_err(|e| IpcError::io(e.to_string()))?;
+    let bz = bzip2::read::BzDecoder::new(file);
+    let mut archive = tar::Archive::new(bz);
+    list_tar_reader(&mut archive, &path.display().to_string())
+}
+
+fn list_tar_entries_inner(path: &std::path::Path) -> Result<Vec<FileEntryDto>, IpcError> {
+    let file = std::fs::File::open(path).map_err(|e| IpcError::io(e.to_string()))?;
+    let mut archive = tar::Archive::new(file);
+    list_tar_reader(&mut archive, &path.display().to_string())
+}
+
+#[tauri::command]
+pub async fn fs_diff_text(
+    request: DiffTextRequest,
+    _state: State<'_, Arc<AppState>>,
+) -> Result<DiffTextResponse, IpcError> {
+    let left_uri = ResourceUri::parse(&request.left_uri).map_err(IpcError::from)?;
+    let left_path = left_uri.to_local_path().map_err(IpcError::from)?;
+
+    let right_uri = ResourceUri::parse(&request.right_uri).map_err(IpcError::from)?;
+    let right_path = right_uri.to_local_path().map_err(IpcError::from)?;
+
+    let left_meta = std::fs::metadata(&left_path).map_err(|e| IpcError::io(e.to_string()))?;
+    if left_meta.is_dir() {
+        return Err(IpcError::is_directory("cannot diff a directory"));
+    }
+
+    let right_meta = std::fs::metadata(&right_path).map_err(|e| IpcError::io(e.to_string()))?;
+    if right_meta.is_dir() {
+        return Err(IpcError::is_directory("cannot diff a directory"));
+    }
+
+    let max_bytes = request.max_bytes.unwrap_or(512 * 1024);
+
+    let left_bytes = std::fs::read(&left_path).map_err(|e| IpcError::io(e.to_string()))?;
+    let right_bytes = std::fs::read(&right_path).map_err(|e| IpcError::io(e.to_string()))?;
+
+    let left_truncated = left_bytes.len() as u64 > max_bytes;
+    let right_truncated = right_bytes.len() as u64 > max_bytes;
+
+    let left_str =
+        String::from_utf8_lossy(&left_bytes[..(left_bytes.len().min(max_bytes as usize))]);
+    let right_str =
+        String::from_utf8_lossy(&right_bytes[..(right_bytes.len().min(max_bytes as usize))]);
+
+    let left_lines: Vec<&str> = left_str.lines().collect();
+    let right_lines: Vec<&str> = right_str.lines().collect();
+
+    let diff = similar::TextDiff::from_lines(&left_str, &right_str);
+
+    let mut hunks: Vec<DiffHunk> = Vec::new();
+    let mut current_lines: Vec<DiffLine> = Vec::new();
+    let mut current_old_start: u64 = 0;
+    let mut current_new_start: u64 = 0;
+    let mut in_hunk = false;
+
+    for change in diff.iter_all_changes() {
+        let (kind, old_line, new_line) = match change.tag() {
+            similar::ChangeTag::Equal => (
+                "equal",
+                Some(change.old_index().unwrap() as u64 + 1),
+                Some(change.new_index().unwrap() as u64 + 1),
+            ),
+            similar::ChangeTag::Delete => {
+                ("delete", Some(change.old_index().unwrap() as u64 + 1), None)
+            }
+            similar::ChangeTag::Insert => {
+                ("insert", None, Some(change.new_index().unwrap() as u64 + 1))
+            }
+        };
+
+        let line = DiffLine {
+            kind: kind.to_string(),
+            content: change.to_string_lossy().to_string(),
+            old_line,
+            new_line,
+        };
+
+        if kind == "equal" && in_hunk {
+            let equal_count = current_lines
+                .iter()
+                .rev()
+                .take_while(|l| l.kind == "equal")
+                .count();
+            if equal_count >= 3 {
+                current_lines.push(line);
+                let old_count = current_lines
+                    .iter()
+                    .filter(|l| l.kind == "equal" || l.kind == "delete")
+                    .count() as u64;
+                let new_count = current_lines
+                    .iter()
+                    .filter(|l| l.kind == "equal" || l.kind == "insert")
+                    .count() as u64;
+                hunks.push(DiffHunk {
+                    old_start: current_old_start,
+                    old_count,
+                    new_start: current_new_start,
+                    new_count,
+                    lines: current_lines.clone(),
+                });
+                current_lines.clear();
+                in_hunk = false;
+                continue;
+            }
+        }
+
+        if !in_hunk && kind != "equal" {
+            if !current_lines.is_empty() {
+                let eq_count = current_lines
+                    .iter()
+                    .rev()
+                    .take_while(|l| l.kind == "equal")
+                    .count();
+                let context_count = eq_count.min(3);
+                current_lines.truncate(current_lines.len() - eq_count);
+                let context: Vec<DiffLine> = current_lines
+                    .drain(current_lines.len().saturating_sub(context_count)..)
+                    .collect();
+                current_lines.extend(context);
+            }
+            current_old_start = old_line.unwrap_or(1);
+            current_new_start = new_line.unwrap_or(1);
+            in_hunk = true;
+        }
+
+        current_lines.push(line);
+    }
+
+    if !current_lines.is_empty() && in_hunk {
+        let old_count = current_lines
+            .iter()
+            .filter(|l| l.kind == "equal" || l.kind == "delete")
+            .count() as u64;
+        let new_count = current_lines
+            .iter()
+            .filter(|l| l.kind == "equal" || l.kind == "insert")
+            .count() as u64;
+        hunks.push(DiffHunk {
+            old_start: current_old_start,
+            old_count,
+            new_start: current_new_start,
+            new_count,
+            lines: current_lines,
+        });
+    }
+
+    Ok(DiffTextResponse {
+        hunks,
+        left_line_count: left_lines.len() as u64,
+        right_line_count: right_lines.len() as u64,
+        left_truncated,
+        right_truncated,
+    })
 }

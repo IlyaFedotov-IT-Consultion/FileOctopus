@@ -5,8 +5,10 @@ import type {
   RecentEntryDto,
   StandardLocationDto,
   StarredEntryDto,
+  VolumeDto,
 } from "@fileoctopus/ts-api";
 import { Button, cx, Icons } from "@fileoctopus/ui";
+import type { SmartFolder } from "../savedSearches";
 import {
   type ChangeEvent,
   type KeyboardEvent,
@@ -41,6 +43,18 @@ interface SidebarNetworkContextMenuState {
   profile: NetworkProfileDto;
 }
 
+interface SidebarVolumeContextMenuState {
+  x: number;
+  y: number;
+  volume: VolumeDto;
+}
+
+interface SidebarSmartFolderContextMenuState {
+  x: number;
+  y: number;
+  folder: SmartFolder;
+}
+
 interface SidebarProps {
   locations: StandardLocationDto[];
   networkProfiles: NetworkProfileDto[];
@@ -63,6 +77,13 @@ interface SidebarProps {
   onOpenProfileTerminal: (profile: NetworkProfileDto) => void;
   busyProfileIds: Set<string>;
   networkEnabled?: boolean;
+  volumes?: VolumeDto[];
+  onEjectVolume?: (mountPoint: string) => void;
+  smartFolders?: SmartFolder[];
+  onOpenSmartFolder?: (folder: SmartFolder) => void;
+  onRemoveSmartFolder?: (id: string) => void;
+  onRenameSmartFolder?: (id: string, name: string) => void;
+  onSaveSearch?: () => void;
 }
 
 export function Sidebar({
@@ -71,6 +92,7 @@ export function Sidebar({
   networkStatuses,
   favorites,
   recentToday,
+  recentWeek,
   starred,
   activeUri,
   onNavigate,
@@ -86,14 +108,29 @@ export function Sidebar({
   onOpenProfileTerminal,
   busyProfileIds,
   networkEnabled = false,
+  volumes = [],
+  onEjectVolume,
+  smartFolders = [],
+  onOpenSmartFolder,
+  onRemoveSmartFolder,
+  onRenameSmartFolder,
+  onSaveSearch,
 }: SidebarProps) {
   const [contextMenu, setContextMenu] =
     useState<SidebarContextMenuState | null>(null);
   const [networkContextMenu, setNetworkContextMenu] =
     useState<SidebarNetworkContextMenuState | null>(null);
+  const [volumeContextMenu, setVolumeContextMenu] =
+    useState<SidebarVolumeContextMenuState | null>(null);
+  const [smartFolderContextMenu, setSmartFolderContextMenu] =
+    useState<SidebarSmartFolderContextMenuState | null>(null);
   const [renamingFavoriteId, setRenamingFavoriteId] = useState<number | null>(
     null,
   );
+  const [renamingSmartFolderId, setRenamingSmartFolderId] = useState<
+    string | null
+  >(null);
+  const [smartFolderRenameValue, setSmartFolderRenameValue] = useState("");
   const [renameValue, setRenameValue] = useState("");
   const renameInputRef = useRef<HTMLInputElement>(null);
   const grouped = locations.reduce<Record<string, StandardLocationDto[]>>(
@@ -146,7 +183,10 @@ export function Sidebar({
       status,
     };
 
-    const browseable = profile.scheme === "sftp";
+    const browseable =
+      profile.scheme === "sftp" ||
+      profile.scheme === "smb" ||
+      profile.scheme === "s3";
     return (
       <SidebarItem
         key={`network-${profile.id}`}
@@ -198,41 +238,40 @@ export function Sidebar({
       {STANDARD_SECTION_ORDER.map((section) => {
         if (section === "Devices/Volumes") {
           const localItems = grouped[section] ?? [];
-          const browseableNetworkProfiles = networkProfiles.filter(
-            (profile) => profile.scheme === "sftp",
-          );
           const hasLocal = localItems.length > 0;
-          const hasNetwork =
-            networkEnabled && browseableNetworkProfiles.length > 0;
 
           return (
             <SidebarSection key={section} title={sidebarSectionTitle(section)}>
-              {!hasLocal && !hasNetwork ? (
+              {!hasLocal ? (
                 <SidebarEmptyHint>{emptySectionHint(section)}</SidebarEmptyHint>
               ) : (
-                <>
-                  {!hasLocal ? (
-                    <SidebarEmptyHint>No local volumes</SidebarEmptyHint>
-                  ) : (
-                    localItems.map((item) => (
-                      <SidebarItem
-                        key={item.uri}
-                        icon={locationIcon(item.id)}
-                        label={item.name}
-                        active={item.uri === activeUri}
-                        onClick={() => onNavigate(item.uri)}
-                      />
-                    ))
-                  )}
-                  {hasNetwork ? (
-                    <>
-                      <p className="fo-sidebar-group-label">Network drives</p>
-                      {browseableNetworkProfiles.map((profile) =>
-                        renderNetworkProfileItem(profile),
-                      )}
-                    </>
-                  ) : null}
-                </>
+                localItems.map((item) => {
+                  const vol = volumes.find((v) => v.mountUri === item.uri);
+                  const isRemovable = vol?.isRemovable === true;
+                  return (
+                    <SidebarItem
+                      key={item.uri}
+                      icon={isRemovable ? Icons.usb() : locationIcon(item.id)}
+                      label={item.name}
+                      active={item.uri === activeUri}
+                      onClick={() => onNavigate(item.uri)}
+                      onContextMenu={
+                        isRemovable && onEjectVolume
+                          ? (event) => {
+                              event.preventDefault();
+                              if (vol) {
+                                setVolumeContextMenu({
+                                  x: event.clientX,
+                                  y: event.clientY,
+                                  volume: vol,
+                                });
+                              }
+                            }
+                          : undefined
+                      }
+                    />
+                  );
+                })
               )}
             </SidebarSection>
           );
@@ -260,14 +299,28 @@ export function Sidebar({
       })}
 
       {networkEnabled ? (
-        <SidebarSection title="Network">
+        <SidebarSection
+          title="Network"
+          action={
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={onAddServer}
+              title="Add server"
+              aria-label="Add server"
+            >
+              {Icons.folderPlus()}
+            </Button>
+          }
+        >
           {networkProfiles.length === 0 ? (
             <SidebarEmptyHint>No saved servers</SidebarEmptyHint>
           ) : (
             networkProfiles.map((profile) => renderNetworkProfileItem(profile))
           )}
           <SidebarItem
-            icon={Icons.folderPlus()}
+            icon={Icons.server()}
             label="Add server…"
             active={false}
             onClick={onAddServer}
@@ -276,7 +329,7 @@ export function Sidebar({
       ) : null}
 
       {favorites.length > 0 ? (
-        <SidebarSection title="Pinned">
+        <SidebarSection title="Favorites">
           {favorites.map((item) =>
             renamingFavoriteId === item.id ? (
               <input
@@ -312,7 +365,7 @@ export function Sidebar({
         </SidebarSection>
       ) : null}
 
-      <SidebarSection title="Recent">
+      <SidebarSection title="Today">
         {recentToday.length === 0 ? (
           <SidebarEmptyHint>No recent folders</SidebarEmptyHint>
         ) : (
@@ -329,6 +382,21 @@ export function Sidebar({
         )}
       </SidebarSection>
 
+      {recentWeek.length > 0 ? (
+        <SidebarSection title="This Week">
+          {recentWeek.map((item) => (
+            <SidebarItem
+              key={item.uri}
+              icon={Icons.recent()}
+              label={item.label}
+              active={item.uri === activeUri}
+              onClick={() => onNavigate(item.uri)}
+              subdued
+            />
+          ))}
+        </SidebarSection>
+      ) : null}
+
       {starred.length > 0 ? (
         <SidebarSection title="Starred">
           {starred.map((item) => (
@@ -342,6 +410,87 @@ export function Sidebar({
           ))}
         </SidebarSection>
       ) : null}
+
+      <SidebarSection title="Smart Folders">
+        {smartFolders.length === 0 && !onSaveSearch ? (
+          <SidebarEmptyHint>No saved searches</SidebarEmptyHint>
+        ) : (
+          <>
+            {smartFolders.map((folder) =>
+              renamingSmartFolderId === folder.id ? (
+                <input
+                  key={folder.id}
+                  className="fo-sidebar-rename-input"
+                  type="text"
+                  autoFocus
+                  value={smartFolderRenameValue}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                    setSmartFolderRenameValue(e.target.value)
+                  }
+                  onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      if (
+                        smartFolderRenameValue.trim() &&
+                        onRenameSmartFolder
+                      ) {
+                        onRenameSmartFolder(
+                          folder.id,
+                          smartFolderRenameValue.trim(),
+                        );
+                      }
+                      setRenamingSmartFolderId(null);
+                      setSmartFolderRenameValue("");
+                    } else if (e.key === "Escape") {
+                      e.preventDefault();
+                      setRenamingSmartFolderId(null);
+                      setSmartFolderRenameValue("");
+                    }
+                  }}
+                  onBlur={() => {
+                    if (
+                      smartFolderRenameValue.trim() &&
+                      onRenameSmartFolder &&
+                      renamingSmartFolderId
+                    ) {
+                      onRenameSmartFolder(
+                        renamingSmartFolderId,
+                        smartFolderRenameValue.trim(),
+                      );
+                    }
+                    setRenamingSmartFolderId(null);
+                    setSmartFolderRenameValue("");
+                  }}
+                />
+              ) : (
+                <SidebarItem
+                  key={folder.id}
+                  icon={Icons.search()}
+                  label={folder.name}
+                  active={false}
+                  onClick={() => onOpenSmartFolder?.(folder)}
+                  onContextMenu={(event) => {
+                    event.preventDefault();
+                    setSmartFolderContextMenu({
+                      x: event.clientX,
+                      y: event.clientY,
+                      folder,
+                    });
+                  }}
+                />
+              ),
+            )}
+            {onSaveSearch ? (
+              <SidebarItem
+                icon={Icons.folderPlus()}
+                label="Save Search…"
+                active={false}
+                onClick={onSaveSearch}
+              />
+            ) : null}
+          </>
+        )}
+      </SidebarSection>
 
       {networkContextMenu ? (
         <SidebarNetworkContextMenu
@@ -389,6 +538,41 @@ export function Sidebar({
           onReveal={() => {
             onRevealFavorite(contextMenu.favorite.uri);
             setContextMenu(null);
+          }}
+        />
+      ) : null}
+
+      {volumeContextMenu && onEjectVolume ? (
+        <SidebarVolumeContextMenu
+          volume={volumeContextMenu.volume}
+          x={volumeContextMenu.x}
+          y={volumeContextMenu.y}
+          onClose={() => setVolumeContextMenu(null)}
+          onEject={() => {
+            const mountUri = volumeContextMenu.volume.mountUri;
+            const mountPoint = mountUri.startsWith("local://")
+              ? mountUri.slice("local://".length)
+              : mountUri;
+            onEjectVolume(mountPoint);
+            setVolumeContextMenu(null);
+          }}
+        />
+      ) : null}
+
+      {smartFolderContextMenu ? (
+        <SidebarSmartFolderContextMenu
+          folder={smartFolderContextMenu.folder}
+          x={smartFolderContextMenu.x}
+          y={smartFolderContextMenu.y}
+          onClose={() => setSmartFolderContextMenu(null)}
+          onRename={() => {
+            setRenamingSmartFolderId(smartFolderContextMenu.folder.id);
+            setSmartFolderRenameValue(smartFolderContextMenu.folder.name);
+            setSmartFolderContextMenu(null);
+          }}
+          onRemove={() => {
+            onRemoveSmartFolder?.(smartFolderContextMenu.folder.id);
+            setSmartFolderContextMenu(null);
           }}
         />
       ) : null}
@@ -624,7 +808,10 @@ function SidebarNetworkContextMenu({
         >
           Open Terminal
         </Button>
-        {profile.scheme === "sftp" && connected ? (
+        {(profile.scheme === "sftp" ||
+          profile.scheme === "smb" ||
+          profile.scheme === "s3") &&
+        connected ? (
           <Button
             type="button"
             variant="ghost"
@@ -635,7 +822,9 @@ function SidebarNetworkContextMenu({
           >
             Disconnect
           </Button>
-        ) : profile.scheme === "sftp" ? (
+        ) : profile.scheme === "sftp" ||
+          profile.scheme === "smb" ||
+          profile.scheme === "s3" ? (
           <Button
             type="button"
             variant="ghost"
@@ -657,7 +846,9 @@ function SidebarNetworkContextMenu({
         >
           Edit
         </Button>
-        {profile.scheme === "sftp" ? (
+        {profile.scheme === "sftp" ||
+        profile.scheme === "smb" ||
+        profile.scheme === "s3" ? (
           <Button
             type="button"
             variant="ghost"
@@ -666,7 +857,7 @@ function SidebarNetworkContextMenu({
             role="menuitem"
             onClick={() => run(onAddFavorite)}
           >
-            Add to Pinned
+            Add to Favorites
           </Button>
         ) : null}
         <Button
@@ -686,14 +877,19 @@ function SidebarNetworkContextMenu({
 
 function SidebarSection({
   title,
+  action,
   children,
 }: {
   title: string;
+  action?: ReactNode;
   children: ReactNode;
 }) {
   return (
     <section className="fo-sidebar-section">
-      <h2 className="fo-sidebar-section-title">{title}</h2>
+      <div className="fo-sidebar-section-header">
+        <h2 className="fo-sidebar-section-title">{title}</h2>
+        {action}
+      </div>
       {children}
     </section>
   );
@@ -788,7 +984,221 @@ function locationIcon(id: string): ReactNode {
       return Icons.pictures();
     case "music":
       return Icons.music();
+    case "videos":
+      return Icons.video();
     default:
       return Icons.volume();
   }
+}
+
+function SidebarVolumeContextMenu({
+  volume,
+  x,
+  y,
+  onClose,
+  onEject,
+}: {
+  volume: VolumeDto;
+  x: number;
+  y: number;
+  onClose: () => void;
+  onEject: () => void;
+}) {
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{
+    left: number;
+    top: number;
+    maxHeight?: number;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!menuRef.current) {
+      setPos(null);
+      return;
+    }
+    const el = menuRef.current;
+    const pad = 8;
+    const rect = el.getBoundingClientRect();
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    let left = x;
+    let top = y;
+    let maxHeight: number | undefined;
+
+    if (left + rect.width > vw - pad) {
+      left = Math.max(pad, vw - rect.width - pad);
+    }
+
+    const availableBelow = vh - top - pad;
+    if (rect.height > availableBelow) {
+      const availableAbove = top - pad;
+      if (availableAbove > availableBelow) {
+        top = Math.max(pad, vh - rect.height - pad);
+        maxHeight = vh - top - pad;
+      } else {
+        maxHeight = availableBelow;
+      }
+    }
+
+    setPos({ left, top, maxHeight });
+  }, [x, y]);
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    },
+    [onClose],
+  );
+
+  const run = (action: () => void) => {
+    action();
+    onClose();
+  };
+
+  return (
+    <div
+      className="fo-sidebar-menu-backdrop"
+      onClick={onClose}
+      onKeyDown={handleKeyDown}
+      role="presentation"
+    >
+      <div
+        ref={menuRef}
+        className="fo-context-menu"
+        role="menu"
+        style={
+          pos
+            ? { left: pos.left, top: pos.top, maxHeight: pos.maxHeight }
+            : { left: x, top: y }
+        }
+      >
+        <div className="fo-context-menu-group">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="fo-context-menu-item"
+            role="menuitem"
+            onClick={() => run(onEject)}
+          >
+            Eject {volume.name}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SidebarSmartFolderContextMenu({
+  folder,
+  x,
+  y,
+  onClose,
+  onRename,
+  onRemove,
+}: {
+  folder: SmartFolder;
+  x: number;
+  y: number;
+  onClose: () => void;
+  onRename: () => void;
+  onRemove: () => void;
+}) {
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{
+    left: number;
+    top: number;
+    maxHeight?: number;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!menuRef.current) {
+      setPos(null);
+      return;
+    }
+    const el = menuRef.current;
+    const pad = 8;
+    const rect = el.getBoundingClientRect();
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    let left = x;
+    let top = y;
+    let maxHeight: number | undefined;
+
+    if (left + rect.width > vw - pad) {
+      left = Math.max(pad, vw - rect.width - pad);
+    }
+
+    const availableBelow = vh - top - pad;
+    if (rect.height > availableBelow) {
+      const availableAbove = top - pad;
+      if (availableAbove > availableBelow) {
+        top = Math.max(pad, vh - rect.height - pad);
+        maxHeight = vh - top - pad;
+      } else {
+        maxHeight = availableBelow;
+      }
+    }
+
+    setPos({ left, top, maxHeight });
+  }, [x, y]);
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    },
+    [onClose],
+  );
+
+  const run = (action: () => void) => {
+    action();
+    onClose();
+  };
+
+  return (
+    <div
+      className="fo-sidebar-menu-backdrop"
+      onClick={onClose}
+      onKeyDown={handleKeyDown}
+      role="presentation"
+    >
+      <div
+        ref={menuRef}
+        className="fo-sidebar-context-menu"
+        role="menu"
+        aria-label={`${folder.name} actions`}
+        style={
+          pos
+            ? { left: pos.left, top: pos.top, maxHeight: pos.maxHeight }
+            : { left: x, top: y }
+        }
+        onClick={(event) => event.stopPropagation()}
+      >
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="fo-context-menu-item"
+          role="menuitem"
+          onClick={() => run(onRename)}
+        >
+          Rename
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="fo-context-menu-item"
+          role="menuitem"
+          onClick={() => run(onRemove)}
+        >
+          Remove
+        </Button>
+      </div>
+    </div>
+  );
 }

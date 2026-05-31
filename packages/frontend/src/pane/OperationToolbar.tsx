@@ -182,10 +182,16 @@ export function OperationToolbar({
               onSelect: () => onOpenHotlistTarget(volume.uri),
             })),
             {
+              id: "network-neighborhood",
+              label: "Network",
+              icon: Icons.server(),
+              separatorBefore: driveVolumes.length > 0,
+              onSelect: () => onCommand("nav.networkLocations"),
+            },
+            {
               id: "all-drives",
               label: "Browse all drives…",
               icon: Icons.folder(),
-              separatorBefore: driveVolumes.length > 0,
               onSelect: onDrives,
             },
           ]}

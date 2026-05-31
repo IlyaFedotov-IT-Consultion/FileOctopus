@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useShell } from "../app/providers/ShellProvider";
 import { useTerminal } from "../app/providers/TerminalProvider";
+import { useTags } from "../app/TagContext";
 import {
   countOperationalSelection,
   countVisibleEntries,
@@ -37,12 +38,14 @@ import {
   persistColumnWidths,
   storedVisibleColumns,
   persistVisibleColumns,
+  reorderVisibleColumns,
   type ColumnWidths,
   type ColumnId,
   type VisibleColumns,
 } from "./columnWidths";
 import type { FileEntryDto } from "@fileoctopus/ts-api";
 import { paneDirectoryCanWrite } from "../navigation/fileMutationState";
+import type { PaneLocationTarget } from "../navigation/driveTargets";
 import type { ContextMenuState } from "../components/ContextMenu";
 import { usePaneGitStatus } from "./usePaneGitStatus";
 
@@ -55,6 +58,7 @@ export interface FilePanelProps {
   active: boolean;
   onActivate: () => void;
   onNavigate: (uri: string) => void;
+  locationTargets: PaneLocationTarget[];
   onSelect: (entryId: string | null) => void;
   onEntrySelect: (entryId: string, mode: "single" | "toggle" | "range") => void;
   onMove: (delta: number) => void;
@@ -92,6 +96,7 @@ export interface FilePanelProps {
   onOpenTab: (panelId: PanelId) => void;
   onOpenTerminal?: () => void;
   terminalDisabled?: boolean;
+  fileTypeColorRules?: string;
 }
 
 export function FilePanel({
@@ -101,6 +106,7 @@ export function FilePanel({
   active,
   onActivate,
   onNavigate,
+  locationTargets,
   onSelect,
   onEntrySelect,
   onMove,
@@ -133,6 +139,7 @@ export function FilePanel({
   onOpenTab,
   onOpenTerminal,
   terminalDisabled,
+  fileTypeColorRules,
 }: FilePanelProps) {
   const { client } = useShell();
   const {
@@ -141,6 +148,7 @@ export function FilePanel({
     setPaneActiveSession,
     openAdditionalPaneTab,
   } = useTerminal();
+  const { tagColorsForEntry } = useTags();
   const paneChrome = terminal.pane[panelId];
   const paneHasSessions = terminal.sessions.some(
     (session) => session.paneId === panelId,
@@ -151,36 +159,63 @@ export function FilePanel({
   const selectedCount = countOperationalSelection(tab);
   const gitStatus = usePaneGitStatus(client, tab.uri);
 
+  const tagMap = useMemo(() => {
+    const map: Record<string, import("../utils/tagStore").TagColor[]> = {};
+    for (const entry of displayedEntries) {
+      const colors = tagColorsForEntry(entry.uri);
+      if (colors.length > 0) {
+        map[entry.uri] = colors;
+      }
+    }
+    return map;
+  }, [displayedEntries, tagColorsForEntry]);
+
   const selectedEntry =
     displayedEntries.find((entry) => entry.uri === tab.selectedId) ?? null;
   const [inlineRenameUri, setInlineRenameUri] = useState<string | null>(null);
-  const [columnWidths, setColumnWidths] =
-    useState<ColumnWidths>(storedColumnWidths);
-  const [visibleColumns, setVisibleColumns] =
-    useState<VisibleColumns>(storedVisibleColumns);
+  const [columnWidths, setColumnWidths] = useState<ColumnWidths>(() =>
+    storedColumnWidths(panelId),
+  );
+  const [visibleColumns, setVisibleColumns] = useState<VisibleColumns>(() =>
+    storedVisibleColumns(panelId),
+  );
 
-  const handleToggleColumn = useCallback((columnId: ColumnId) => {
-    if (columnId === "name") return;
-    setVisibleColumns((prev) => {
-      const next =
-        prev.indexOf(columnId) !== -1
-          ? (prev.filter((id) => id !== columnId) as VisibleColumns)
-          : ([...prev, columnId] as VisibleColumns);
-      persistVisibleColumns(next);
-      return next;
-    });
-  }, []);
+  const handleColumnReorder = useCallback(
+    (fromIndex: number, toIndex: number) => {
+      setVisibleColumns((prev) => {
+        const next = reorderVisibleColumns(prev, fromIndex, toIndex);
+        persistVisibleColumns(next, panelId);
+        return next;
+      });
+    },
+    [panelId],
+  );
+
+  const handleToggleColumn = useCallback(
+    (columnId: ColumnId) => {
+      if (columnId === "name") return;
+      setVisibleColumns((prev) => {
+        const next =
+          prev.indexOf(columnId) !== -1
+            ? (prev.filter((id) => id !== columnId) as VisibleColumns)
+            : ([...prev, columnId] as VisibleColumns);
+        persistVisibleColumns(next, panelId);
+        return next;
+      });
+    },
+    [panelId],
+  );
   const { dragOver, reset, dragTargetProps } = useFileOctopusDragTarget();
 
   const handleColumnResize = useCallback(
     (columnId: ColumnId, newWidth: number) => {
       setColumnWidths((prev) => {
         const next = { ...prev, [columnId]: Math.max(30, newWidth) };
-        persistColumnWidths(next);
+        persistColumnWidths(next, panelId);
         return next;
       });
     },
-    [],
+    [panelId],
   );
 
   useEffect(() => {
@@ -211,6 +246,8 @@ export function FilePanel({
         pathError={tab.error}
         pathFocusToken={pathFocusToken}
         onNavigate={onNavigate}
+        onActivate={onActivate}
+        locationTargets={locationTargets}
         onBreadcrumbContextMenu={onBreadcrumbContextMenu}
         onOpenTerminal={onOpenTerminal}
         terminalDisabled={terminalDisabled}
@@ -324,8 +361,10 @@ export function FilePanel({
               panelId={panelId}
               columnWidths={columnWidths}
               visibleColumns={visibleColumns}
+              fileTypeColorRules={fileTypeColorRules}
               onToggleColumn={handleToggleColumn}
               onColumnResize={handleColumnResize}
+              onColumnReorder={handleColumnReorder}
               onCancelInlineRename={() => setInlineRenameUri(null)}
               onSubmitInlineRename={(entryUri, newName) => {
                 const entry = tab.entriesById[entryUri];
@@ -355,6 +394,7 @@ export function FilePanel({
                   entry,
                 });
               }}
+              tagMap={tagMap}
             />
           )}
           <RecursiveSearchPanel

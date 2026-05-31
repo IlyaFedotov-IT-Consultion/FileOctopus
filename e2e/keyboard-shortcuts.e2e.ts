@@ -40,7 +40,7 @@ test.describe("Keyboard shortcuts", () => {
       );
       await input.fill("rename");
       const items = page.locator(".fo-command-palette-item");
-      await expect(items).toHaveCount(1);
+      await expect(items).toHaveCount(2);
       await expect(items.first()).toContainText("Rename");
     });
 
@@ -149,9 +149,9 @@ test.describe("Keyboard shortcuts", () => {
     });
   });
 
-  test.describe("Ctrl+N — New folder", () => {
-    test("opens create folder dialog with Ctrl+N", async ({ page }) => {
-      await shellPress(page, "Control+n");
+  test.describe("F7 — New folder", () => {
+    test("opens create folder dialog with F7", async ({ page }) => {
+      await shellPress(page, "F7");
       await expect(page.locator(".fo-dialog")).toBeVisible();
     });
   });

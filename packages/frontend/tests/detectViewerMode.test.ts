@@ -28,4 +28,32 @@ describe("detectViewerMode", () => {
   it("returns text for null entry", () => {
     expect(detectViewerMode(null)).toBe("text");
   });
+
+  it("returns media for audio extensions", () => {
+    expect(detectViewerMode(entry("song.mp3"))).toBe("media");
+    expect(detectViewerMode(entry("podcast.ogg"))).toBe("media");
+    expect(detectViewerMode(entry("ringtone.wav"))).toBe("media");
+    expect(detectViewerMode(entry("track.flac"))).toBe("media");
+    expect(detectViewerMode(entry("audio.aac"))).toBe("media");
+    expect(detectViewerMode(entry("sound.m4a"))).toBe("media");
+  });
+
+  it("returns media for video extensions", () => {
+    expect(detectViewerMode(entry("clip.mp4"))).toBe("media");
+    expect(detectViewerMode(entry("movie.webm"))).toBe("media");
+    expect(detectViewerMode(entry("video.mkv"))).toBe("media");
+    expect(detectViewerMode(entry("film.avi"))).toBe("media");
+    expect(detectViewerMode(entry("show.mov"))).toBe("media");
+    expect(detectViewerMode(entry("recording.m4v"))).toBe("media");
+  });
+
+  it("returns pdf for PDF files", () => {
+    expect(detectViewerMode(entry("document.pdf"))).toBe("pdf");
+    expect(detectViewerMode(entry("report.PDF"))).toBe("pdf");
+    expect(detectViewerMode(entry("manual.Pdf"))).toBe("pdf");
+  });
+
+  it("prioritizes pdf over text for .pdf extension", () => {
+    expect(detectViewerMode(entry("readme.pdf"))).toBe("pdf");
+  });
 });

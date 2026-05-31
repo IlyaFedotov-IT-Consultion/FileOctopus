@@ -2,7 +2,7 @@
 
 Extracted from: UI Design Spec, MVP Engineering Spec, ui.md, frontend.md, Sprint 4 Backlog, Sprint 5 Backlog, Sprint 5 Release Notes.
 
-**Status alignment:** See [PROJECT_STATUS_AND_DOC_ALIGNMENT.md](./PROJECT_STATUS_AND_DOC_ALIGNMENT.md) for what is implemented in the codebase as of 2026-05-16. Section 13 below reflects that snapshot.
+**Status alignment:** See [PROJECT_STATUS_AND_DOC_ALIGNMENT.md](./PROJECT_STATUS_AND_DOC_ALIGNMENT.md) for what is implemented in the codebase as of 2026-05-27. Section 13 below reflects that snapshot.
 
 Each item is marked **specified** (explicitly defined in docs with detail) or **suggested** (implied, mentioned as TODO/stretch, or described loosely without full spec).
 
@@ -17,7 +17,7 @@ Each item is marked **specified** (explicitly defined in docs with detail) or **
 - **Command palette button** — specified (UI Design Spec §1, "Optional global command palette button")
 - **Help → Diagnostics** — specified (Sprint 5 FO-0206: "Add `Help -> Diagnostics` or equivalent diagnostics access point")
 - **Help → Shortcuts** — specified (Sprint 5 FO-0225: "Add menu/help entry")
-- **Sync/health indicator** — suggested (UI Design Spec §1, "Optional sync/health indicator")
+- **Sync/health indicator** — suggested; implemented for Git, remote connection, and operation error state (UI Design Spec §1, "Optional sync/health indicator")
 
 ### Context Menus — File/Folder (Right-click on item)
 
@@ -135,15 +135,19 @@ Each item is marked **specified** (explicitly defined in docs with detail) or **
 
 ### Sections
 
-- **General** — specified (UI Design Spec §Preferences)
-- **Appearance** — specified (UI Design Spec §Preferences, Sprint 5 FO-0221)
-- **Files & Folders** — specified (UI Design Spec §Preferences)
-- **Operations** — specified (UI Design Spec §Preferences)
-- **Shortcuts** — specified (UI Design Spec §Preferences)
-- **Advanced** — specified (UI Design Spec §Preferences)
-- **Layout** — specified (Sprint 5 FO-0221)
-- **Diagnostics** — specified (Sprint 5 FO-0221)
-- **File List** — specified (Sprint 5 FO-0221)
+- **General** — specified (UI Design Spec §Preferences) — **implemented**
+- **Display** (Appearance) — specified (UI Design Spec §Preferences, Sprint 5 FO-0221) — **implemented**
+- **Colors** — specified (Sprint 5 FO-0221) — **implemented**
+- **Layout** — specified (Sprint 5 FO-0221) — **implemented**
+- **Layout Profiles** — specified (Sprint 5 FO-0221) — **implemented**
+- **File List** — specified (Sprint 5 FO-0221) — **implemented**
+- **Operations** (Files & Folders) — specified (UI Design Spec §Preferences) — **implemented**
+- **Terminal** — specified — **implemented**
+- **Shortcuts** (Keyboard) — specified (UI Design Spec §Preferences) — **implemented**
+- **Advanced** — specified (UI Design Spec §Preferences) — **implemented** (SET-ADV `05b31a7`)
+- **Network** — specified (UI Design Spec §Preferences) — **implemented** (SET-NET `01748a3`)
+- **Editor** — specified (UI Design Spec §Preferences) — **implemented** (SET-EDIT `9bfe938`)
+- **Viewer** — specified (UI Design Spec §Preferences) — **implemented** (SET-VIEW `7243e03`)
 
 ### Individual Settings Fields
 
@@ -382,7 +386,7 @@ Example: `Ready · 2 selected · 8 items · 82.3 MB selected · No errors`
 
 ---
 
-## 13. Implementation snapshot (2026-05-23)
+## 13. Implementation snapshot (2026-05-30)
 
 ### Delivered after Sprint 5 (codebase)
 
@@ -396,20 +400,60 @@ Example: `Ready · 2 selected · 8 items · 82.3 MB selected · No errors`
 - **Overflow toolbar** — Reveal, Calculate Size, Open Terminal (external emulator), Compress/Extract/Checksum menus present
 - **Settings** — General (autostart), Appearance (theme, density, accent, font/icon scale), Files & Folders, Layout, Operations (confirm delete/overwrite, conflict policy, trash behavior), Diagnostics, Shortcuts
 - **Shortcuts** — Ctrl/Cmd+I (properties), Ctrl/Cmd+H and Ctrl/Cmd+. for hidden files
-- **Application menu bar shell** (`MenuBar` in title bar)
-- **Zip compress/extract** via toolbar and context menu (`useArchiveHandlers`)
+- **Application menu bar shell** (`MenuBar` in title bar) plus native Tauri menu bridge
+- **Zip/tar archive create/extract** via toolbar and context menu (`useArchiveHandlers`)
 - **Embedded terminal panel** — local + SSH PTY, pane bottom split, tabs, maximize/close, shell prefs (`terminal-core`)
 - **Built-in F3 viewer + F4 editor** — shared syntax highlighting
 - **SFTP network profiles** — remote VFS, sidebar badges, status events, host-key fingerprint TOFU
+- **Network sidebar deduplication** — saved SFTP/SSH profiles render in the dedicated Network section only
+- **First-run overlay** — dismissible initial welcome flow persisted in localStorage with entry points into Settings, Shortcuts, and Network
+- **Title bar sync/health indicator** — active Git repo state, remote connection state, and operation error health pills
 - **Performance smoke** — `pnpm perf:smoke` command
 - **Command registry refactor** — derive `CommandId` from as-const registry, dispatch exhaustiveness test
 
 ### Still not implemented (specified)
 
-- **First-run overlay** — stretch, not built
-- **Videos sidebar entry, network locations, "This Week" recent group** — partial (API has `thisWeek` bucket; UI grouping may vary)
-- **Title bar sync/health indicator** — optional, not built
-- **PDF/media/EXIF preview expansion** — broader product expansion than current RC image-preview scope
+- **EXIF metadata display** — Properties dialog EXIF tab; post-RC visual expansion
+- **Rubber-band (lasso) select** — requires virtual-scroll-aware coordinate math; deferred (P3-6)
+- **Keyboard-navigable dropdown menus** — arrow-key navigation in toolbar/MenuBar dropdowns (context menu sort submenu done)
+
+### In progress (2026-05-29) — Commander Visual Identity
+
+- **Theme registry** — data-driven `THEMES` replacing hardcoded `system/light/dark`
+- **Commander Blue theme** — opt-in retro skin (token overrides; core surfaces)
+- **Function-key bar F1–F10** — extend existing F2–F9 commander bar with F1 Help + F10 Menu, theme-aware retro skin
+- Design: `docs/superpowers/specs/2026-05-29-commander-visual-identity-design.md`; plan: `docs/archive/2026-05-26-commander-features-expansion.md` Task 12
+
+### Delivered since last snapshot (2026-05-23 → 2026-05-27)
+
+- **PDF preview** — pdf.js canvas rendering with page navigation, zoom, and error fallback (PDF-1)
+- **Advanced settings tab** — log level, experimental features toggle, cache size, thread count (SET-ADV)
+- **Network settings tab** — connection timeout, auto-reconnect, default protocol, SSH key path (SET-NET)
+- **Editor settings tab** — font family/size, tab size, word wrap, auto-save, syntax highlighting, line numbers (SET-EDIT)
+- **Viewer settings tab** — default view mode, image zoom, media autoplay, max preview file size (SET-VIEW)
+- **Settings dialog polish** — search/filter bar, section descriptions, consistent accessibility labels (SET-POLISH)
+- **Performance benchmark capture** — `docs/performance.md` with large-directory and file-operation timings (PERF-2)
+- **Audio/video media preview** — HTML5 controls for 19 audio/video extensions (P2-13)
+- **Saved searches / smart folders** — sidebar section with save/open/rename/remove, localStorage (P2-14)
+- **Archive browsing** — browse zip/tar contents without extraction (P2-16)
+- **Tag/label system** — color tags, context menu Tags submenu, FileRow badges, localStorage (TAG-1)
+- **SMB/S3 remote providers** — full provider crates, VFS registration, frontend UI wiring (RMT-1)
+- **Job pause/resume** — backend job.pause IPC + UI buttons (P3-3)
+- **Eject/unmount** — safely eject removable volumes from sidebar (P3-2)
+- **Dual pane vertical split** — toggle between horizontal and vertical split (P3-4)
+- **Storage gauge** — disk usage bar in status bar (P3-5)
+- **Column reorder** — drag column headers, persisted in localStorage (P3-1)
+- **Rich Copy To / Move To** — tree browser destination chooser (P1-3)
+- **Image preview** — gallery prev/next, image dimensions, viewer footer (P1-4)
+- **Symlink indicator** — badge + copy/move warning (P2-12)
+- **Checksum verification UI** — on-demand SHA-256 + expected hash + match/mismatch in Properties (P2-15)
+- **E2E reliability** — 165 pass, 27 conditional skips, 0 failures (E2E-1)
+- **Test coverage audit** — 22 new tests across recent features (TEST-1)
+- **SMB/S3 integration test validation** — provider crate test coverage confirmed (TEST-2)
+- **Cloud providers** — Google Drive, Dropbox, OneDrive connector crates + VFS registration + OAuth auth (CLOUD-1)
+- **Plugin marketplace** — plugin loader, manifest schema, sandboxed execution, UI marketplace browser (PLUG-1)
+- **File content diff/merge** — side-by-side diff view, merge conflict resolution UI, inline change markers (DIFF-1)
+- **Advanced ACL editing** — POSIX permission matrix UI, recursive apply (ACL-1)
 
 ### Fixed doc drift (previously listed as not implemented, now done)
 
@@ -418,10 +462,12 @@ Example: `Ready · 2 selected · 8 items · 82.3 MB selected · No errors`
 - **Remember last panes / last-path restore** — ✅ implemented (`layoutStore` persists pane paths and active tab IDs on startup; P2-4 `d08d97d`)
 - **VfsProvider write methods** — ✅ implemented (create_directory, create_file, rename, remove, copy_file, read_file_prefix across `vfs`/`fs-core`/`provider-sftp`; 2026-05-22)
 - **Image preview in PreviewPanel** — ✅ implemented (`fs_read_image` IPC handler, `ViewerImageMode`, `PreviewPanel` image support; RC-IMG `d74e917`)
+- **Diagnostics export location preference** — ✅ implemented (`diagnosticsExportPath` preference feeds Diagnostics dialog export destination)
+- **Tar/non-zip archive formats** — ✅ implemented for `.tar`, `.tar.gz`/`.tgz`, and `.tar.bz2`/`.tbz2` in `fs-core/file_ops/archive.rs`
 
 ### Previously listed as not implemented, now done (2026-05-17)
 
-- **Application menu bar** (File/Edit/View/Go/…) — ✅ implemented (MenuBar component with full dropdown menus)
+- **Application menu bar** (File/Edit/View/Go/…) — ✅ implemented (MenuBar component with full dropdown menus and native Tauri menu bridge)
 - **Tabs per panel** — ✅ implemented (`TabBar` plus `openTab` / `closeTab` / `switchTab`; session restore remains pending)
 - **Compress / Extract** — ✅ wired with real IPC (`useArchiveHandlers.ts` → `planOperation("createArchive"/"extractArchive")` → job system)
 - **Checksum toolbar** — ✅ wired with real IPC (`handleChecksum` → `client.fs.computeHash` → SHA-256 toast + hash column update)
@@ -431,7 +477,7 @@ Example: `Ready · 2 selected · 8 items · 82.3 MB selected · No errors`
 
 ### Out of MVP scope (unchanged)
 
-- **File content diff/merge**, **plugin marketplace**, **cloud providers**, **AI semantic search**, **advanced ACL editing**
+- **AI semantic search**, **P2P sync** — intentionally deferred (RC spec §3.3)
 
 ---
 
@@ -443,7 +489,7 @@ Example: `Ready · 2 selected · 8 items · 82.3 MB selected · No errors`
 | Context menu items (file)            | 10        | 1         |
 | Context menu items (empty space)     | 8         | 0         |
 | Context menu items (sidebar)         | 3         | 0         |
-| Dialogs                              | 12        | 2         |
+| Dialogs                              | 20        | 1         |
 | Sidebar sections/entries             | 14        | 1         |
 | Toolbar buttons (primary)            | 10        | 0         |
 | Toolbar buttons (secondary/overflow) | 10        | 0         |
@@ -457,4 +503,4 @@ Example: `Ready · 2 selected · 8 items · 82.3 MB selected · No errors`
 | Activity panel features              | 12        | 0         |
 | Pane states                          | 7         | 0         |
 | Toast notification types             | 3         | 0         |
-| Additional UI features               | 20+       | 3         |
+| Additional UI features               | 20+       | 1         |

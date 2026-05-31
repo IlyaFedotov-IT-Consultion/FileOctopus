@@ -11,6 +11,13 @@ const DIALOGS_PATH = path.resolve(
   "../src/styles/regions/dialogs.css",
 );
 const SHARED_PATH = path.resolve(__dirname, "../src/styles/regions/shared.css");
+const COMPONENTS_PATH = path.resolve(__dirname, "../../ui/src/components.css");
+const BASE_PATH = path.resolve(__dirname, "../src/styles/regions/base.css");
+const JOBS_PATH = path.resolve(__dirname, "../src/styles/regions/jobs.css");
+const SIDEBAR_PATH = path.resolve(
+  __dirname,
+  "../src/styles/regions/sidebar.css",
+);
 
 describe("Design token architecture", () => {
   const tokensContent = fs.readFileSync(TOKENS_PATH, "utf-8");
@@ -19,6 +26,10 @@ describe("Design token architecture", () => {
   const shellContent = fs.readFileSync(SHELL_PATH, "utf-8");
   const dialogsContent = fs.readFileSync(DIALOGS_PATH, "utf-8");
   const sharedContent = fs.readFileSync(SHARED_PATH, "utf-8");
+  const componentsContent = fs.readFileSync(COMPONENTS_PATH, "utf-8");
+  const jobsContent = fs.readFileSync(JOBS_PATH, "utf-8");
+  const sidebarContent = fs.readFileSync(SIDEBAR_PATH, "utf-8");
+  const baseContent = fs.readFileSync(BASE_PATH, "utf-8");
 
   const BASE_TOKENS = [
     "--fo-text",
@@ -180,6 +191,225 @@ describe("Design token architecture", () => {
     }
   });
 
+  it("defines the commander-blue theme across token layers", () => {
+    expect(
+      tokensContent.indexOf('[data-theme="commander-blue"]') !== -1,
+      "tokens.css missing commander-blue block",
+    ).toBe(true);
+    expect(
+      shellContent.indexOf('[data-theme="commander-blue"] .fo-shell') !== -1,
+      "shell.css missing commander-blue chrome block",
+    ).toBe(true);
+  });
+
+  it("tokenizes the commander bar / status bar surfaces", () => {
+    for (const token of [
+      "--fo-statusbar-bg",
+      "--fo-commander-bar-bg",
+      "--fo-commander-keycap-bg",
+    ]) {
+      expect(
+        shellContent.indexOf(token) !== -1,
+        `shell.css missing commander surface token ${token}`,
+      ).toBe(true);
+    }
+  });
+
+  it("defines the premium-polish tokens (typography, chrome, focus, motion)", () => {
+    const newTokens = [
+      "--fo-font-size-xs",
+      "--fo-font-size-md",
+      "--fo-font-size-xl",
+      "--fo-line-tight",
+      "--fo-radius-xs",
+      "--fo-chrome-hover-bg",
+      "--fo-chrome-hover-text",
+      "--fo-focus-ring",
+      "--fo-motion-fast",
+    ];
+    for (const token of newTokens) {
+      expect(
+        tokensContent.indexOf(token) !== -1,
+        `Token ${token} missing from tokens.css (UPP-H1/A1/A2/H2/J1)`,
+      ).toBe(true);
+    }
+  });
+
+  it("overrides chrome-hover tokens for light and commander-blue themes", () => {
+    // Appears once in :root (dark default) plus once per overriding theme.
+    const occurrences = (tokensContent.match(/--fo-chrome-hover-bg:/g) || [])
+      .length;
+    expect(
+      occurrences >= 3,
+      `--fo-chrome-hover-bg should be overridden per theme (found ${occurrences}, expected >= 3)`,
+    ).toBe(true);
+  });
+
+  it("tokenizes the shell topbar/menubar chrome (no hard-coded dark hex)", () => {
+    // The light-theme dark-titlebar bug came from these literals.
+    expect(shellContent).not.toContain("background: #3c3c3c");
+    expect(shellContent).not.toContain("background: #505050");
+    expect(shellContent).not.toContain("color: #cccccc");
+    // Chrome now resolves through theme tokens.
+    expect(shellContent).toContain("background: var(--fo-titlebar-bg)");
+    expect(shellContent).toContain("var(--fo-chrome-hover-bg)");
+  });
+
+  it("converges UI primitive focus rings onto the focus-ring tokens (UPP-A2)", () => {
+    // All three focus-visible rules (button, input, segmented) use the tokens.
+    const ringRuleCount = (
+      componentsContent.match(/var\(--fo-focus-ring-width\)/g) || []
+    ).length;
+    expect(
+      ringRuleCount >= 3,
+      `components.css should use --fo-focus-ring-width for button/input/segmented focus (found ${ringRuleCount})`,
+    ).toBe(true);
+  });
+
+  it("provides a .fo-focusable utility class for keyboard focus (UPP-A2)", () => {
+    expect(
+      componentsContent,
+      "components.css should contain .fo-focusable:focus-visible rule",
+    ).toContain(".fo-focusable:focus-visible");
+    expect(
+      componentsContent,
+      ".fo-focusable should use --fo-focus-ring box-shadow",
+    ).toMatch(
+      /\.fo-focusable:focus-visible\s*\{[^}]*box-shadow:\s*var\(--fo-focus-ring\)/s,
+    );
+  });
+
+  it("unifies dialog/settings focus-visible onto --fo-focus-ring (UPP-A2 follow-up)", () => {
+    // After the 2026-05-30 unification, dialog and settings field focus-visible
+    // rules should use box-shadow: var(--fo-focus-ring) instead of outline + color-mix.
+    const dialogFocusBlocks =
+      dialogsContent.match(/:focus-visible\s*\{[^}]*\}/g) || [];
+    const outlineBased = dialogFocusBlocks.filter(
+      (b) => b.includes("outline:") && !b.includes("outline: none"),
+    );
+    expect(
+      outlineBased,
+      `dialogs.css focus-visible rules should not use outline (found ${outlineBased.length}: ${outlineBased.join(" | ")})`,
+    ).toHaveLength(0);
+  });
+
+  it("derives the primary-button hover from the active accent (no pinned blue)", () => {
+    // The old #006bb3 only matched the default-blue accent; hover is now
+    // derived from var(--fo-accent) so all seven accent swatches work.
+    expect(componentsContent).not.toContain("#006bb3");
+    expect(componentsContent).toContain("color-mix(in srgb, var(--fo-accent)");
+  });
+
+  it("tokenizes the status-bar foreground in shell.css", () => {
+    expect(shellContent).toContain("--fo-statusbar-fg:");
+    expect(shellContent).toContain("color: var(--fo-statusbar-fg)");
+    expect(shellContent).not.toMatch(/font-size:\s*\d+px/);
+  });
+
+  it("frames the active pane with the accent (UPP-C1, UI spec §3.2)", () => {
+    // Active pane must be unmistakable: accent border + accent inset strip,
+    // not the old near-invisible --fo-tab-bg outline.
+    const activeRule = paneContent.slice(
+      paneContent.indexOf('.fo-panel[data-active="true"]'),
+    );
+    expect(activeRule).toContain("border-color: var(--fo-accent)");
+    expect(activeRule).toContain("inset 0 2px 0 0 var(--fo-accent)");
+    // The active pane label is accent-tinted to mark the keyboard target.
+    expect(paneContent).toContain(
+      '.fo-panel[data-active="true"] .fo-tab-pane-label',
+    );
+  });
+
+  it("defines theme-derived status surface tokens (UPP-H1)", () => {
+    for (const token of [
+      "--fo-success-bg",
+      "--fo-success-border",
+      "--fo-warning-bg",
+      "--fo-warning-border",
+    ]) {
+      expect(
+        tokensContent.indexOf(token) !== -1,
+        `Status surface token ${token} missing from tokens.css`,
+      ).toBe(true);
+    }
+  });
+
+  it("jobs.css uses semantic tokens instead of hardcoded hex", () => {
+    const matches = jobsContent.match(/#[0-9a-fA-F]{3,8}\b/g);
+    expect(
+      matches,
+      `jobs.css should use tokens instead of hex (${matches?.join(", ") ?? "none"})`,
+    ).toBeNull();
+  });
+
+  it("sidebar.css uses semantic tokens instead of hardcoded hex", () => {
+    const matches = sidebarContent.match(/#[0-9a-fA-F]{3,8}\b/g);
+    expect(
+      matches,
+      `sidebar.css should use tokens instead of hex (${matches?.join(", ") ?? "none"})`,
+    ).toBeNull();
+  });
+
+  it("makes elevation tokens theme-aware and consolidates popover shadows (UPP-D1)", () => {
+    // Elevation tokens now draw their shadow colour from the per-theme
+    // --fo-menu-shadow / --fo-dialog-shadow rather than a fixed rgba.
+    expect(tokensContent).toContain(
+      "--fo-elevation-popover: 0 8px 24px var(--fo-menu-shadow)",
+    );
+    // Menus/popovers reference the token instead of inlining a shadow literal.
+    expect(componentsContent).toContain(
+      "box-shadow: var(--fo-elevation-popover)",
+    );
+    expect(componentsContent).not.toContain(
+      "box-shadow: 0 8px 20px var(--fo-menu-shadow)",
+    );
+  });
+
+  it("all menu surfaces use --fo-elevation-popover (UPP-D1 strict)", () => {
+    const allCss = [
+      paneContent,
+      shellContent,
+      dialogsContent,
+      sidebarContent,
+      componentsContent,
+      sharedContent,
+      baseContent,
+      jobsContent,
+    ].join("\n");
+
+    // No menu-like surface should inline a raw box-shadow with menu-shadow.
+    // Allowed patterns: var(--fo-elevation-popover), var(--fo-elevation-modal),
+    // var(--fo-elevation-drawer), var(--fo-dialog-shadow).
+    const inlineShadowPattern =
+      /box-shadow:\s*\d+px\s+\d+px\s+\d+px\s+var\(--fo-menu-shadow/g;
+    const matches = allCss.match(inlineShadowPattern);
+    expect(
+      matches,
+      `Menu surfaces should use --fo-elevation-popover, not inline shadows (${matches?.length ?? 0} found)`,
+    ).toBeNull();
+  });
+
+  it("dialogs.css hex is limited to the classic-skin palette defs", () => {
+    // Every remaining hex literal must be a --fo-classic-* palette definition
+    // (the dialog retro skin, analogous to shell's classic tokens). All other
+    // colors resolve through semantic tokens.
+    const hexLines = dialogsContent
+      .split("\n")
+      .filter((line) => /#[0-9a-fA-F]{3,8}\b/.test(line));
+    for (const line of hexLines) {
+      expect(
+        line.includes("--fo-classic-"),
+        `Unexpected hardcoded hex in dialogs.css: ${line.trim()}`,
+      ).toBe(true);
+    }
+  });
+
+  it("honours prefers-reduced-motion globally (UPP-J1/I2)", () => {
+    expect(baseContent).toContain("@media (prefers-reduced-motion: reduce)");
+    expect(baseContent).toMatch(/animation-duration:\s*0\.01ms\s*!important/);
+    expect(baseContent).toMatch(/transition-duration:\s*0\.01ms\s*!important/);
+  });
+
   it("accent color variants are defined", () => {
     const accents = [
       "indigo",
@@ -234,8 +464,7 @@ describe("Design token architecture", () => {
   });
 
   it("dialog chrome follows VS Code workbench styling", () => {
-    expect(dialogsContent).toContain("--fo-classic-face: #252526");
-    expect(dialogsContent).toContain("--fo-classic-title: #007acc");
+    expect(shellContent).toContain("--fo-classic-title: #007acc");
     expect(dialogsContent).toContain("border-radius: 0");
     expect(dialogsContent).toContain(
       "box-shadow: 0 12px 32px var(--fo-dialog-shadow)",

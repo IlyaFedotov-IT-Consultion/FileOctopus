@@ -1,5 +1,14 @@
 import { expect, test } from "@playwright/test";
 
+/**
+ * E2E tests for the sidebar context menu on pinned/favorite entries.
+ *
+ * Skip category: requires runtime favorites state.
+ * These tests are conditionally skipped when no Pinned favorites exist
+ * in the sidebar (Vite preview mode has no persisted favorites).
+ * They pass when run against a Tauri app with user-pinned favorites.
+ */
+
 const SIDEBAR_SELECTOR = "aside.fo-sidebar";
 const SIDEBAR_MENU_SELECTOR = ".fo-sidebar-context-menu";
 const BACKDROP_SELECTOR = ".fo-sidebar-menu-backdrop";
@@ -23,15 +32,16 @@ test.describe("Sidebar context menu", () => {
   test("right-clicking a pinned/favorite entry shows context menu with 3 items", async ({
     page,
   }) => {
-    const pinnedItems = page.locator(
-      ".fo-sidebar-section >> text=Pinned >> .. >> .fo-sidebar-item",
+    const section = page.locator(
+      ".fo-sidebar-section:has(.fo-sidebar-section-title:text-is('Pinned'))",
     );
+    const pinnedItems = section.locator(".fo-sidebar-item");
     const count = await pinnedItems.count();
 
-    if (count === 0) {
-      test.skip();
-      return;
-    }
+    test.skip(
+      count === 0,
+      "No Pinned favorites visible — requires user-pinned entries",
+    );
 
     await pinnedItems.first().click({ button: "right" });
 
@@ -51,34 +61,36 @@ test.describe("Sidebar context menu", () => {
     const section = page.locator(
       ".fo-sidebar-section:has(.fo-sidebar-section-title:text-is('Pinned'))",
     );
-    let pinnedItems = section.locator(".fo-sidebar-item");
+    const pinnedItems = section.locator(".fo-sidebar-item");
     const initialCount = await pinnedItems.count();
 
-    if (initialCount === 0) {
-      test.skip();
-      return;
-    }
+    test.skip(
+      initialCount === 0,
+      "No Pinned favorites visible — requires user-pinned entries",
+    );
 
     const targetItem = pinnedItems.first();
     const targetLabel = await targetItem.textContent();
 
     await targetItem.click({ button: "right" });
 
-    const removeBtn = page.locator(
-      `${SIDEBAR_MENU_SELECTOR} >> text=Remove Favorite`,
-    );
+    const removeBtn = page
+      .locator(SIDEBAR_MENU_SELECTOR)
+      .locator('[role="menuitem"]:has-text("Remove Favorite")');
     await expect(removeBtn).toBeVisible();
     await removeBtn.click();
 
     const menu = page.locator(SIDEBAR_MENU_SELECTOR);
     await expect(menu).toHaveCount(0);
 
-    pinnedItems = section.locator(".fo-sidebar-item");
-    const afterCount = await pinnedItems.count();
+    const pinnedItemsAfter = section.locator(".fo-sidebar-item");
+    const afterCount = await pinnedItemsAfter.count();
     expect(afterCount).toBe(initialCount - 1);
 
     if (targetLabel) {
-      const labels = (await pinnedItems.allTextContents()).map((t) => t.trim());
+      const labels = (await pinnedItemsAfter.allTextContents()).map((t) =>
+        t.trim(),
+      );
       expect(labels).not.toContain(targetLabel.trim());
     }
   });
@@ -92,16 +104,16 @@ test.describe("Sidebar context menu", () => {
     const pinnedItems = section.locator(".fo-sidebar-item");
     const count = await pinnedItems.count();
 
-    if (count === 0) {
-      test.skip();
-      return;
-    }
+    test.skip(
+      count === 0,
+      "No Pinned favorites visible — requires user-pinned entries",
+    );
 
     await pinnedItems.first().click({ button: "right" });
 
-    const revealBtn = page.locator(
-      `${SIDEBAR_MENU_SELECTOR} >> text=Reveal Path`,
-    );
+    const revealBtn = page
+      .locator(SIDEBAR_MENU_SELECTOR)
+      .locator('[role="menuitem"]:has-text("Reveal Path")');
     await expect(revealBtn).toBeVisible();
     await revealBtn.click();
 
@@ -116,10 +128,10 @@ test.describe("Sidebar context menu", () => {
     const pinnedItems = section.locator(".fo-sidebar-item");
     const count = await pinnedItems.count();
 
-    if (count === 0) {
-      test.skip();
-      return;
-    }
+    test.skip(
+      count === 0,
+      "No Pinned favorites visible — requires user-pinned entries",
+    );
 
     await pinnedItems.first().click({ button: "right" });
 
@@ -139,16 +151,16 @@ test.describe("Sidebar context menu", () => {
     const pinnedItems = section.locator(".fo-sidebar-item");
     const count = await pinnedItems.count();
 
-    if (count === 0) {
-      test.skip();
-      return;
-    }
+    test.skip(
+      count === 0,
+      "No Pinned favorites visible — requires user-pinned entries",
+    );
 
     await pinnedItems.first().click({ button: "right" });
 
-    const renameBtn = page.locator(
-      `${SIDEBAR_MENU_SELECTOR} >> text=Rename Favorite`,
-    );
+    const renameBtn = page
+      .locator(SIDEBAR_MENU_SELECTOR)
+      .locator('[role="menuitem"]:has-text("Rename Favorite")');
     await expect(renameBtn).toBeVisible();
     await renameBtn.click();
 

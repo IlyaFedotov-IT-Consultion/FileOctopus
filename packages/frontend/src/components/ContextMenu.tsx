@@ -6,7 +6,9 @@ import {
   type ReactNode,
 } from "react";
 import type { FileEntryDto } from "@fileoctopus/ts-api";
+import { MenuSurface } from "@fileoctopus/ui";
 import type { PanelId, SortField, ViewMode } from "../panelStore";
+import type { TagColor } from "../utils/tagStore";
 import { buildBreadcrumbMenu } from "../menus/context/buildBreadcrumbMenu";
 import { buildFileEntryMenu } from "../menus/context/buildFileEntryMenu";
 import { buildPaneBackgroundMenu } from "../menus/context/buildPaneBackgroundMenu";
@@ -62,6 +64,9 @@ interface ContextMenuProps {
   onCopyBreadcrumbPath: (path: string) => void;
   onRevealBreadcrumb: (path: string) => void;
   onAddFavorite: (uri: string) => void;
+  onAssignTag?: (entry: FileEntryDto, color: TagColor) => void;
+  onRemoveTag?: (entry: FileEntryDto, color: TagColor) => void;
+  entryTagColors?: TagColor[];
 }
 
 export function ContextMenu({
@@ -107,6 +112,9 @@ export function ContextMenu({
   onCopyBreadcrumbPath,
   onRevealBreadcrumb,
   onAddFavorite,
+  onAssignTag,
+  onRemoveTag,
+  entryTagColors,
 }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{
@@ -212,7 +220,7 @@ export function ContextMenu({
       onKeyDown={handleKeyDown}
       role="presentation"
     >
-      <div
+      <MenuSurface
         ref={menuRef}
         className="fo-context-menu"
         role="menu"
@@ -225,7 +233,7 @@ export function ContextMenu({
         onClick={(event) => event.stopPropagation()}
       >
         {content}
-      </div>
+      </MenuSurface>
     </div>
   );
 
@@ -300,6 +308,9 @@ export function ContextMenu({
       onClearSelection,
       onViewMode,
       onSort,
+      onAssignTag,
+      onRemoveTag,
+      entryTagColors,
     }),
   );
 }
