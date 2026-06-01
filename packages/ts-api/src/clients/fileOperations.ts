@@ -22,7 +22,6 @@ import {
   JOB_RESUMED_EVENT,
   JOB_STARTED_EVENT,
 } from "../events";
-import { normalizeIpcError } from "../normalizeError";
 import { requireListen } from "../requireListen";
 
 export class FileOperationsClient {
@@ -31,27 +30,19 @@ export class FileOperationsClient {
   async planFileOperation(
     request: PlanFileOperationRequest,
   ): Promise<PlanFileOperationResponse> {
-    try {
-      return await this.transport.invoke<PlanFileOperationResponse>(
-        "fileOperation.plan",
-        { request },
-      );
-    } catch (error) {
-      throw normalizeIpcError(error);
-    }
+    return this.transport.invoke<PlanFileOperationResponse>(
+      "fileOperation.plan",
+      { request },
+    );
   }
 
   async startFileOperation(
     request: StartFileOperationRequest,
   ): Promise<StartFileOperationResponse> {
-    try {
-      return await this.transport.invoke<StartFileOperationResponse>(
-        "fileOperation.start",
-        { request },
-      );
-    } catch (error) {
-      throw normalizeIpcError(error);
-    }
+    return this.transport.invoke<StartFileOperationResponse>(
+      "fileOperation.start",
+      { request },
+    );
   }
 
   onJobStarted(handler: (event: JobStartedEvent) => void): Promise<UnlistenFn> {

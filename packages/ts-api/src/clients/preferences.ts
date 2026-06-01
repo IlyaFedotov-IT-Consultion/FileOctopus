@@ -4,32 +4,18 @@ import type {
   SetPreferenceRequest,
   SetPreferenceResponse,
 } from "../types";
-import { normalizeIpcError } from "../normalizeError";
 
 export class PreferencesClient {
   constructor(private readonly transport: IpcTransport) {}
 
   async get(): Promise<GetPreferencesResponse> {
-    try {
-      return await this.transport.invoke<GetPreferencesResponse>(
-        "preferences.get",
-      );
-    } catch (error) {
-      throw normalizeIpcError(error);
-    }
+    return this.transport.invoke<GetPreferencesResponse>("preferences.get");
   }
 
   async set(request: SetPreferenceRequest): Promise<SetPreferenceResponse> {
-    try {
-      return await this.transport.invoke<SetPreferenceResponse>(
-        "preferences.set",
-        {
-          request,
-        },
-      );
-    } catch (error) {
-      throw normalizeIpcError(error);
-    }
+    return this.transport.invoke<SetPreferenceResponse>("preferences.set", {
+      request,
+    });
   }
 }
 

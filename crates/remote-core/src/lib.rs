@@ -1,7 +1,9 @@
+mod blocking;
 mod error;
 pub mod secrets;
 mod session;
 
+pub use blocking::run_blocking_io;
 pub use error::RemoteError;
 pub use secrets::{AuthSecrets, MISSING_STORED_PASSWORD};
 pub use session::{

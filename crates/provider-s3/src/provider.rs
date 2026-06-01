@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use remote_core::ConnectionSessionManager;
+use remote_core::{run_blocking_io, ConnectionSessionManager};
 use vfs::{
     DirectoryBatch, DirectorySink, FileKind, ListOptions, ProviderCapabilities, ProviderId,
     ResourceUri, VfsError, VfsProvider,
@@ -26,16 +26,11 @@ impl S3Provider {
 
     async fn session_for(&self, uri: &ResourceUri) -> Result<(String, S3Session), VfsError> {
         let profile_id = Self::profile_id_for_uri(uri)?;
-        let session = self
+        let s3_session = self
             .sessions
-            .session_for_profile(&profile_id)
+            .typed_session_for(&profile_id, "s3", S3Session::clone_handle)
             .await
             .map_err(VfsError::from)?;
-        let s3_session = session
-            .as_any()
-            .downcast_ref::<S3Session>()
-            .ok_or_else(|| VfsError::internal("invalid s3 session handle"))?
-            .clone_handle();
         Ok((profile_id, s3_session))
     }
 }
@@ -397,11 +392,7 @@ impl VfsProvider for S3Provider {
                 format!("{key}/")
             };
             let uri_clone = uri.clone();
-            tokio::task::spawn_blocking(move || {
-                remove_s3_tree_blocking(&session, &uri_clone, &prefix)
-            })
-            .await
-            .map_err(|error| VfsError::internal(&error.to_string()))??;
+            run_blocking_io(move || remove_s3_tree_blocking(&session, &uri_clone, &prefix)).await?;
         } else {
             session
                 .bucket()
