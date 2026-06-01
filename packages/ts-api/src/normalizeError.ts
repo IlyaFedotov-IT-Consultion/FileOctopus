@@ -1,5 +1,24 @@
 import { IPC_ERROR_CODES } from "./types";
-import type { IpcError } from "./types";
+import type { IpcError, IpcTransport } from "./types";
+
+/**
+ * Wrap a transport so every `invoke` rejection is normalised to an `IpcError`
+ * once, centrally. This removes the need for each client method to wrap its
+ * call in `try/catch { throw normalizeIpcError(error) }`. `listen` (and any
+ * other transport members) are preserved as-is.
+ */
+export function normalizeTransport(transport: IpcTransport): IpcTransport {
+  return {
+    ...transport,
+    async invoke<TResponse>(command: string, args?: Record<string, unknown>) {
+      try {
+        return await transport.invoke<TResponse>(command, args);
+      } catch (error) {
+        throw normalizeIpcError(error);
+      }
+    },
+  };
+}
 
 export function normalizeIpcError(error: unknown): IpcError {
   if (isIpcError(error)) {

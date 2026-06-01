@@ -14,104 +14,63 @@ import type {
   OkResponse,
 } from "../types";
 import { NETWORK_STATUS_EVENT } from "../events";
-import { normalizeIpcError } from "../normalizeError";
 import { requireListen } from "../requireListen";
 
 export class NetworkClient {
   constructor(private readonly transport: IpcTransport) {}
 
   async listProfiles(): Promise<NetworkProfilesListResponse> {
-    try {
-      return await this.transport.invoke("network.profilesList");
-    } catch (error) {
-      throw normalizeIpcError(error);
-    }
+    return this.transport.invoke("network.profilesList");
   }
 
   async addProfile(
     request: NetworkProfileAddRequest,
   ): Promise<NetworkProfileResponse> {
-    try {
-      return await this.transport.invoke("network.profileAdd", { request });
-    } catch (error) {
-      throw normalizeIpcError(error);
-    }
+    return this.transport.invoke("network.profileAdd", { request });
   }
 
   async updateProfile(
     request: NetworkProfileUpdateRequest,
   ): Promise<NetworkProfileResponse> {
-    try {
-      return await this.transport.invoke("network.profileUpdate", { request });
-    } catch (error) {
-      throw normalizeIpcError(error);
-    }
+    return this.transport.invoke("network.profileUpdate", { request });
   }
 
   async deleteProfile(
     request: NetworkProfileDeleteRequest,
   ): Promise<OkResponse> {
-    try {
-      return await this.transport.invoke("network.profileDelete", { request });
-    } catch (error) {
-      throw normalizeIpcError(error);
-    }
+    return this.transport.invoke("network.profileDelete", { request });
   }
 
   async setSecret(
     request: NetworkProfileSetSecretRequest,
   ): Promise<OkResponse> {
-    try {
-      return await this.transport.invoke("network.profileSetSecret", {
-        request,
-      });
-    } catch (error) {
-      throw normalizeIpcError(error);
-    }
+    return this.transport.invoke("network.profileSetSecret", {
+      request,
+    });
   }
 
   async connect(request: NetworkProfileActionRequest): Promise<OkResponse> {
-    try {
-      return await this.transport.invoke("network.connect", { request });
-    } catch (error) {
-      throw normalizeIpcError(error);
-    }
+    return this.transport.invoke("network.connect", { request });
   }
 
   async disconnect(request: NetworkProfileActionRequest): Promise<OkResponse> {
-    try {
-      return await this.transport.invoke("network.disconnect", { request });
-    } catch (error) {
-      throw normalizeIpcError(error);
-    }
+    return this.transport.invoke("network.disconnect", { request });
   }
 
   async connectionStatus(): Promise<NetworkConnectionStatusResponse> {
-    try {
-      return await this.transport.invoke("network.connectionStatus");
-    } catch (error) {
-      throw normalizeIpcError(error);
-    }
+    return this.transport.invoke("network.connectionStatus");
   }
 
   async discoverNeighborhood(
     request: NetworkNeighborhoodRequest,
   ): Promise<NetworkNeighborhoodResponse> {
-    try {
-      return await this.transport.invoke("network.discoverNeighborhood", {
-        request,
-      });
-    } catch (error) {
-      throw normalizeIpcError(error);
-    }
+    return this.transport.invoke("network.discoverNeighborhood", {
+      request,
+    });
   }
 
   async validateUri(uri: string): Promise<OkResponse> {
-    try {
-      return await this.transport.invoke("network.validateUri", { uri });
-    } catch (error) {
-      throw normalizeIpcError(error);
-    }
+    return this.transport.invoke("network.validateUri", { uri });
   }
 
   async subscribeStatusEvents(
@@ -123,12 +82,8 @@ export class NetworkClient {
   async forgetFingerprint(
     request: NetworkProfileActionRequest,
   ): Promise<OkResponse> {
-    try {
-      return await this.transport.invoke("network.profileForgetFingerprint", {
-        request,
-      });
-    } catch (error) {
-      throw normalizeIpcError(error);
-    }
+    return this.transport.invoke("network.profileForgetFingerprint", {
+      request,
+    });
   }
 }
