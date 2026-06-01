@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use remote_core::ConnectionSessionManager;
+use remote_core::{run_blocking_io, ConnectionSessionManager};
 use vfs::{
     DirectoryBatch, DirectorySink, FileKind, ListOptions, ProviderCapabilities, ProviderId,
     ResourceUri, VfsError, VfsProvider,
@@ -392,11 +392,7 @@ impl VfsProvider for S3Provider {
                 format!("{key}/")
             };
             let uri_clone = uri.clone();
-            tokio::task::spawn_blocking(move || {
-                remove_s3_tree_blocking(&session, &uri_clone, &prefix)
-            })
-            .await
-            .map_err(|error| VfsError::internal(&error.to_string()))??;
+            run_blocking_io(move || remove_s3_tree_blocking(&session, &uri_clone, &prefix)).await?;
         } else {
             session
                 .bucket()
