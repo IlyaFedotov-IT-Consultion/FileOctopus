@@ -4,7 +4,6 @@ import type {
   ListRecentOperationsResponse,
   ClearOperationHistoryResponse,
 } from "../types";
-import { normalizeIpcError } from "../normalizeError";
 
 export class OperationHistoryClient {
   constructor(private readonly transport: IpcTransport) {}
@@ -12,23 +11,15 @@ export class OperationHistoryClient {
   async listRecentOperations(
     request: ListRecentOperationsRequest = {},
   ): Promise<ListRecentOperationsResponse> {
-    try {
-      return await this.transport.invoke<ListRecentOperationsResponse>(
-        "operationHistory.listRecent",
-        { request },
-      );
-    } catch (error) {
-      throw normalizeIpcError(error);
-    }
+    return this.transport.invoke<ListRecentOperationsResponse>(
+      "operationHistory.listRecent",
+      { request },
+    );
   }
 
   async clearOperationHistory(): Promise<ClearOperationHistoryResponse> {
-    try {
-      return await this.transport.invoke<ClearOperationHistoryResponse>(
-        "operationHistory.clear",
-      );
-    } catch (error) {
-      throw normalizeIpcError(error);
-    }
+    return this.transport.invoke<ClearOperationHistoryResponse>(
+      "operationHistory.clear",
+    );
   }
 }

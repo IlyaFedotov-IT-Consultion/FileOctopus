@@ -11,52 +11,33 @@ import type {
   UnlistenFn,
 } from "../types";
 import { TERMINAL_EXIT_EVENT, TERMINAL_OUTPUT_EVENT } from "../events";
-import { normalizeIpcError } from "../normalizeError";
 import { requireListen } from "../requireListen";
 
 export class TerminalClient {
   constructor(private readonly transport: IpcTransport) {}
 
   async spawn(request: TerminalSpawnRequest): Promise<TerminalSpawnResponse> {
-    try {
-      return await this.transport.invoke<TerminalSpawnResponse>(
-        "terminal.spawn",
-        { request },
-      );
-    } catch (error) {
-      throw normalizeIpcError(error);
-    }
+    return this.transport.invoke<TerminalSpawnResponse>("terminal.spawn", {
+      request,
+    });
   }
 
   async write(request: TerminalWriteRequest): Promise<TerminalOkResponse> {
-    try {
-      return await this.transport.invoke<TerminalOkResponse>("terminal.write", {
-        request,
-      });
-    } catch (error) {
-      throw normalizeIpcError(error);
-    }
+    return this.transport.invoke<TerminalOkResponse>("terminal.write", {
+      request,
+    });
   }
 
   async resize(request: TerminalResizeRequest): Promise<TerminalOkResponse> {
-    try {
-      return await this.transport.invoke<TerminalOkResponse>(
-        "terminal.resize",
-        { request },
-      );
-    } catch (error) {
-      throw normalizeIpcError(error);
-    }
+    return this.transport.invoke<TerminalOkResponse>("terminal.resize", {
+      request,
+    });
   }
 
   async kill(request: TerminalKillRequest): Promise<TerminalOkResponse> {
-    try {
-      return await this.transport.invoke<TerminalOkResponse>("terminal.kill", {
-        request,
-      });
-    } catch (error) {
-      throw normalizeIpcError(error);
-    }
+    return this.transport.invoke<TerminalOkResponse>("terminal.kill", {
+      request,
+    });
   }
 
   onOutput(handler: (event: TerminalOutputEvent) => void): Promise<UnlistenFn> {

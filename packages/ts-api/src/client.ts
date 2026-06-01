@@ -19,6 +19,7 @@ import { PluginClient } from "./clients/plugin";
 import { createPreviewTransport } from "./transports/preview";
 import { createTauriTransport, isTauriRuntime } from "./transports/tauri";
 import { requireListen } from "./requireListen";
+import { normalizeTransport } from "./normalizeError";
 import { NATIVE_MENU_COMMAND_EVENT } from "./events";
 
 export * from "./events";
@@ -38,19 +39,25 @@ export class FileOctopusClient {
   readonly terminal: TerminalClient;
   readonly plugin: PluginClient;
 
-  constructor(private readonly transport: IpcTransport) {
-    this.fs = new FsClient(transport);
-    this.git = new GitClient(transport);
-    this.fileOperations = new FileOperationsClient(transport);
-    this.jobs = new JobsClient(transport);
-    this.operationHistory = new OperationHistoryClient(transport);
-    this.diagnostics = new DiagnosticsClient(transport);
-    this.preferences = new PreferencesClient(transport);
-    this.navigation = new NavigationClient(transport);
-    this.network = new NetworkClient(transport);
-    this.autostart = new AutostartClient(transport);
-    this.terminal = new TerminalClient(transport);
-    this.plugin = new PluginClient(transport);
+  private readonly transport: IpcTransport;
+
+  constructor(transport: IpcTransport) {
+    // Normalise IPC errors centrally so individual client methods don't each
+    // need their own try/catch around `transport.invoke`.
+    const normalized = normalizeTransport(transport);
+    this.transport = normalized;
+    this.fs = new FsClient(normalized);
+    this.git = new GitClient(normalized);
+    this.fileOperations = new FileOperationsClient(normalized);
+    this.jobs = new JobsClient(normalized);
+    this.operationHistory = new OperationHistoryClient(normalized);
+    this.diagnostics = new DiagnosticsClient(normalized);
+    this.preferences = new PreferencesClient(normalized);
+    this.navigation = new NavigationClient(normalized);
+    this.network = new NetworkClient(normalized);
+    this.autostart = new AutostartClient(normalized);
+    this.terminal = new TerminalClient(normalized);
+    this.plugin = new PluginClient(normalized);
   }
 
   getAppInfo(): Promise<AppInfoResponse> {
@@ -67,16 +74,9 @@ export class FileOctopusClient {
 export function createFileOctopusClient(transport?: IpcTransport) {
   let resolved = transport;
   if (!resolved) {
-    const inTauri = isTauriRuntime();
-    const globalRecord = globalThis as Record<string, unknown>;
-    console.warn(
-      `[fileoctopus:client] transport selection: tauri=${inTauri} hasInternals=${"__TAURI_INTERNALS__" in globalRecord} keys=${
-        Object.keys(globalRecord)
-          .filter((k) => k.startsWith("__TAURI"))
-          .join(",") || "(none)"
-      }`,
-    );
-    resolved = inTauri ? createTauriTransport() : createPreviewTransport();
+    resolved = isTauriRuntime()
+      ? createTauriTransport()
+      : createPreviewTransport();
   }
   return new FileOctopusClient(resolved);
 }

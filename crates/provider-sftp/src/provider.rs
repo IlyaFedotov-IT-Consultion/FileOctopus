@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use remote_core::ConnectionSessionManager;
+use remote_core::{run_blocking_io, ConnectionSessionManager};
 use vfs::{
     DirectoryBatch, DirectorySink, FileKind, ListOptions, ProviderCapabilities, ProviderId,
     ResourceUri, VfsError, VfsProvider,
@@ -31,16 +31,11 @@ impl SftpProvider {
 
     async fn session_for(&self, uri: &ResourceUri) -> Result<(String, SftpSession), VfsError> {
         let profile_id = Self::profile_id_for_uri(uri)?;
-        let session = self
+        let sftp_session = self
             .sessions
-            .session_for_profile(&profile_id)
+            .typed_session_for(&profile_id, "sftp", SftpSession::clone_handle)
             .await
             .map_err(VfsError::from)?;
-        let sftp_session = session
-            .as_any()
-            .downcast_ref::<SftpSession>()
-            .ok_or_else(|| VfsError::internal("invalid sftp session handle"))?
-            .clone_handle();
         Ok((profile_id, sftp_session))
     }
 
@@ -141,11 +136,9 @@ impl VfsProvider for SftpProvider {
         let (profile_id, sftp_session) = self.session_for(uri).await?;
         let remote_path = uri.remote_path().unwrap_or_else(|| "/".to_string());
         let uri_clone = uri.clone();
-        let entry = tokio::task::spawn_blocking(move || {
-            stat_path_blocking(&sftp_session, &uri_clone, &remote_path)
-        })
-        .await
-        .map_err(|error| VfsError::internal(&error.to_string()))??;
+        let entry =
+            run_blocking_io(move || stat_path_blocking(&sftp_session, &uri_clone, &remote_path))
+                .await?;
         self.sessions.touch_session(&profile_id).await;
         Ok(entry)
     }
@@ -167,7 +160,7 @@ impl VfsProvider for SftpProvider {
         let cancel = options.cancel.clone();
         let batch_cancel = options.cancel.clone();
 
-        tokio::task::spawn_blocking(move || {
+        run_blocking_io(move || {
             let mut batcher = IncrementalDirectoryBatcher::new(
                 batch_uri,
                 session_id,
@@ -186,8 +179,7 @@ impl VfsProvider for SftpProvider {
             )?;
             batcher.finish()
         })
-        .await
-        .map_err(|error| VfsError::internal(&error.to_string()))??;
+        .await?;
 
         self.sessions.touch_session(&profile_id).await;
         Ok(())
@@ -197,11 +189,7 @@ impl VfsProvider for SftpProvider {
         let (profile_id, sftp_session) = self.session_for(uri).await?;
         let remote_path = Self::remote_path_for(uri)?;
         let uri_clone = uri.clone();
-        tokio::task::spawn_blocking(move || {
-            mkdir_blocking(&sftp_session, &uri_clone, &remote_path)
-        })
-        .await
-        .map_err(|error| VfsError::internal(&error.to_string()))??;
+        run_blocking_io(move || mkdir_blocking(&sftp_session, &uri_clone, &remote_path)).await?;
         self.sessions.touch_session(&profile_id).await;
         Ok(())
     }
@@ -210,11 +198,10 @@ impl VfsProvider for SftpProvider {
         let (profile_id, sftp_session) = self.session_for(uri).await?;
         let remote_path = Self::remote_path_for(uri)?;
         let uri_clone = uri.clone();
-        tokio::task::spawn_blocking(move || {
+        run_blocking_io(move || {
             create_empty_file_blocking(&sftp_session, &uri_clone, &remote_path)
         })
-        .await
-        .map_err(|error| VfsError::internal(&error.to_string()))??;
+        .await?;
         self.sessions.touch_session(&profile_id).await;
         Ok(())
     }
@@ -232,11 +219,8 @@ impl VfsProvider for SftpProvider {
         let from_path = Self::remote_path_for(from)?;
         let to_path = Self::remote_path_for(to)?;
         let from_clone = from.clone();
-        tokio::task::spawn_blocking(move || {
-            rename_blocking(&sftp_session, &from_clone, &from_path, &to_path)
-        })
-        .await
-        .map_err(|error| VfsError::internal(&error.to_string()))??;
+        run_blocking_io(move || rename_blocking(&sftp_session, &from_clone, &from_path, &to_path))
+            .await?;
         self.sessions.touch_session(&profile_id).await;
         Ok(())
     }
@@ -246,7 +230,7 @@ impl VfsProvider for SftpProvider {
         let remote_path = Self::remote_path_for(uri)?;
         let uri_clone = uri.clone();
         let entry = self.stat(uri).await?;
-        tokio::task::spawn_blocking(move || match (entry.kind, recursive) {
+        run_blocking_io(move || match (entry.kind, recursive) {
             (FileKind::Directory, true) => {
                 remove_sftp_tree_blocking(&sftp_session, &uri_clone, &remote_path)
             }
@@ -255,8 +239,7 @@ impl VfsProvider for SftpProvider {
             }
             _ => remove_file_blocking(&sftp_session, &uri_clone, &remote_path),
         })
-        .await
-        .map_err(|error| VfsError::internal(&error.to_string()))??;
+        .await?;
         self.sessions.touch_session(&profile_id).await;
         Ok(())
     }
@@ -280,7 +263,7 @@ impl VfsProvider for SftpProvider {
         let dest_path = Self::remote_path_for(destination)?;
         let source_clone = source.clone();
         let destination_clone = destination.clone();
-        let total = tokio::task::spawn_blocking(move || {
+        let total = run_blocking_io(move || {
             copy_within_session_blocking(
                 &sftp_session,
                 &source_clone,
@@ -290,8 +273,7 @@ impl VfsProvider for SftpProvider {
                 &mut *on_progress,
             )
         })
-        .await
-        .map_err(|error| VfsError::internal(&error.to_string()))??;
+        .await?;
         self.sessions.touch_session(&profile_id).await;
         Ok(total)
     }
@@ -304,11 +286,10 @@ impl VfsProvider for SftpProvider {
         let (profile_id, sftp_session) = self.session_for(uri).await?;
         let remote_path = Self::remote_path_for(uri)?;
         let uri_clone = uri.clone();
-        let bytes = tokio::task::spawn_blocking(move || {
+        let bytes = run_blocking_io(move || {
             read_file_prefix_blocking(&sftp_session, &uri_clone, &remote_path, max_bytes)
         })
-        .await
-        .map_err(|error| VfsError::internal(&error.to_string()))??;
+        .await?;
         self.sessions.touch_session(&profile_id).await;
         Ok(bytes)
     }
