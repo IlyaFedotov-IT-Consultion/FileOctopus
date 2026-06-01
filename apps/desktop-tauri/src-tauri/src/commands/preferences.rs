@@ -31,6 +31,13 @@ pub fn set_preference(
         .set(&request.key, &request.value)
         .map_err(|error| IpcError::preferences_error(error.to_string()))?;
 
+    if request.key == "operationIdleTimeoutSecs" {
+        let secs = preferences.operation_idle_timeout_secs;
+        state
+            .operations()
+            .set_idle_timeout((secs > 0).then(|| std::time::Duration::from_secs(u64::from(secs))));
+    }
+
     Ok(SetPreferenceResponse {
         preferences: UserPreferencesDto::from(preferences),
     })
