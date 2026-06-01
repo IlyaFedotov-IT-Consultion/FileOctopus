@@ -15,7 +15,6 @@ import type {
   NavigationToggleStarredResponse,
   OkResponse,
 } from "../types";
-import { normalizeIpcError } from "../normalizeError";
 
 export class NavigationClient {
   constructor(private readonly transport: IpcTransport) {}
@@ -23,112 +22,68 @@ export class NavigationClient {
   async recordVisit(
     request: NavigationRecordVisitRequest,
   ): Promise<OkResponse> {
-    try {
-      return await this.transport.invoke("navigation.recordVisit", { request });
-    } catch (error) {
-      throw normalizeIpcError(error);
-    }
+    return this.transport.invoke("navigation.recordVisit", { request });
   }
 
   async listFavorites(): Promise<NavigationListFavoritesResponse> {
-    try {
-      return await this.transport.invoke("navigation.listFavorites");
-    } catch (error) {
-      throw normalizeIpcError(error);
-    }
+    return this.transport.invoke("navigation.listFavorites");
   }
 
   async addFavorite(
     request: NavigationAddFavoriteRequest,
   ): Promise<NavigationFavoriteResponse> {
-    try {
-      return await this.transport.invoke("navigation.addFavorite", { request });
-    } catch (error) {
-      throw normalizeIpcError(error);
-    }
+    return this.transport.invoke("navigation.addFavorite", { request });
   }
 
   async removeFavorite(
     request: NavigationRemoveFavoriteRequest,
   ): Promise<OkResponse> {
-    try {
-      return await this.transport.invoke("navigation.removeFavorite", {
-        request,
-      });
-    } catch (error) {
-      throw normalizeIpcError(error);
-    }
+    return this.transport.invoke("navigation.removeFavorite", {
+      request,
+    });
   }
 
   async renameFavorite(
     request: NavigationRenameFavoriteRequest,
   ): Promise<NavigationFavoriteResponse> {
-    try {
-      return await this.transport.invoke("navigation.renameFavorite", {
-        request,
-      });
-    } catch (error) {
-      throw normalizeIpcError(error);
-    }
+    return this.transport.invoke("navigation.renameFavorite", {
+      request,
+    });
   }
 
   async listRecent(
     request: NavigationListRecentRequest,
   ): Promise<NavigationListRecentResponse> {
-    try {
-      return await this.transport.invoke("navigation.listRecent", { request });
-    } catch (error) {
-      throw normalizeIpcError(error);
-    }
+    return this.transport.invoke("navigation.listRecent", { request });
   }
 
   async clearRecent(): Promise<OkResponse> {
-    try {
-      return await this.transport.invoke("navigation.clearRecent");
-    } catch (error) {
-      throw normalizeIpcError(error);
-    }
+    return this.transport.invoke("navigation.clearRecent");
   }
 
   async removeRecent(
     request: import("../types").NavigationRemoveRecentRequest,
   ): Promise<OkResponse> {
-    try {
-      return await this.transport.invoke("navigation.removeRecent", {
-        request,
-      });
-    } catch (error) {
-      throw normalizeIpcError(error);
-    }
+    return this.transport.invoke("navigation.removeRecent", {
+      request,
+    });
   }
 
   async listStarred(): Promise<NavigationListStarredResponse> {
-    try {
-      return await this.transport.invoke("navigation.listStarred");
-    } catch (error) {
-      throw normalizeIpcError(error);
-    }
+    return this.transport.invoke("navigation.listStarred");
   }
 
   async toggleStarred(
     request: NavigationToggleStarredRequest,
   ): Promise<NavigationToggleStarredResponse> {
-    try {
-      return await this.transport.invoke("navigation.toggleStarred", {
-        request,
-      });
-    } catch (error) {
-      throw normalizeIpcError(error);
-    }
+    return this.transport.invoke("navigation.toggleStarred", {
+      request,
+    });
   }
 
   async isStarred(
     request: NavigationIsStarredRequest,
   ): Promise<NavigationIsStarredResponse> {
-    try {
-      return await this.transport.invoke("navigation.isStarred", { request });
-    } catch (error) {
-      throw normalizeIpcError(error);
-    }
+    return this.transport.invoke("navigation.isStarred", { request });
   }
 }
