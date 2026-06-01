@@ -579,6 +579,7 @@ dialog.fo-dialog[open] {
 
 .fo-settings-dialog {
   width: min(48rem, calc(100vw - 2rem));
+  --fo-settings-gap: 0.65rem;
 }
 
 .fo-diagnostics-dialog,
@@ -1140,9 +1141,9 @@ dialog.fo-dialog[open] {
   display: grid;
   grid-template-columns: minmax(9rem, 11rem) minmax(0, 1fr);
   align-items: start;
-  gap: 0.65rem;
+  gap: var(--fo-settings-gap);
   min-width: 0;
-  padding: 0.65rem;
+  padding: var(--fo-settings-gap);
   flex: 0 0 auto;
 }
 
@@ -1184,7 +1185,8 @@ dialog.fo-dialog[open] {
   font-weight: 700;
 }
 
-.fo-settings-nav-active {
+.fo-settings-nav-active,
+.fo-settings-nav button[data-active="true"] {
   border-color: var(--fo-classic-shadow) var(--fo-classic-light)
     var(--fo-classic-light) var(--fo-classic-shadow) !important;
   background: var(--fo-classic-title) !important;
@@ -1202,8 +1204,8 @@ dialog.fo-dialog[open] {
 .fo-settings-section {
   display: grid;
   align-content: start;
-  gap: 0.55rem;
-  padding: 0.65rem;
+  gap: var(--fo-settings-gap);
+  padding: var(--fo-settings-gap);
   border-width: 2px;
   border-style: solid;
   border-color: var(--fo-classic-shadow) var(--fo-classic-light)
