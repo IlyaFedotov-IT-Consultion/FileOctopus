@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import type {
   AutostartStatusDto,
   PluginClient,
+  TerminalClient,
   UserPreferencesDto,
 } from "@fileoctopus/ts-api";
 import { Button, Icons } from "@fileoctopus/ui";
@@ -31,6 +32,7 @@ interface SettingsDialogProps {
   preferences: UserPreferencesDto;
   autostart: AutostartStatusDto | null;
   pluginClient?: PluginClient;
+  terminalClient?: TerminalClient;
   onClose: () => void;
   onChange: (key: string, value: string) => void;
   onSetAutostart: (enabled: boolean) => Promise<void>;
@@ -42,6 +44,7 @@ export function SettingsDialog({
   preferences,
   autostart,
   pluginClient,
+  terminalClient,
   onClose,
   onChange,
   onSetAutostart,
@@ -126,7 +129,11 @@ export function SettingsDialog({
               />
             )}
             {activeCategory === "terminal" && (
-              <SettingsTerminal preferences={preferences} onChange={onChange} />
+              <SettingsTerminal
+                preferences={preferences}
+                onChange={onChange}
+                terminalClient={terminalClient}
+              />
             )}
             {activeCategory === "keyboard" && (
               <SettingsKeyboard preferences={preferences} onChange={onChange} />

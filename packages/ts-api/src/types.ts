@@ -311,10 +311,14 @@ export interface GitStatusForDirectoryResponse {
 export interface TerminalSpawnRequest {
   uri?: string | null;
   profileId?: string | null;
+  terminalProfileId?: string | null;
   cols: number;
   rows: number;
   shell?: string | null;
   args?: string[] | null;
+  env?: TerminalEnvVarDto[] | null;
+  initialCommand?: string | null;
+  title?: string | null;
 }
 
 export interface TerminalSpawnResponse {
@@ -340,6 +344,11 @@ export interface TerminalOkResponse {
   success: boolean;
 }
 
+export interface TerminalEnvVarDto {
+  key: string;
+  value: string;
+}
+
 export interface TerminalOutputEvent {
   sessionId: string;
   data: string;
@@ -348,6 +357,116 @@ export interface TerminalOutputEvent {
 export interface TerminalExitEvent {
   sessionId: string;
   exitCode?: number | null;
+}
+
+export type TerminalProfileScopeDto = "local" | "ssh";
+
+export interface TerminalProfileInputDto {
+  name: string;
+  scope: TerminalProfileScopeDto;
+  shell: string;
+  args: string;
+  env: string;
+  workingDirectoryMode: string;
+  customCwdUri: string;
+  networkProfileId?: string | null;
+  remoteCwd: string;
+  initialCommand: string;
+  fontFamily: string;
+  fontSize: number;
+  lineHeight: number;
+  cursorStyle: string;
+  cursorBlink: boolean;
+  scrollback: number;
+  themeId: string;
+  themeOverrides: string;
+  copyOnSelect: boolean;
+  rightClickAction: string;
+  pasteConfirmation: boolean;
+  linkHandling: string;
+}
+
+export interface TerminalProfileDto extends TerminalProfileInputDto {
+  id: string;
+  sortOrder: number;
+  isDefault: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TerminalProfilesListResponse {
+  profiles: TerminalProfileDto[];
+  defaultProfileId?: string | null;
+}
+
+export interface TerminalProfileResponse {
+  profile: TerminalProfileDto;
+}
+
+export interface TerminalProfileAddRequest {
+  profile: TerminalProfileInputDto;
+}
+
+export interface TerminalProfileUpdateRequest {
+  id: string;
+  profile: TerminalProfileInputDto;
+}
+
+export interface TerminalProfileActionRequest {
+  id: string;
+}
+
+export interface TerminalCapabilitiesResponse {
+  defaultShell: string;
+  defaultArgs: string[];
+  discoveredShells: string[];
+  supportsSsh: boolean;
+  cursorStyles: string[];
+  themeIds: string[];
+}
+
+export type TerminalSessionStatusDto = "starting" | "running" | "exited";
+
+export interface TerminalSessionDto {
+  sessionId: string;
+  status: TerminalSessionStatusDto;
+  title: string;
+  cwdUri?: string | null;
+  terminalProfileId?: string | null;
+  transport: string;
+  cols: number;
+  rows: number;
+  exitCode?: number | null;
+}
+
+export interface TerminalSessionsListResponse {
+  sessions: TerminalSessionDto[];
+}
+
+export interface TerminalSendTextRequest {
+  sessionId: string;
+  text: string;
+}
+
+export interface TerminalRunCommandRequest {
+  sessionId: string;
+  command: string;
+  appendNewline: boolean;
+  focus: boolean;
+}
+
+export interface TerminalSpawnAndRunRequest {
+  uri?: string | null;
+  profileId?: string | null;
+  terminalProfileId?: string | null;
+  cols: number;
+  rows: number;
+  command: string;
+  title?: string | null;
+}
+
+export interface TerminalSessionEventDto extends TerminalSessionDto {
+  kind: string;
 }
 
 export interface ListStartRequest {

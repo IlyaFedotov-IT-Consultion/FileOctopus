@@ -11,6 +11,9 @@ import type {
   RecursiveSearchCompletedEventDto,
   RecursiveSearchRequest,
   SetPreferenceRequest,
+  TerminalProfileDto,
+  TerminalSessionDto,
+  TerminalSessionEventDto,
   TerminalOutputEvent,
   UserPreferencesDto,
 } from "../types";
@@ -19,6 +22,7 @@ import {
   DIRECTORY_BATCH_EVENT,
   FOLDER_SIZE_COMPLETED_EVENT,
   RECURSIVE_SEARCH_COMPLETED_EVENT,
+  TERMINAL_SESSION_EVENT,
   TERMINAL_OUTPUT_EVENT,
 } from "../events";
 export function createPreviewTransport(): IpcTransport {
@@ -98,7 +102,43 @@ export function createPreviewTransport(): IpcTransport {
   const terminalOutputHandlers = new Set<
     (payload: TerminalOutputEvent) => void
   >();
+  const terminalSessionHandlers = new Set<
+    (payload: TerminalSessionEventDto) => void
+  >();
   const terminalOutputBuffer: TerminalOutputEvent[] = [];
+  const now = "2026-06-01T00:00:00.000Z";
+  let previewTerminalProfiles: TerminalProfileDto[] = [
+    {
+      id: "preview-default-terminal-profile",
+      name: "Default",
+      scope: "local",
+      shell: "",
+      args: "",
+      env: "",
+      workingDirectoryMode: "currentPane",
+      customCwdUri: "",
+      networkProfileId: null,
+      remoteCwd: "",
+      initialCommand: "",
+      fontFamily: "monospace",
+      fontSize: 13,
+      lineHeight: 1.2,
+      cursorStyle: "block",
+      cursorBlink: true,
+      scrollback: 5000,
+      themeId: "system",
+      themeOverrides: "",
+      copyOnSelect: false,
+      rightClickAction: "contextMenu",
+      pasteConfirmation: true,
+      linkHandling: "openExternal",
+      sortOrder: 0,
+      isDefault: true,
+      createdAt: now,
+      updatedAt: now,
+    },
+  ];
+  const previewTerminalSessions = new Map<string, TerminalSessionDto>();
 
   const emitTerminalOutput = (payload: TerminalOutputEvent) => {
     if (terminalOutputHandlers.size === 0) {
@@ -109,6 +149,12 @@ export function createPreviewTransport(): IpcTransport {
       return;
     }
     for (const handler of terminalOutputHandlers) {
+      handler(payload);
+    }
+  };
+
+  const emitTerminalSession = (payload: TerminalSessionEventDto) => {
+    for (const handler of terminalSessionHandlers) {
       handler(payload);
     }
   };
@@ -508,6 +554,31 @@ export function createPreviewTransport(): IpcTransport {
 
       if (command === "terminal.spawn") {
         const sessionId = `preview-terminal-${++sessionIndex}`;
+        const request = args?.request as
+          | {
+              uri?: string;
+              terminalProfileId?: string | null;
+              cols?: number;
+              rows?: number;
+              title?: string | null;
+            }
+          | undefined;
+        const session: TerminalSessionDto = {
+          sessionId,
+          status: "running",
+          title: request?.title ?? "Preview Terminal",
+          cwdUri: request?.uri ?? "local:///",
+          terminalProfileId:
+            request?.terminalProfileId ??
+            previewTerminalProfiles[0]?.id ??
+            null,
+          transport: "local",
+          cols: request?.cols ?? 80,
+          rows: request?.rows ?? 24,
+          exitCode: null,
+        };
+        previewTerminalSessions.set(sessionId, session);
+        emitTerminalSession({ ...session, kind: "started" });
         globalThis.setTimeout(() => {
           const data = btoa("fileoctopus-preview % ");
           emitTerminalOutput({ sessionId, data });
@@ -530,8 +601,152 @@ export function createPreviewTransport(): IpcTransport {
         return { success: true } as TResponse;
       }
 
+      if (
+        command === "terminal.sendText" ||
+        command === "terminal.runCommand"
+      ) {
+        const request = args?.request as
+          | { sessionId?: string; text?: string; command?: string }
+          | undefined;
+        if (request?.sessionId) {
+          const text = request.text ?? request.command ?? "";
+          globalThis.setTimeout(() => {
+            emitTerminalOutput({
+              sessionId: request.sessionId ?? "",
+              data: btoa(text),
+            });
+          }, 0);
+        }
+        return { success: true } as TResponse;
+      }
+
+      if (command === "terminal.spawnAndRun") {
+        const request = args?.request as
+          | {
+              uri?: string;
+              terminalProfileId?: string | null;
+              cols?: number;
+              rows?: number;
+              command?: string;
+              title?: string | null;
+            }
+          | undefined;
+        const sessionId = `preview-terminal-${++sessionIndex}`;
+        const session: TerminalSessionDto = {
+          sessionId,
+          status: "running",
+          title: request?.title ?? "Preview Command",
+          cwdUri: request?.uri ?? "local:///",
+          terminalProfileId:
+            request?.terminalProfileId ??
+            previewTerminalProfiles[0]?.id ??
+            null,
+          transport: "local",
+          cols: request?.cols ?? 80,
+          rows: request?.rows ?? 24,
+          exitCode: null,
+        };
+        previewTerminalSessions.set(sessionId, session);
+        emitTerminalSession({ ...session, kind: "started" });
+        globalThis.setTimeout(() => {
+          emitTerminalOutput({
+            sessionId,
+            data: btoa(`${request?.command ?? ""}\n`),
+          });
+        }, 0);
+        return { sessionId } as TResponse;
+      }
+
       if (command === "terminal.resize" || command === "terminal.kill") {
         return { success: true } as TResponse;
+      }
+
+      if (command === "terminal.capabilities") {
+        return {
+          defaultShell: "/bin/bash",
+          defaultArgs: ["-l"],
+          discoveredShells: ["/bin/bash", "/bin/zsh"],
+          supportsSsh: true,
+          cursorStyles: ["block", "bar", "underline"],
+          themeIds: ["system", "dark", "light"],
+        } as TResponse;
+      }
+
+      if (command === "terminal.profilesList") {
+        return {
+          profiles: previewTerminalProfiles,
+          defaultProfileId:
+            previewTerminalProfiles.find((profile) => profile.isDefault)?.id ??
+            null,
+        } as TResponse;
+      }
+
+      if (command === "terminal.profileAdd") {
+        const request = args?.request as
+          | {
+              profile?: Omit<
+                TerminalProfileDto,
+                "id" | "sortOrder" | "isDefault" | "createdAt" | "updatedAt"
+              >;
+            }
+          | undefined;
+        const profile: TerminalProfileDto = {
+          ...(request?.profile ?? previewTerminalProfiles[0]),
+          id: `preview-terminal-profile-${++sessionIndex}`,
+          sortOrder: previewTerminalProfiles.length,
+          isDefault: false,
+          createdAt: now,
+          updatedAt: now,
+        } as TerminalProfileDto;
+        previewTerminalProfiles = [...previewTerminalProfiles, profile];
+        return { profile } as TResponse;
+      }
+
+      if (command === "terminal.profileUpdate") {
+        const request = args?.request as
+          | { id?: string; profile?: TerminalProfileDto }
+          | undefined;
+        const existing = previewTerminalProfiles.find(
+          (profile) => profile.id === request?.id,
+        );
+        const profile = {
+          ...(existing ?? previewTerminalProfiles[0]),
+          ...(request?.profile ?? {}),
+          id: request?.id ?? existing?.id ?? "preview-default-terminal-profile",
+          updatedAt: now,
+        } as TerminalProfileDto;
+        previewTerminalProfiles = previewTerminalProfiles.map((item) =>
+          item.id === profile.id ? profile : item,
+        );
+        return { profile } as TResponse;
+      }
+
+      if (command === "terminal.profileDelete") {
+        const request = args?.request as { id?: string } | undefined;
+        previewTerminalProfiles = previewTerminalProfiles.filter(
+          (profile) => profile.id !== request?.id || profile.isDefault,
+        );
+        return { success: true } as TResponse;
+      }
+
+      if (command === "terminal.profileSetDefault") {
+        const request = args?.request as { id?: string } | undefined;
+        previewTerminalProfiles = previewTerminalProfiles.map((profile) => ({
+          ...profile,
+          isDefault: profile.id === request?.id,
+        }));
+        return {
+          profile:
+            previewTerminalProfiles.find(
+              (profile) => profile.id === request?.id,
+            ) ?? previewTerminalProfiles[0],
+        } as TResponse;
+      }
+
+      if (command === "terminal.sessionsList") {
+        return {
+          sessions: Array.from(previewTerminalSessions.values()),
+        } as TResponse;
       }
 
       if (command === "fs.open_terminal") {
@@ -639,6 +854,14 @@ export function createPreviewTransport(): IpcTransport {
           }
         }
         return () => terminalOutputHandlers.delete(typedHandler);
+      }
+
+      if (event === TERMINAL_SESSION_EVENT) {
+        const typedHandler = handler as (
+          payload: TerminalSessionEventDto,
+        ) => void;
+        terminalSessionHandlers.add(typedHandler);
+        return () => terminalSessionHandlers.delete(typedHandler);
       }
 
       if (event !== DIRECTORY_BATCH_EVENT) {

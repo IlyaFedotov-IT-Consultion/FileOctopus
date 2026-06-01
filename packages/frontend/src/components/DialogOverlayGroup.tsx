@@ -1,4 +1,8 @@
-import type { FsClient, PluginClient } from "@fileoctopus/ts-api";
+import type {
+  FsClient,
+  PluginClient,
+  TerminalClient,
+} from "@fileoctopus/ts-api";
 import type {
   AppDataHealthResponse,
   AppInfoResponse,
@@ -76,6 +80,7 @@ export interface DialogOverlayGroupProps {
   isProductionBuild: boolean;
   fs: FsClient;
   pluginClient?: PluginClient;
+  terminalClient?: TerminalClient;
   updatePreference: (key: string, value: string) => void;
   handleSetAutostart: (enabled: boolean) => Promise<void>;
   onCustomizeToolbar?: () => void;
