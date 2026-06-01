@@ -139,6 +139,97 @@ fn job_exceeding_idle_timeout_fails_with_timeout() {
 }
 
 #[test]
+fn set_idle_timeout_enables_watchdog_live() {
+    let dir = tempfile::tempdir().unwrap();
+    let runtime = OperationRuntime::with_settings(
+        local_vfs(),
+        OperationHistoryRepository::new(dir.path().join("history.sqlite")).unwrap(),
+        RuntimeSettings {
+            worker_count: 2,
+            idle_timeout: None,
+        },
+    );
+    runtime.set_idle_timeout(Some(Duration::from_millis(150)));
+
+    let (sender, receiver) = mpsc::channel();
+    runtime
+        .start_with_executor(
+            noop_plan(),
+            Arc::new(move |event| {
+                let _ = sender.send(event);
+            }),
+            move |_vfs, _plan, job, cancel, _pause, _progress| {
+                for _ in 0..200 {
+                    if cancel.is_cancelled() {
+                        return Err(vfs::FileOperationError::Cancelled {
+                            job_id: Some(job.as_str().to_string()),
+                        });
+                    }
+                    std::thread::sleep(Duration::from_millis(20));
+                }
+                Ok(())
+            },
+        )
+        .unwrap();
+
+    let terminal = loop {
+        let event = receiver.recv_timeout(Duration::from_secs(5)).unwrap();
+        if matches!(
+            event,
+            JobEvent::Failed(_) | JobEvent::Completed(_) | JobEvent::Cancelled(_)
+        ) {
+            break event;
+        }
+    };
+    match terminal {
+        JobEvent::Failed(failed) => assert_eq!(failed.error_code, "timeout"),
+        other => panic!("expected Failed(timeout) after live enable, got {other:?}"),
+    }
+}
+
+#[test]
+fn set_idle_timeout_none_disables_watchdog_live() {
+    let dir = tempfile::tempdir().unwrap();
+    let runtime = OperationRuntime::with_settings(
+        local_vfs(),
+        OperationHistoryRepository::new(dir.path().join("history.sqlite")).unwrap(),
+        RuntimeSettings {
+            worker_count: 2,
+            idle_timeout: Some(Duration::from_millis(150)),
+        },
+    );
+    runtime.set_idle_timeout(None);
+
+    let (sender, receiver) = mpsc::channel();
+    runtime
+        .start_with_executor(
+            noop_plan(),
+            Arc::new(move |event| {
+                let _ = sender.send(event);
+            }),
+            move |_vfs, _plan, _job, _cancel, _pause, _progress| {
+                std::thread::sleep(Duration::from_millis(400));
+                Ok(())
+            },
+        )
+        .unwrap();
+
+    let terminal = loop {
+        let event = receiver.recv_timeout(Duration::from_secs(5)).unwrap();
+        if matches!(
+            event,
+            JobEvent::Failed(_) | JobEvent::Completed(_) | JobEvent::Cancelled(_)
+        ) {
+            break event;
+        }
+    };
+    assert!(
+        matches!(terminal, JobEvent::Completed(_)),
+        "watchdog disabled live: job should complete, got {terminal:?}"
+    );
+}
+
+#[test]
 fn boot_registers_local_provider() {
     let state = AppCore::boot().unwrap();
     let uri = ResourceUri::parse("local:///Users").unwrap();

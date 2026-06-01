@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{mpsc, Arc, Mutex};
 use std::time::Duration;
 
@@ -52,6 +52,7 @@ pub struct OperationRuntime {
     planned_operations: Arc<Mutex<HashMap<String, FileOperationPlan>>>,
     history: OperationHistoryRepository,
     dispatch: mpsc::Sender<QueuedJob>,
+    idle_timeout_ms: Arc<AtomicU64>,
 }
 
 impl OperationRuntime {
@@ -72,9 +73,16 @@ impl OperationRuntime {
         }
 
         let jobs = Arc::new(Mutex::new(HashMap::new()));
-        if let Some(idle_timeout) = settings.idle_timeout {
+        let idle_timeout_ms = Arc::new(AtomicU64::new(
+            settings
+                .idle_timeout
+                .map(|d| d.as_millis() as u64)
+                .unwrap_or(0),
+        ));
+        {
             let jobs = jobs.clone();
-            std::thread::spawn(move || watchdog_loop(jobs, idle_timeout));
+            let idle_timeout_ms = idle_timeout_ms.clone();
+            std::thread::spawn(move || watchdog_loop(jobs, idle_timeout_ms));
         }
 
         Self {
@@ -83,6 +91,7 @@ impl OperationRuntime {
             planned_operations: Arc::new(Mutex::new(HashMap::new())),
             history,
             dispatch,
+            idle_timeout_ms,
         }
     }
 
@@ -416,6 +425,11 @@ impl OperationRuntime {
         Ok(state.snapshot.clone())
     }
 
+    pub fn set_idle_timeout(&self, timeout: Option<Duration>) {
+        let ms = timeout.map(|d| d.as_millis() as u64).unwrap_or(0);
+        self.idle_timeout_ms.store(ms, Ordering::SeqCst);
+    }
+
     pub fn pause_job(&self, job_id: &str) -> Result<JobSnapshot, FileOperationError> {
         let jobs = self.jobs.lock().map_err(|_| FileOperationError::Internal {
             message: "job registry lock poisoned".to_string(),
@@ -520,16 +534,29 @@ fn worker_loop(receiver: &Arc<Mutex<mpsc::Receiver<QueuedJob>>>) {
     }
 }
 
-fn watchdog_loop(jobs: Arc<Mutex<HashMap<String, JobRuntimeState>>>, idle_timeout: Duration) {
-    let poll = (idle_timeout / 4).clamp(Duration::from_millis(10), Duration::from_secs(5));
-
+fn watchdog_loop(
+    jobs: Arc<Mutex<HashMap<String, JobRuntimeState>>>,
+    idle_timeout_ms: Arc<AtomicU64>,
+) {
     loop {
+        let current_ms = idle_timeout_ms.load(Ordering::SeqCst);
+        let poll = if current_ms == 0 {
+            Duration::from_secs(5)
+        } else {
+            (Duration::from_millis(current_ms) / 4)
+                .clamp(Duration::from_millis(10), Duration::from_secs(5))
+        };
         std::thread::sleep(poll);
-        // Only the watchdog still references the job table: the runtime has been
-        // dropped, so stop polling and let this thread exit.
+
         if Arc::strong_count(&jobs) == 1 {
             break;
         }
+
+        let current_ms = idle_timeout_ms.load(Ordering::SeqCst);
+        if current_ms == 0 {
+            continue;
+        }
+        let idle_timeout = Duration::from_millis(current_ms);
 
         let now = Utc::now();
         let Ok(jobs) = jobs.lock() else {
@@ -540,7 +567,6 @@ fn watchdog_loop(jobs: Arc<Mutex<HashMap<String, JobRuntimeState>>>, idle_timeou
             {
                 continue;
             }
-
             let idle = now.signed_duration_since(state.snapshot.updated_at);
             let exceeded = idle
                 .to_std()
