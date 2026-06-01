@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::Duration;
 
 use config::{NavigationRepository, NetworkProfileRepository, PreferencesRepository};
 use fs_core::{vfs_io::VfsFilesystem, LocalFsProvider};
@@ -28,6 +29,13 @@ pub use boot_config::is_network_enabled;
 pub use history::{OperationHistoryRecord, OperationHistoryRepository};
 pub use paths::{AppDataHealth, AppPaths};
 pub use runtime::OperationRuntime;
+
+pub fn operation_idle_timeout_from_secs(secs: u32) -> Option<Duration> {
+    match secs {
+        0 => None,
+        secs => Some(Duration::from_secs(u64::from(secs))),
+    }
+}
 
 #[derive(Debug, Error)]
 pub enum AppCoreError {
@@ -255,15 +263,27 @@ impl AppCore {
             register_network_vfs_providers(&vfs, sessions.clone())?;
         }
 
+        let preferences = PreferencesRepository::new(paths.preferences_db.clone())
+            .map_err(|error| AppCoreError::History(error.to_string()))?;
+        let user_preferences = preferences
+            .get_all()
+            .map_err(|error| AppCoreError::History(error.to_string()))?;
         let history = OperationHistoryRepository::new(paths.history_db.clone())
             .map_err(|error| AppCoreError::History(error.to_string()))?;
         let startup_recovery_count = history
             .mark_interrupted_jobs()
             .map_err(|error| AppCoreError::History(error.to_string()))?;
         let vfs_filesystem = VfsFilesystem::with_sessions(sessions.clone(), vfs.clone());
-        let operations = Arc::new(OperationRuntime::new(vfs_filesystem, history));
-        let preferences = PreferencesRepository::new(paths.preferences_db.clone())
-            .map_err(|error| AppCoreError::History(error.to_string()))?;
+        let operations = Arc::new(OperationRuntime::with_settings(
+            vfs_filesystem,
+            history,
+            runtime::RuntimeSettings {
+                idle_timeout: operation_idle_timeout_from_secs(
+                    user_preferences.operation_idle_timeout_secs,
+                ),
+                ..Default::default()
+            },
+        ));
         let navigation = NavigationRepository::new(paths.navigation_db.clone())
             .map_err(|error| AppCoreError::History(error.to_string()))?;
 
