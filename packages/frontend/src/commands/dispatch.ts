@@ -102,6 +102,9 @@ export interface CommandDispatchDeps {
   openEmbeddedTerminal: (panelId: PanelId) => void;
   openTerminalExternal: (panelId: PanelId) => void;
   togglePaneTerminal: (panelId: PanelId) => void;
+  requestTerminalCommand?: (label: string) => string | null;
+  runTerminalCommand?: (command: string) => void;
+  spawnAndRunTerminalCommand?: (panelId: PanelId, command: string) => void;
   calculateSize: (
     panelId: PanelId,
     entry: FileEntryDto | null,
@@ -128,6 +131,17 @@ export interface CommandDispatchDeps {
 
 function resolveCommandId(id: string): string {
   return LEGACY_COMMAND_ALIASES[id] ?? id;
+}
+
+function terminalCommandFromOptions(
+  deps: CommandDispatchDeps,
+  options: DispatchCommandOptions | undefined,
+  label: string,
+): string | null {
+  const command =
+    options?.terminalCommand ?? deps.requestTerminalCommand?.(label);
+  const trimmed = command?.trim() ?? "";
+  return trimmed ? trimmed : null;
 }
 
 export type DispatchCommandOptions = CommandInvokeContext & {
@@ -428,6 +442,36 @@ export function dispatchCommand(
     case "op.openTerminalExternal":
       deps.openTerminalExternal(panelId);
       return true;
+    case "terminal.runCommand": {
+      if (!deps.runTerminalCommand) {
+        return false;
+      }
+      const command = terminalCommandFromOptions(
+        deps,
+        options,
+        "Run command in active terminal",
+      );
+      if (!command) {
+        return true;
+      }
+      deps.runTerminalCommand(command);
+      return true;
+    }
+    case "terminal.spawnAndRun": {
+      if (!deps.spawnAndRunTerminalCommand) {
+        return false;
+      }
+      const command = terminalCommandFromOptions(
+        deps,
+        options,
+        "Spawn terminal and run command",
+      );
+      if (!command) {
+        return true;
+      }
+      deps.spawnAndRunTerminalCommand(panelId, command);
+      return true;
+    }
     case "view.toggleTerminal":
       deps.togglePaneTerminal(panelId);
       return true;

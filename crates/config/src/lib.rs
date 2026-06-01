@@ -1,5 +1,6 @@
 mod navigation;
 mod network;
+mod terminal;
 
 use std::path::{Component, Path, PathBuf};
 use std::sync::{Arc, Mutex};
@@ -14,6 +15,10 @@ pub use navigation::{
 pub use network::{
     AuthKind, NetworkError, NetworkProfile, NetworkProfileRepository, NewNetworkProfile,
     UpdateNetworkProfile,
+};
+pub use terminal::{
+    NewTerminalProfile, TerminalProfile, TerminalProfileError, TerminalProfileRepository,
+    TerminalProfileScope, UpdateTerminalProfile,
 };
 
 pub const SCHEMA_VERSION: u32 = 14;

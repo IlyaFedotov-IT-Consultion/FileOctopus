@@ -171,6 +171,7 @@ mod tests {
             preferences_db: dir.join("prefs.sqlite"),
             navigation_db: dir.join("nav.sqlite"),
             network_db: dir.join("net.sqlite"),
+            terminal_db: dir.join("terminal.sqlite"),
         }
     }
 

@@ -97,7 +97,9 @@ function FileOctopusAppInner({
     openEmbeddedTerminal,
     openExternalTerminal,
     openProfileTerminalTab,
+    runCommandInActiveTerminal,
     setRailSegment,
+    spawnAndRunTerminalCommand,
     togglePaneTerminal,
     syncTerminalCwd,
   } = useTerminal();
@@ -520,6 +522,37 @@ function FileOctopusAppInner({
           title: "Failed to open external terminal",
         });
       });
+    },
+    requestTerminalCommand: (label) => {
+      if (typeof window === "undefined") {
+        return null;
+      }
+      return window.prompt(label);
+    },
+    runTerminalCommand: (command) => {
+      void runCommandInActiveTerminal(command).catch((error: unknown) => {
+        pushToast({
+          tone: "error",
+          title:
+            error instanceof Error
+              ? error.message
+              : "Failed to run terminal command",
+        });
+      });
+    },
+    spawnAndRunTerminalCommand: (panelId, command) => {
+      const uri = activeTab(state.panels[panelId]).uri;
+      void spawnAndRunTerminalCommand(uri, command, panelId).catch(
+        (error: unknown) => {
+          pushToast({
+            tone: "error",
+            title:
+              error instanceof Error
+                ? error.message
+                : "Failed to spawn terminal command",
+          });
+        },
+      );
     },
     activityPanelVisible: preferences?.activityPanelVisible ?? false,
     terminalRailSegment: terminal.segment,

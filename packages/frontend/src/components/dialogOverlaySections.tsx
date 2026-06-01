@@ -92,6 +92,7 @@ export function DialogOverlaySectionWorkspace(props: DialogOverlayGroupProps) {
         preferences={preferences ?? FALLBACK_PREFERENCES}
         autostart={autostart}
         pluginClient={pluginClient}
+        terminalClient={props.terminalClient}
         onClose={() => setSettingsOpen(false)}
         onChange={(key, value) => {
           if (key === "rememberLastUsedPanes") {

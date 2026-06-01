@@ -685,6 +685,7 @@ mod tests {
             preferences_db: root.join("preferences.sqlite"),
             navigation_db: root.join("navigation.sqlite"),
             network_db: root.join("network.sqlite"),
+            terminal_db: root.join("terminal.sqlite"),
         };
         app_core::AppCore::boot_with_paths(paths).expect("boot AppCore for test")
     }
