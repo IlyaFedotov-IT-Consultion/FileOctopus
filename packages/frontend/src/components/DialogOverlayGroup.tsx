@@ -9,6 +9,7 @@ import type {
   AutostartStatusDto,
   FileEntryDto,
   NetworkConnectionDraftDto,
+  NetworkProtocolOptionsDto,
   UserPreferencesDto,
 } from "@fileoctopus/ts-api";
 import type { PanelId } from "../panelStore";
@@ -135,6 +136,7 @@ export interface DialogOverlayGroupProps {
     authKind: "password" | "privateKey" | "accessKey";
     privateKeyPath: string | null;
     defaultPath: string;
+    options: NetworkProtocolOptionsDto;
     password: string;
     passphrase: string;
   }) => Promise<NetworkProfileDto>;

@@ -535,6 +535,7 @@ export interface UserPreferencesDto {
   networkAutoReconnect: boolean;
   networkDefaultProtocol: string;
   networkSshKeyPath: string;
+  networkUseSshAgent: boolean;
   editorFontFamily: string;
   editorFontSize: number;
   editorTabSize: number;
@@ -693,8 +694,46 @@ export interface NetworkProfileDto {
   lastConnectedAt: string | null;
   lastError: string | null;
   hasStoredSecret: boolean;
+  options: NetworkProtocolOptionsDto;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface NetworkProtocolOptionsDto {
+  ssh?: SshProtocolOptionsDto;
+  smb?: SmbProtocolOptionsDto;
+  s3?: S3ProtocolOptionsDto;
+}
+
+export interface SshProtocolOptionsDto {
+  useAgent?: boolean | null;
+  sshConfigHost?: string | null;
+  proxyJump?: string | null;
+  proxyCommand?: string | null;
+  keepaliveSecs?: number | null;
+  compression?: boolean | null;
+  addressFamily?: "auto" | "ipv4" | "ipv6" | string | null;
+  terminalInitialCommand?: string | null;
+  terminalEnv?: NetworkEnvVarDto[];
+}
+
+export interface SmbProtocolOptionsDto {
+  workgroup?: string | null;
+  minProtocol?: string | null;
+  signingMode?: "default" | "required" | "disabled" | string | null;
+  sharePath?: string | null;
+}
+
+export interface S3ProtocolOptionsDto {
+  region?: string | null;
+  useTls?: boolean | null;
+  pathStyle?: boolean | null;
+  rootPrefix?: string | null;
+}
+
+export interface NetworkEnvVarDto {
+  name: string;
+  value: string;
 }
 
 export interface NetworkConnectionStatusDto {
@@ -722,6 +761,7 @@ export interface NetworkProfileAddRequest {
   authKind: string;
   privateKeyPath?: string | null;
   defaultPath: string;
+  options?: NetworkProtocolOptionsDto;
 }
 
 export interface NetworkProfileUpdateRequest {
@@ -733,6 +773,7 @@ export interface NetworkProfileUpdateRequest {
   authKind: string;
   privateKeyPath?: string | null;
   defaultPath: string;
+  options?: NetworkProtocolOptionsDto;
 }
 
 export interface NetworkProfileResponse {
@@ -754,6 +795,53 @@ export interface NetworkConnectionDraftDto {
   host?: string | null;
   label?: string | null;
   defaultPath?: string | null;
+}
+
+export interface NetworkProfileDraftDto {
+  label: string;
+  scheme: string;
+  host: string;
+  port: number;
+  username: string;
+  authKind: string;
+  privateKeyPath?: string | null;
+  defaultPath: string;
+  options?: NetworkProtocolOptionsDto;
+}
+
+export interface NetworkProfileTestRequest {
+  id?: string;
+  draft?: NetworkProfileDraftDto;
+  password?: string;
+  passphrase?: string;
+}
+
+export interface NetworkProfileTestResponse {
+  ok: boolean;
+  status: "success" | "warning" | "error";
+  message: string;
+  durationMs: number;
+  resolvedUri: string | null;
+  observedFingerprint: string | null;
+  trustState: "trusted" | "untrusted" | "mismatch" | "notApplicable";
+  warnings: string[];
+}
+
+export interface NetworkProviderCapabilityDto {
+  scheme: string;
+  label: string;
+  category: "server" | "cloud" | "virtual";
+  defaultPort: number | null;
+  authKinds: string[];
+  fileCapable: boolean;
+  terminalCapable: boolean;
+  status: "available" | "unavailable";
+  missingDependency: string | null;
+  supportedOptions: string[];
+}
+
+export interface NetworkProvidersListResponse {
+  providers: NetworkProviderCapabilityDto[];
 }
 
 export interface NetworkProfileActionRequest {

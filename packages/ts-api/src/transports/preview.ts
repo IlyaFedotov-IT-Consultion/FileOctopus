@@ -80,6 +80,7 @@ export function createPreviewTransport(): IpcTransport {
     networkAutoReconnect: true,
     networkDefaultProtocol: "sftp",
     networkSshKeyPath: "",
+    networkUseSshAgent: false,
     editorFontFamily: "monospace",
     editorFontSize: 14,
     editorTabSize: 4,
@@ -248,10 +249,41 @@ export function createPreviewTransport(): IpcTransport {
               lastConnectedAt: null,
               lastError: null,
               hasStoredSecret: false,
+              options: defaultNetworkOptions(),
               createdAt: "2026-01-01T00:00:00Z",
               updatedAt: "2026-01-01T00:00:00Z",
             },
           ],
+        } as TResponse;
+      }
+
+      if (command === "network.providersList") {
+        return { providers: previewNetworkProviders() } as TResponse;
+      }
+
+      if (command === "network.profileTest") {
+        const request = args?.request as
+          | { id?: string; draft?: { scheme?: string; defaultPath?: string } }
+          | undefined;
+        const scheme = request?.draft?.scheme ?? "sftp";
+        const path = request?.draft?.defaultPath ?? "/home/deploy";
+        return {
+          ok: true,
+          status: "success",
+          message: request?.id
+            ? "Preview profile test succeeded."
+            : "Preview draft validation succeeded.",
+          durationMs: 42,
+          resolvedUri: `${scheme}://preview${path.startsWith("/") ? path : `/${path}`}`,
+          observedFingerprint:
+            scheme === "sftp" || scheme === "ssh"
+              ? "SHA256:previewfingerprint"
+              : null,
+          trustState:
+            scheme === "sftp" || scheme === "ssh"
+              ? "untrusted"
+              : "notApplicable",
+          warnings: ["Preview transport does not open sockets."],
         } as TResponse;
       }
 
@@ -300,6 +332,7 @@ export function createPreviewTransport(): IpcTransport {
             lastConnectedAt: null,
             lastError: null,
             hasStoredSecret: false,
+            options: defaultNetworkOptions(),
             createdAt: "2026-01-01T00:00:00Z",
             updatedAt: "2026-01-01T00:00:00Z",
           },
@@ -934,6 +967,104 @@ function previewEntriesForUri(uri: string): FileEntryDto[] {
     entry("Pictures", "directory", null),
     entry("FileOctopus", "directory", null),
     entry("README.md", "file", 8200, "md"),
+  ];
+}
+
+function defaultNetworkOptions() {
+  return {
+    ssh: {
+      terminalEnv: [],
+    },
+    smb: {},
+    s3: {},
+  };
+}
+
+function previewNetworkProviders() {
+  return [
+    {
+      scheme: "sftp",
+      label: "SFTP",
+      category: "server",
+      defaultPort: 22,
+      authKinds: ["password", "privateKey"],
+      fileCapable: true,
+      terminalCapable: true,
+      status: "available",
+      missingDependency: null,
+      supportedOptions: [
+        "useAgent",
+        "sshConfigHost",
+        "proxyJump",
+        "proxyCommand",
+        "keepaliveSecs",
+        "compression",
+        "addressFamily",
+      ],
+    },
+    {
+      scheme: "ssh",
+      label: "SSH",
+      category: "server",
+      defaultPort: 22,
+      authKinds: ["password", "privateKey"],
+      fileCapable: false,
+      terminalCapable: true,
+      status: "available",
+      missingDependency: null,
+      supportedOptions: [
+        "useAgent",
+        "sshConfigHost",
+        "proxyJump",
+        "proxyCommand",
+        "keepaliveSecs",
+        "compression",
+        "addressFamily",
+        "terminalInitialCommand",
+        "terminalEnv",
+      ],
+    },
+    {
+      scheme: "smb",
+      label: "SMB / CIFS",
+      category: "server",
+      defaultPort: 445,
+      authKinds: ["password"],
+      fileCapable: true,
+      terminalCapable: false,
+      status: "available",
+      missingDependency: null,
+      supportedOptions: [
+        "workgroup",
+        "minProtocol",
+        "signingMode",
+        "sharePath",
+      ],
+    },
+    {
+      scheme: "s3",
+      label: "S3",
+      category: "server",
+      defaultPort: 443,
+      authKinds: ["accessKey"],
+      fileCapable: true,
+      terminalCapable: false,
+      status: "available",
+      missingDependency: null,
+      supportedOptions: ["region", "useTls", "pathStyle", "rootPrefix"],
+    },
+    {
+      scheme: "webdav",
+      label: "WebDAV",
+      category: "server",
+      defaultPort: 443,
+      authKinds: ["password"],
+      fileCapable: false,
+      terminalCapable: false,
+      status: "unavailable",
+      missingDependency: "WebDAV provider is not registered yet.",
+      supportedOptions: [],
+    },
   ];
 }
 
