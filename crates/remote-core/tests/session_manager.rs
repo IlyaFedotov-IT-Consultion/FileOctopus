@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use async_trait::async_trait;
-use config::{AuthKind, NetworkProfileRepository, NewNetworkProfile};
+use config::{AuthKind, NetworkProfileRepository, NetworkProtocolOptions, NewNetworkProfile};
 use platform::SecretStore;
 use remote_core::{
     AuthSecrets, ConnectionSessionManager, ConnectionStatus, RemoteConnector,
@@ -124,6 +124,7 @@ impl Fixture {
                 auth_kind: AuthKind::Password,
                 private_key_path: None,
                 default_path: "/".into(),
+                options: NetworkProtocolOptions::default(),
             })
             .unwrap();
         self.profiles
@@ -137,6 +138,7 @@ impl Fixture {
                     auth_kind: AuthKind::PrivateKey,
                     private_key_path: Some(String::new()),
                     default_path: created.default_path,
+                    options: NetworkProtocolOptions::default(),
                 },
             )
             .unwrap()

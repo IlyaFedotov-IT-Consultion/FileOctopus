@@ -216,6 +216,7 @@ impl From<config::NetworkProfile> for NetworkProfileDto {
             last_connected_at: profile.last_connected_at,
             last_error: profile.last_error,
             has_stored_secret: profile.has_stored_secret,
+            options: profile.options.into(),
             created_at: profile.created_at,
             updated_at: profile.updated_at,
         }
@@ -453,6 +454,7 @@ impl From<config::UserPreferences> for UserPreferencesDto {
             network_auto_reconnect: value.network_auto_reconnect,
             network_default_protocol: value.network_default_protocol,
             network_ssh_key_path: value.network_ssh_key_path,
+            network_use_ssh_agent: value.network_use_ssh_agent,
             editor_font_family: value.editor_font_family,
             editor_font_size: value.editor_font_size,
             editor_tab_size: value.editor_tab_size,
@@ -912,6 +914,7 @@ mod tests {
                 last_connected_at: None,
                 last_error: None,
                 has_stored_secret: false,
+                options: config::NetworkProtocolOptions::default(),
                 created_at: "1970-01-01T00:00:00Z".to_string(),
                 updated_at: "1970-01-01T00:00:00Z".to_string(),
             };
@@ -943,6 +946,7 @@ mod tests {
             last_connected_at: None,
             last_error: None,
             has_stored_secret: false,
+            options: config::NetworkProtocolOptions::default(),
             created_at: "1970-01-01T00:00:00Z".to_string(),
             updated_at: "1970-01-01T00:00:00Z".to_string(),
         };
