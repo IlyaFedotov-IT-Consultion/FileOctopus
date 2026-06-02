@@ -93,6 +93,7 @@ fn status_to_dto(profile_id: &str, status: ConnectionStatus) -> NetworkConnectio
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn provider_capability(
     scheme: &str,
     label: &str,
