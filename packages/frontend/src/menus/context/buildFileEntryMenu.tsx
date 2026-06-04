@@ -1,12 +1,21 @@
 import type { ReactNode } from "react";
 import type { FileEntryDto } from "@fileoctopus/ts-api";
 import { isRemoteUri } from "@fileoctopus/ts-api";
-import { Button } from "@fileoctopus/ui";
-import type { PanelId, SortField, ViewMode } from "../../panelStore";
+import { Icons } from "@fileoctopus/ui";
+import { formatCommandShortcut } from "../../commands/registry";
+import type { FileMutationCapabilities } from "../../navigation/fileMutationState";
+import type { PanelId } from "../../panelStore";
+import { isArchiveFile } from "../../utils/archiveUtils";
 import type { TagColor } from "../../utils/tagStore";
 import { tagColorValues } from "../../utils/tagStore";
 import { isParentDirectoryEntry } from "../../utils/parentEntry";
-import { ContextMenuItem, ContextMenuSeparator } from "./ContextMenuPrimitives";
+import {
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuSubmenu,
+} from "./ContextMenuPrimitives";
+
+type ShortcutPlatform = "mac" | "windowsLinux";
 
 interface FileEntryMenuParams {
   panelId: PanelId;
@@ -14,9 +23,13 @@ interface FileEntryMenuParams {
   entry: FileEntryDto;
   canPaste: boolean;
   isStarred: boolean;
+  selectedCount?: number;
+  capabilities?: FileMutationCapabilities;
+  shortcutPlatform?: ShortcutPlatform;
   entryTagColors?: TagColor[];
   run: (action: () => void) => void;
   onOpen: (panelId: PanelId, entry: FileEntryDto | null) => void;
+  onOpenInNewTab: (panelId: PanelId, uri: string) => void;
   onNavigateOtherPane: (uri: string) => void;
   onOpenWithDefaultApp: (panelId: PanelId) => void;
   onReveal: (panelId: PanelId, entry: FileEntryDto | null) => void;
@@ -26,7 +39,6 @@ interface FileEntryMenuParams {
   onPaste: (panelId: PanelId) => void;
   onCopyPath: (panelId: PanelId) => void;
   onCopyName: (panelId: PanelId) => void;
-  onView: (panelId: PanelId, entry: FileEntryDto | null) => void;
   onRename: (panelId: PanelId) => void;
   onCopyTo: (panelId: PanelId) => void;
   onMoveTo: (panelId: PanelId) => void;
@@ -41,11 +53,6 @@ interface FileEntryMenuParams {
   onOpenTerminal: (panelId: PanelId) => void;
   onOpenTerminalExternal: (panelId: PanelId) => void;
   onChecksum: (panelId: PanelId) => void;
-  onRefresh: (panelId: PanelId) => void;
-  onSelectAll: (panelId: PanelId) => void;
-  onClearSelection: (panelId: PanelId) => void;
-  onViewMode: (panelId: PanelId, viewMode: ViewMode) => void;
-  onSort: (panelId: PanelId, field: SortField) => void;
   onAssignTag?: (entry: FileEntryDto, color: TagColor) => void;
   onRemoveTag?: (entry: FileEntryDto, color: TagColor) => void;
 }
@@ -56,9 +63,13 @@ export function buildFileEntryMenu({
   entry,
   canPaste,
   isStarred,
+  selectedCount = 1,
+  capabilities,
+  shortcutPlatform = "windowsLinux",
   entryTagColors,
   run,
   onOpen,
+  onOpenInNewTab,
   onNavigateOtherPane,
   onOpenWithDefaultApp,
   onReveal,
@@ -68,7 +79,6 @@ export function buildFileEntryMenu({
   onPaste,
   onCopyPath,
   onCopyName,
-  onView,
   onRename,
   onCopyTo,
   onMoveTo,
@@ -83,131 +93,167 @@ export function buildFileEntryMenu({
   onOpenTerminal,
   onOpenTerminalExternal,
   onChecksum,
-  onRefresh,
-  onSelectAll,
-  onClearSelection,
-  onViewMode,
-  onSort,
   onAssignTag,
   onRemoveTag,
 }: FileEntryMenuParams): ReactNode {
   if (isParentDirectoryEntry(entry, currentTabUri)) {
     return (
-      <ContextMenuItem onClick={() => run(() => onOpen(panelId, entry))}>
-        Open
-      </ContextMenuItem>
+      <ContextMenuItem
+        icon={Icons.folder()}
+        label="Open"
+        onClick={() => run(() => onOpen(panelId, entry))}
+        shortcut={formatCommandShortcut("op.open", shortcutPlatform)}
+      />
     );
   }
 
   const isDirectory = entry.kind === "directory";
   const remotePane = isRemoteUri(currentTabUri);
+  const singleSelection = selectedCount <= 1;
+  const canCopy =
+    capabilities?.canCopy ?? (isDirectory ? entry.canList : entry.canRead);
+  const canMove = capabilities?.canMove ?? (entry.canWrite && entry.canDelete);
+  const canRename = capabilities?.canRename ?? entry.canRename;
+  const canDelete = capabilities?.canDelete ?? entry.canDelete;
+  const canEdit = capabilities?.canEdit ?? !remotePane;
+  const canUnpack =
+    !remotePane && entry.kind === "file" && isArchiveFile(entry.name);
+  const selectionLabel =
+    selectedCount > 1 ? `${selectedCount} selected items` : entry.name;
 
   return (
     <>
-      <ContextMenuItem onClick={() => run(() => onOpen(panelId, entry))}>
-        Open
-      </ContextMenuItem>
+      <ContextMenuItem
+        icon={isDirectory ? Icons.folder() : Icons.file()}
+        label="Open"
+        onClick={() => run(() => onOpen(panelId, entry))}
+        shortcut={formatCommandShortcut("op.open", shortcutPlatform)}
+      />
       {isDirectory ? (
-        <ContextMenuItem
-          onClick={() => run(() => onNavigateOtherPane(entry.uri))}
-        >
-          Open in Other Pane
-        </ContextMenuItem>
+        <>
+          <ContextMenuItem
+            disabled={!singleSelection}
+            disabledReason="Open in New Tab is available for one folder at a time"
+            icon={Icons.plus()}
+            label="Open in New Tab"
+            onClick={() => run(() => onOpenInNewTab(panelId, entry.uri))}
+          />
+          <ContextMenuItem
+            disabled={!singleSelection}
+            disabledReason="Open in Other Pane is available for one folder at a time"
+            icon={Icons.chevronRight()}
+            label="Open in Other Pane"
+            onClick={() => run(() => onNavigateOtherPane(entry.uri))}
+          />
+        </>
       ) : (
         <ContextMenuItem
+          disabled={!singleSelection || !canEdit}
+          disabledReason={
+            !singleSelection
+              ? "Open With Default App is available for one file at a time"
+              : "Open With Default App is unavailable for this provider"
+          }
+          icon={Icons.externalLink()}
+          label="Open With Default App"
           onClick={() => run(() => onOpenWithDefaultApp(panelId))}
-        >
-          Open With Default App
-        </ContextMenuItem>
+        />
       )}
-      <ContextMenuItem onClick={() => run(() => onView(panelId, entry))}>
-        View…
-      </ContextMenuItem>
-      <ContextMenuItem onClick={() => run(() => onReveal(panelId, entry))}>
-        Reveal in System File Manager
-      </ContextMenuItem>
-      {isDirectory ? (
-        <ContextMenuItem onClick={() => run(() => onAddFavorite(entry.uri))}>
-          Add to Favorites
-        </ContextMenuItem>
+      <ContextMenuItem
+        disabled={!singleSelection}
+        disabledReason="Reveal is available for one item at a time"
+        icon={Icons.externalLink()}
+        label="Reveal in System File Manager"
+        onClick={() => run(() => onReveal(panelId, entry))}
+      />
+      <ContextMenuSeparator />
+      <ContextMenuItem
+        disabled={!canMove}
+        disabledReason={`${selectionLabel} cannot be moved from this location`}
+        label="Cut"
+        onClick={() => run(() => onCut(panelId))}
+        shortcut={formatCommandShortcut("op.cut", shortcutPlatform)}
+      />
+      <ContextMenuItem
+        disabled={!canCopy}
+        disabledReason={`${selectionLabel} cannot be copied from this location`}
+        icon={Icons.copy()}
+        label="Copy"
+        onClick={() => run(() => onCopy(panelId))}
+        shortcut={formatCommandShortcut("op.copy", shortcutPlatform)}
+      />
+      {canPaste ? (
+        <ContextMenuItem
+          icon={Icons.clipboardCopy()}
+          label={isDirectory ? "Paste Into Folder" : "Paste"}
+          onClick={() => run(() => onPaste(panelId))}
+          shortcut={formatCommandShortcut("op.paste", shortcutPlatform)}
+        />
       ) : null}
       <ContextMenuSeparator />
       <ContextMenuItem
-        disabled={!entry.canWrite || !entry.canDelete}
-        onClick={() => run(() => onCut(panelId))}
-      >
-        Cut
-      </ContextMenuItem>
-      <ContextMenuItem
-        disabled={!entry.canRead}
-        onClick={() => run(() => onCopy(panelId))}
-      >
-        Copy
-      </ContextMenuItem>
-      <ContextMenuItem
-        disabled={!canPaste}
-        onClick={() => run(() => onPaste(panelId))}
-      >
-        {isDirectory ? "Paste Into Folder" : "Paste"}
-      </ContextMenuItem>
-      <ContextMenuItem onClick={() => run(() => onCopyPath(panelId))}>
-        Copy Path
-      </ContextMenuItem>
-      <ContextMenuItem onClick={() => run(() => onCopyName(panelId))}>
-        Copy Name
-      </ContextMenuItem>
-      <ContextMenuSeparator />
-      <ContextMenuItem
-        disabled={!entry.canRename}
+        disabled={!singleSelection || !canRename}
+        disabledReason={
+          !singleSelection
+            ? "Rename is available for one item at a time"
+            : `${entry.name} cannot be renamed`
+        }
+        icon={Icons.pencil()}
+        label="Rename…"
         onClick={() => run(() => onRename(panelId))}
-      >
-        Rename…
-      </ContextMenuItem>
+        shortcut={formatCommandShortcut("op.rename", shortcutPlatform)}
+      />
       <ContextMenuItem
-        disabled={!entry.canRead}
+        disabled={!canCopy}
+        disabledReason={`${selectionLabel} cannot be copied from this location`}
+        icon={Icons.copy()}
+        label="Copy To…"
         onClick={() => run(() => onCopyTo(panelId))}
-      >
-        Copy To…
-      </ContextMenuItem>
+        shortcut={formatCommandShortcut("op.copyTo", shortcutPlatform)}
+      />
       <ContextMenuItem
-        disabled={!entry.canWrite || !entry.canDelete}
+        disabled={!canMove}
+        disabledReason={`${selectionLabel} cannot be moved from this location`}
+        icon={Icons.move()}
+        label="Move To…"
         onClick={() => run(() => onMoveTo(panelId))}
-      >
-        Move To…
-      </ContextMenuItem>
-      <ContextMenuItem
-        disabled={!entry.canDelete}
-        onClick={() => run(() => onTrash(panelId))}
-      >
-        {remotePane ? "Delete…" : "Move to Trash…"}
-      </ContextMenuItem>
-      <ContextMenuItem
-        disabled={!entry.canDelete}
-        onClick={() => run(() => onPermanentDelete(panelId))}
-      >
-        Delete Permanently…
-      </ContextMenuItem>
+        shortcut={formatCommandShortcut("op.moveTo", shortcutPlatform)}
+      />
       <ContextMenuSeparator />
+      {isDirectory && singleSelection ? (
+        <ContextMenuItem
+          icon={Icons.star()}
+          label="Add to Favorites"
+          onClick={() => run(() => onAddFavorite(entry.uri))}
+        />
+      ) : null}
       <ContextMenuItem
+        disabled={!singleSelection}
+        disabledReason="Stars are available for one item at a time"
+        icon={Icons.star()}
+        label={isStarred ? "Remove Star" : "Add Star"}
         onClick={() => run(() => onToggleStarred(panelId, entry))}
-      >
-        {isStarred ? "Remove Star" : "Add Star"}
-      </ContextMenuItem>
-      {onAssignTag ? (
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="fo-context-menu-item fo-context-menu-item--submenu"
-          role="menuitem"
-        >
-          Tags…
-          <div className="fo-context-submenu" role="menu">
+      />
+      {onAssignTag && singleSelection ? (
+        <ContextMenuSubmenu icon={Icons.hash()} label="Tags">
+          <>
             {tagColorValues.map((color) => {
               const hasColor = entryTagColors?.indexOf(color) !== -1;
               return (
                 <ContextMenuItem
                   key={color}
+                  label={
+                    <>
+                      <span
+                        className={`fo-context-tag-color-swatch`}
+                        style={{
+                          backgroundColor: tagColorHex(color),
+                        }}
+                      />
+                      {color[0].toUpperCase() + color.slice(1)}
+                      {hasColor ? " ✓" : ""}
+                    </>
+                  }
                   onClick={() =>
                     run(() => {
                       if (hasColor && onRemoveTag) {
@@ -217,108 +263,104 @@ export function buildFileEntryMenu({
                       }
                     })
                   }
-                >
-                  <span
-                    className={`fo-context-tag-color-swatch`}
-                    style={{
-                      backgroundColor: tagColorHex(color),
-                    }}
-                  />
-                  {color[0].toUpperCase() + color.slice(1)}
-                  {hasColor ? " ✓" : ""}
-                </ContextMenuItem>
+                />
               );
             })}
-          </div>
-        </Button>
+          </>
+        </ContextMenuSubmenu>
       ) : null}
-      <ContextMenuItem onClick={() => run(() => onProperties(panelId, entry))}>
-        Properties…
-      </ContextMenuItem>
-      <ContextMenuItem onClick={() => run(() => onCopyParentPath(panelId))}>
-        Copy Parent Folder Path
-      </ContextMenuItem>
-      <ContextMenuItem onClick={() => run(() => onCopyResourceUri(panelId))}>
-        Copy Resource URI
-      </ContextMenuItem>
-      <ContextMenuItem
-        disabled={remotePane}
-        onClick={() => run(() => onCompress(panelId))}
-      >
-        Pack…
-      </ContextMenuItem>
-      <ContextMenuItem
-        disabled={remotePane}
-        onClick={() => run(() => onExtract(panelId))}
-      >
-        Unpack…
-      </ContextMenuItem>
-      <ContextMenuItem onClick={() => run(() => onOpenTerminal(panelId))}>
-        Open Terminal
-      </ContextMenuItem>
-      <ContextMenuItem
-        onClick={() => run(() => onOpenTerminalExternal(panelId))}
-      >
-        Open External Terminal
-      </ContextMenuItem>
-      <ContextMenuItem onClick={() => run(() => onChecksum(panelId))}>
-        Checksum…
-      </ContextMenuItem>
       <ContextMenuSeparator />
-      <ContextMenuItem onClick={() => run(() => onRefresh(panelId))}>
-        Refresh
-      </ContextMenuItem>
-      <ContextMenuItem onClick={() => run(() => onSelectAll(panelId))}>
-        Select All
-      </ContextMenuItem>
-      <ContextMenuItem onClick={() => run(() => onClearSelection(panelId))}>
-        Clear Selection
-      </ContextMenuItem>
-      <ContextMenuSeparator />
-      <ContextMenuItem
-        onClick={() => run(() => onViewMode(panelId, "details"))}
-      >
-        Details View
-      </ContextMenuItem>
-      <ContextMenuItem onClick={() => run(() => onViewMode(panelId, "list"))}>
-        List View
-      </ContextMenuItem>
-      <ContextMenuItem onClick={() => run(() => onViewMode(panelId, "icons"))}>
-        Icon View
-      </ContextMenuItem>
-      <ContextMenuItem
-        onClick={() => run(() => onViewMode(panelId, "columns"))}
-      >
-        Columns View
-      </ContextMenuItem>
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        className="fo-context-menu-item fo-context-menu-item--submenu"
-        role="menuitem"
-      >
-        Sort by…
-        <div className="fo-context-submenu" role="menu">
-          {(
-            [
-              "name",
-              "modified",
-              "size",
-              "type",
-              "created",
-              "extension",
-            ] as const
-          ).map((field) => (
+      <ContextMenuSubmenu icon={Icons.clipboardCopy()} label="Copy">
+        <>
+          <ContextMenuItem
+            label="Copy Path"
+            onClick={() => run(() => onCopyPath(panelId))}
+          />
+          <ContextMenuItem
+            label="Copy Name"
+            onClick={() => run(() => onCopyName(panelId))}
+          />
+          <ContextMenuItem
+            label="Copy Parent Folder Path"
+            onClick={() => run(() => onCopyParentPath(panelId))}
+          />
+          <ContextMenuItem
+            label="Copy Resource URI"
+            onClick={() => run(() => onCopyResourceUri(panelId))}
+          />
+        </>
+      </ContextMenuSubmenu>
+      <ContextMenuSubmenu icon={Icons.externalLink()} label="Open With">
+        <>
+          <ContextMenuItem
+            icon={Icons.terminal()}
+            label="Open Terminal"
+            onClick={() => run(() => onOpenTerminal(panelId))}
+          />
+          <ContextMenuItem
+            icon={Icons.externalLink()}
+            label="Open External Terminal"
+            onClick={() => run(() => onOpenTerminalExternal(panelId))}
+          />
+          <ContextMenuItem
+            icon={Icons.externalLink()}
+            label="Reveal in System File Manager"
+            onClick={() => run(() => onReveal(panelId, entry))}
+          />
+        </>
+      </ContextMenuSubmenu>
+      <ContextMenuSubmenu icon={Icons.archive()} label="Tools">
+        <>
+          <ContextMenuItem
+            disabled={remotePane}
+            disabledReason="Packing is available only for local selections"
+            icon={Icons.archive()}
+            label="Pack…"
+            onClick={() => run(() => onCompress(panelId))}
+          />
+          {canUnpack ? (
             <ContextMenuItem
-              key={field}
-              onClick={() => run(() => onSort(panelId, field))}
-            >
-              {field[0].toUpperCase() + field.slice(1)}
-            </ContextMenuItem>
-          ))}
-        </div>
-      </Button>
+              icon={Icons.archive()}
+              label="Unpack…"
+              onClick={() => run(() => onExtract(panelId))}
+            />
+          ) : null}
+          <ContextMenuItem
+            icon={Icons.hash()}
+            label="Checksum…"
+            onClick={() => run(() => onChecksum(panelId))}
+          />
+          <ContextMenuSeparator />
+          <ContextMenuItem
+            disabled={!canDelete}
+            disabledReason={`${selectionLabel} cannot be permanently deleted`}
+            icon={Icons.trash()}
+            label="Delete Permanently…"
+            onClick={() => run(() => onPermanentDelete(panelId))}
+            shortcut={formatCommandShortcut(
+              "op.deletePermanent",
+              shortcutPlatform,
+            )}
+            tone="danger"
+          />
+        </>
+      </ContextMenuSubmenu>
+      <ContextMenuSeparator />
+      <ContextMenuItem
+        disabled={!canDelete}
+        disabledReason={`${selectionLabel} cannot be deleted`}
+        icon={Icons.trash()}
+        label={remotePane ? "Delete…" : "Move to Trash…"}
+        onClick={() => run(() => onTrash(panelId))}
+        shortcut={formatCommandShortcut("op.trash", shortcutPlatform)}
+      />
+      <ContextMenuSeparator />
+      <ContextMenuItem
+        icon={Icons.info()}
+        label="Properties…"
+        onClick={() => run(() => onProperties(panelId, entry))}
+        shortcut={formatCommandShortcut("op.properties", shortcutPlatform)}
+      />
     </>
   );
 }

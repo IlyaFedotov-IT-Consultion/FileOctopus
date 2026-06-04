@@ -7,7 +7,8 @@ import {
 } from "react";
 import type { FileEntryDto } from "@fileoctopus/ts-api";
 import { MenuSurface } from "@fileoctopus/ui";
-import type { PanelId, SortField, ViewMode } from "../panelStore";
+import type { PanelId, ViewMode } from "../panelStore";
+import type { FileMutationCapabilities } from "../navigation/fileMutationState";
 import type { TagColor } from "../utils/tagStore";
 import { buildBreadcrumbMenu } from "../menus/context/buildBreadcrumbMenu";
 import { buildFileEntryMenu } from "../menus/context/buildFileEntryMenu";
@@ -26,8 +27,12 @@ interface ContextMenuProps {
   currentTabUri: string;
   canPaste: boolean;
   isStarred: boolean;
+  selectedCount?: number;
+  capabilities?: FileMutationCapabilities;
+  shortcutPlatform?: "mac" | "windowsLinux";
   onClose: () => void;
   onOpen: (panelId: PanelId, entry: FileEntryDto | null) => void;
+  onOpenInNewTab: (panelId: PanelId, uri: string) => void;
   onRename: (panelId: PanelId) => void;
   onCopy: (panelId: PanelId) => void;
   onCut: (panelId: PanelId) => void;
@@ -37,7 +42,6 @@ interface ContextMenuProps {
   onPermanentDelete: (panelId: PanelId) => void;
   onCopyPath: (panelId: PanelId) => void;
   onCopyName: (panelId: PanelId) => void;
-  onView: (panelId: PanelId, entry: FileEntryDto | null) => void;
   onProperties: (panelId: PanelId, entry: FileEntryDto | null) => void;
   onReveal: (panelId: PanelId, entry: FileEntryDto | null) => void;
   onCompress: (panelId: PanelId) => void;
@@ -48,9 +52,7 @@ interface ContextMenuProps {
   onCreateFolder: (panelId: PanelId) => void;
   onCreateFile: (panelId: PanelId) => void;
   onRefresh: (panelId: PanelId) => void;
-  onSelectAll: (panelId: PanelId) => void;
   onViewMode: (panelId: PanelId, viewMode: ViewMode) => void;
-  onSort: (panelId: PanelId, field: SortField) => void;
   showHidden: boolean;
   onToggleHidden: (panelId: PanelId) => void;
   onOpenWithDefaultApp: (panelId: PanelId) => void;
@@ -58,7 +60,6 @@ interface ContextMenuProps {
   onMoveTo: (panelId: PanelId) => void;
   onCopyParentPath: (panelId: PanelId) => void;
   onCopyResourceUri: (panelId: PanelId) => void;
-  onClearSelection: (panelId: PanelId) => void;
   onNavigateTo: (panelId: PanelId, uri: string) => void;
   onNavigateOtherPane: (uri: string) => void;
   onCopyBreadcrumbPath: (path: string) => void;
@@ -74,8 +75,12 @@ export function ContextMenu({
   currentTabUri,
   canPaste,
   isStarred,
+  selectedCount,
+  capabilities,
+  shortcutPlatform,
   onClose,
   onOpen,
+  onOpenInNewTab,
   onRename,
   onCopy,
   onCut,
@@ -85,7 +90,6 @@ export function ContextMenu({
   onPermanentDelete,
   onCopyPath,
   onCopyName,
-  onView,
   onProperties,
   onReveal,
   onCompress,
@@ -96,9 +100,7 @@ export function ContextMenu({
   onCreateFolder,
   onCreateFile,
   onRefresh,
-  onSelectAll,
   onViewMode,
-  onSort,
   showHidden,
   onToggleHidden,
   onOpenWithDefaultApp,
@@ -106,7 +108,6 @@ export function ContextMenu({
   onMoveTo,
   onCopyParentPath,
   onCopyResourceUri,
-  onClearSelection,
   onNavigateTo,
   onNavigateOtherPane,
   onCopyBreadcrumbPath,
@@ -277,8 +278,12 @@ export function ContextMenu({
       entry: menu.entry,
       canPaste,
       isStarred,
+      selectedCount,
+      capabilities,
+      shortcutPlatform,
       run,
       onOpen,
+      onOpenInNewTab,
       onNavigateOtherPane,
       onOpenWithDefaultApp,
       onReveal,
@@ -288,7 +293,6 @@ export function ContextMenu({
       onPaste,
       onCopyPath,
       onCopyName,
-      onView,
       onRename,
       onCopyTo,
       onMoveTo,
@@ -303,11 +307,6 @@ export function ContextMenu({
       onOpenTerminal,
       onOpenTerminalExternal,
       onChecksum,
-      onRefresh,
-      onSelectAll,
-      onClearSelection,
-      onViewMode,
-      onSort,
       onAssignTag,
       onRemoveTag,
       entryTagColors,

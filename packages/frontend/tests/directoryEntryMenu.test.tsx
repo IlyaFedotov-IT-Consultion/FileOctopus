@@ -20,6 +20,23 @@ vi.mock("@fileoctopus/ui", () => ({
       {children}
     </button>
   ),
+  Icons: {
+    archive: () => <span aria-hidden="true" />,
+    chevronRight: () => <span aria-hidden="true" />,
+    clipboardCopy: () => <span aria-hidden="true" />,
+    copy: () => <span aria-hidden="true" />,
+    externalLink: () => <span aria-hidden="true" />,
+    file: () => <span aria-hidden="true" />,
+    folder: () => <span aria-hidden="true" />,
+    hash: () => <span aria-hidden="true" />,
+    info: () => <span aria-hidden="true" />,
+    move: () => <span aria-hidden="true" />,
+    pencil: () => <span aria-hidden="true" />,
+    plus: () => <span aria-hidden="true" />,
+    star: () => <span aria-hidden="true" />,
+    terminal: () => <span aria-hidden="true" />,
+    trash: () => <span aria-hidden="true" />,
+  },
 }));
 
 // Mock isRemoteUri
@@ -85,6 +102,7 @@ function makeMenuProps(overrides: Record<string, unknown> = {}) {
     entryTagColors: [] as TagColor[],
     run: (action: () => void) => action(),
     onOpen: vi.fn(),
+    onOpenInNewTab: vi.fn(),
     onNavigateOtherPane: vi.fn(),
     onOpenWithDefaultApp: vi.fn(),
     onReveal: vi.fn(),
@@ -130,7 +148,7 @@ describe("buildFileEntryMenu", () => {
     render(<>{buildFileEntryMenu(props)}</>);
     const items = screen.getAllByRole("menuitem");
     expect(items).toHaveLength(1);
-    expect(items[0].textContent).toBe("Open");
+    expect(items[0].textContent).toContain("Open");
   });
 
   it("renders Open and Open in Other Pane for directories", () => {
@@ -139,6 +157,7 @@ describe("buildFileEntryMenu", () => {
     });
     render(<>{buildFileEntryMenu(props)}</>);
     expect(screen.getByText("Open")).toBeTruthy();
+    expect(screen.getByText("Open in New Tab")).toBeTruthy();
     expect(screen.getByText("Open in Other Pane")).toBeTruthy();
     // Should NOT show "Open With Default App"
     expect(screen.queryByText("Open With Default App")).toBeNull();
@@ -151,6 +170,7 @@ describe("buildFileEntryMenu", () => {
     render(<>{buildFileEntryMenu(props)}</>);
     expect(screen.getByText("Open")).toBeTruthy();
     expect(screen.getByText("Open With Default App")).toBeTruthy();
+    expect(screen.queryByText("Open in New Tab")).toBeNull();
     // Should NOT show "Open in Other Pane"
     expect(screen.queryByText("Open in Other Pane")).toBeNull();
   });
@@ -182,6 +202,15 @@ describe("buildFileEntryMenu", () => {
     expect(screen.getByText("Paste")).toBeTruthy();
   });
 
+  it("hides Paste when the clipboard is empty", () => {
+    const props = makeMenuProps({
+      canPaste: false,
+      entry: makeEntry({ kind: "directory" }),
+    });
+    render(<>{buildFileEntryMenu(props)}</>);
+    expect(screen.queryByText("Paste Into Folder")).toBeNull();
+  });
+
   it("disables Cut when entry.canWrite or entry.canDelete is false", () => {
     const props = makeMenuProps({
       entry: makeEntry({ canWrite: false }),
@@ -193,10 +222,10 @@ describe("buildFileEntryMenu", () => {
 
   it("disables Copy when entry.canRead is false", () => {
     const props = makeMenuProps({
-      entry: makeEntry({ canRead: false }),
+      entry: makeEntry({ canRead: false, canList: false }),
     });
     render(<>{buildFileEntryMenu(props)}</>);
-    const copyBtn = screen.getByText("Copy").closest("button")!;
+    const copyBtn = screen.getByText("Ctrl+C").closest("button")!;
     expect(copyBtn.disabled).toBe(true);
   });
 
@@ -206,8 +235,7 @@ describe("buildFileEntryMenu", () => {
       entry: makeEntry({ kind: "file" }),
     });
     render(<>{buildFileEntryMenu(props)}</>);
-    const pasteBtn = screen.getByText("Paste").closest("button")!;
-    expect(pasteBtn.disabled).toBe(true);
+    expect(screen.queryByText("Paste")).toBeNull();
   });
 
   it("disables Rename when entry.canRename is false", () => {
@@ -276,46 +304,65 @@ describe("buildFileEntryMenu", () => {
     });
     render(<>{buildFileEntryMenu(props)}</>);
     const packBtn = screen.getByText("Pack…").closest("button")!;
-    const unpackBtn = screen.getByText("Unpack…").closest("button")!;
     expect(packBtn.disabled).toBe(true);
-    expect(unpackBtn.disabled).toBe(true);
+    expect(screen.queryByText("Unpack…")).toBeNull();
   });
 
-  it("renders view mode menu items", () => {
+  it("does not render pane view or sort controls in the selected entry menu", () => {
     const props = makeMenuProps();
     render(<>{buildFileEntryMenu(props)}</>);
-    expect(screen.getByText("Details View")).toBeTruthy();
-    expect(screen.getByText("List View")).toBeTruthy();
-    expect(screen.getByText("Icon View")).toBeTruthy();
-    expect(screen.getByText("Columns View")).toBeTruthy();
+    expect(screen.queryByText("Details View")).toBeNull();
+    expect(screen.queryByText("Sort by…")).toBeNull();
   });
 
-  it("renders sort submenu items", () => {
+  it("moves advanced actions into Copy, Open With, and Tools submenus", () => {
     const props = makeMenuProps();
     render(<>{buildFileEntryMenu(props)}</>);
-    expect(screen.getByText("Sort by…")).toBeTruthy();
-    expect(screen.getByText("Name")).toBeTruthy();
-    expect(screen.getByText("Modified")).toBeTruthy();
-    expect(screen.getByText("Size")).toBeTruthy();
-    expect(screen.getByText("Type")).toBeTruthy();
-    expect(screen.getByText("Created")).toBeTruthy();
-    expect(screen.getByText("Extension")).toBeTruthy();
-  });
-
-  it("renders common action items", () => {
-    const props = makeMenuProps();
-    render(<>{buildFileEntryMenu(props)}</>);
+    expect(screen.getAllByText("Copy").length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText("Open With")).toBeTruthy();
+    expect(screen.getByText("Tools")).toBeTruthy();
     expect(screen.getByText("Copy Path")).toBeTruthy();
     expect(screen.getByText("Copy Name")).toBeTruthy();
+    expect(screen.getByText("Copy Parent Folder Path")).toBeTruthy();
+    expect(screen.getByText("Copy Resource URI")).toBeTruthy();
     expect(screen.getByText("Open Terminal")).toBeTruthy();
     expect(screen.getByText("Open External Terminal")).toBeTruthy();
     expect(screen.getByText("Checksum…")).toBeTruthy();
-    expect(screen.getByText("Refresh")).toBeTruthy();
-    expect(screen.getByText("Select All")).toBeTruthy();
-    expect(screen.getByText("Clear Selection")).toBeTruthy();
+    expect(screen.queryByText("Refresh")).toBeNull();
+    expect(screen.queryByText("Select All")).toBeNull();
+    expect(screen.queryByText("Clear Selection")).toBeNull();
     expect(screen.getByText("Properties…")).toBeTruthy();
-    expect(screen.getByText("Copy Parent Folder Path")).toBeTruthy();
-    expect(screen.getByText("Copy Resource URI")).toBeTruthy();
+  });
+
+  it("shows Unpack only for local archive files", () => {
+    const archiveProps = makeMenuProps({
+      entry: makeEntry({
+        kind: "file",
+        name: "backup.zip",
+        uri: "local:///home/user/backup.zip",
+      }),
+    });
+    render(<>{buildFileEntryMenu(archiveProps)}</>);
+    expect(screen.getByText("Unpack…")).toBeTruthy();
+    cleanup();
+
+    const normalProps = makeMenuProps({
+      entry: makeEntry({ kind: "file", name: "readme.txt" }),
+    });
+    render(<>{buildFileEntryMenu(normalProps)}</>);
+    expect(screen.queryByText("Unpack…")).toBeNull();
+  });
+
+  it("renders shortcut hints for common file operations", () => {
+    const props = makeMenuProps();
+    render(<>{buildFileEntryMenu(props)}</>);
+    expect(screen.getByText("Ctrl+X")).toBeTruthy();
+    expect(screen.getByText("Ctrl+C")).toBeTruthy();
+    expect(screen.getByText("Ctrl+V")).toBeTruthy();
+    expect(screen.getByText("F2")).toBeTruthy();
+    expect(screen.getByText("F5")).toBeTruthy();
+    expect(screen.getByText("F6")).toBeTruthy();
+    expect(screen.getByText("Alt+Enter")).toBeTruthy();
   });
 
   it("invokes action callbacks through run()", () => {
@@ -329,8 +376,7 @@ describe("buildFileEntryMenu", () => {
   it("renders Tags submenu when onAssignTag is provided", () => {
     const props = makeMenuProps({ onAssignTag: vi.fn() });
     render(<>{buildFileEntryMenu(props)}</>);
-    expect(screen.getByText("Tags…")).toBeTruthy();
-    // Tag colors should be rendered
+    expect(screen.getByText("Tags")).toBeTruthy();
     expect(screen.getByText("Red")).toBeTruthy();
     expect(screen.getByText("Green")).toBeTruthy();
   });
@@ -338,7 +384,7 @@ describe("buildFileEntryMenu", () => {
   it("does not render Tags submenu when onAssignTag is undefined", () => {
     const props = makeMenuProps();
     render(<>{buildFileEntryMenu(props)}</>);
-    expect(screen.queryByText("Tags…")).toBeNull();
+    expect(screen.queryByText("Tags")).toBeNull();
   });
 
   it("calls onAssignTag when a tag without existing color is clicked", () => {
@@ -390,15 +436,15 @@ describe("buildFileEntryMenu", () => {
     const onViewMode = vi.fn();
     const props = makeMenuProps({ onViewMode });
     render(<>{buildFileEntryMenu(props)}</>);
-    fireEvent.click(screen.getByText("Details View"));
-    expect(onViewMode).toHaveBeenCalledWith("left", "details");
+    expect(screen.queryByText("Details View")).toBeNull();
+    expect(onViewMode).not.toHaveBeenCalled();
   });
 
   it("calls onSort with correct field when sort items are clicked", () => {
     const onSort = vi.fn();
     const props = makeMenuProps({ onSort });
     render(<>{buildFileEntryMenu(props)}</>);
-    fireEvent.click(screen.getByText("Size"));
-    expect(onSort).toHaveBeenCalledWith("left", "size");
+    expect(screen.queryByText("Size")).toBeNull();
+    expect(onSort).not.toHaveBeenCalled();
   });
 });
