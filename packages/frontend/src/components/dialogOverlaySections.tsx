@@ -1,3 +1,4 @@
+import { useModals } from "../app/providers/ModalsProvider";
 import { DiagnosticsDialog } from "./DiagnosticsDialog";
 import { SettingsDialog } from "./SettingsDialog";
 import { ShortcutsDialog } from "./ShortcutsDialog";
@@ -9,6 +10,7 @@ import { EditorDialog } from "./editor/EditorDialog";
 import { setRememberSessionPaths } from "../pane/sessionPaths";
 import { OperationDialogView } from "../dialogs/OperationDialogView";
 import { AboutDialog } from "./dialogs/AboutDialog";
+import { DocumentationDialog } from "./dialogs/DocumentationDialog";
 import { GoToLocationDialog } from "./dialogs/GoToLocationDialog";
 import { ManageFavoritesDialog } from "./dialogs/ManageFavoritesDialog";
 import { RecentLocationsDialog } from "./dialogs/RecentLocationsDialog";
@@ -48,6 +50,8 @@ export function DialogOverlaySectionWorkspace(props: DialogOverlayGroupProps) {
     editorEntry,
     setEditorOpen,
     refreshActivePane,
+    helpOpen,
+    setHelpOpen,
     aboutOpen,
     settingsPreferenceChange,
     goToLocationInitialUri,
@@ -178,16 +182,22 @@ export function DialogOverlaySectionWorkspace(props: DialogOverlayGroupProps) {
         open={manageHotlistOpen}
         onClose={() => setManageHotlistOpen(false)}
       />
+      <DocumentationDialog open={helpOpen} onClose={() => setHelpOpen(false)} />
       <AboutDialog
         open={aboutOpen}
         appInfo={appInfo}
         onClose={() => setAboutOpen(false)}
+        onOpenDocumentation={() => {
+          setAboutOpen(false);
+          setHelpOpen(true);
+        }}
       />
     </>
   );
 }
 
 export function DialogOverlaySectionNavigation(props: DialogOverlayGroupProps) {
+  const { setDebugConsoleOpen } = useModals();
   const {
     diagnosticsOpen,
     goToLocationOpen,
@@ -288,6 +298,10 @@ export function DialogOverlaySectionNavigation(props: DialogOverlayGroupProps) {
         onDestinationChange={setDiagnosticsDestination}
         onRefresh={() => void refreshDiagnostics()}
         onExport={() => void exportDiagnostics()}
+        onOpenLiveConsole={() => {
+          setDiagnosticsOpen(false);
+          setDebugConsoleOpen(true);
+        }}
       />
     </>
   );

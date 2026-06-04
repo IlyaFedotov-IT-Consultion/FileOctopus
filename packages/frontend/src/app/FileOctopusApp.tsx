@@ -181,6 +181,7 @@ function FileOctopusAppInner({
     setEditorOpen,
     setEditorEntry,
     setDiagnosticsOpen,
+    setDebugConsoleOpen,
     setHelpOpen,
     setDialog,
     multiRenameOpen,
@@ -455,6 +456,8 @@ function FileOctopusAppInner({
     setToolbarCustomizeOpen,
     setShortcutsOpen,
     setDiagnosticsOpen,
+    setDebugConsoleOpen,
+    setHelpOpen,
     setAboutOpen,
     setGoToLocationOpen,
     setManageFavoritesOpen,
@@ -797,6 +800,7 @@ function FileOctopusAppInner({
       editorOpen={editorOpen}
       editorEntry={editorEntry}
       diagnosticsOpen={diagnosticsOpen}
+      helpOpen={helpOpen}
       aboutOpen={aboutOpen}
       goToLocationOpen={goToLocationOpen}
       manageFavoritesOpen={manageFavoritesOpen}
@@ -872,6 +876,7 @@ function FileOctopusAppInner({
       isTextEditable={isTextEditable}
       refreshActivePane={() => refreshPanel(state.activePanelId)}
       setDiagnosticsOpen={setDiagnosticsOpen}
+      setHelpOpen={setHelpOpen}
       setAboutOpen={setAboutOpen}
       setDialog={setDialog}
       setDiagnosticsDestination={setDiagnosticsDestination}

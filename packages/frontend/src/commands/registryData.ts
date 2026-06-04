@@ -223,6 +223,12 @@ export const COMMAND_REGISTRY = [
     surfaces: ["toolbar", "menu", "palette", "context"],
   },
   {
+    id: "op.permissions",
+    label: "Permissions…",
+    group: "operation",
+    surfaces: ["menu", "palette", "context"],
+  },
+  {
     id: "op.reveal",
     label: "Reveal in System File Manager",
     group: "operation",
@@ -555,11 +561,25 @@ export const COMMAND_REGISTRY = [
     surfaces: ["menu", "palette"],
   },
   {
+    id: "app.debugConsole",
+    label: "Debug Console",
+    group: "app",
+    shortcutMac: "⌘⌥L",
+    shortcutWin: "Ctrl+Alt+L",
+    surfaces: ["menu", "palette"],
+  },
+  {
     id: "app.commandPalette",
     label: "Command Palette",
     group: "app",
     shortcutMac: "⌘P",
     shortcutWin: "Ctrl+P",
+    surfaces: ["menu", "palette"],
+  },
+  {
+    id: "app.documentation",
+    label: "Documentation",
+    group: "app",
     surfaces: ["menu", "palette"],
   },
   {
