@@ -1,9 +1,12 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { render, fireEvent, cleanup } from "@testing-library/react";
+import { render, fireEvent, cleanup, screen } from "@testing-library/react";
 import {
   ContextMenu,
   type ContextMenuState,
 } from "../src/components/ContextMenu";
+import { ContextMenuOverlay } from "../src/components/ContextMenuOverlay";
+import { createInitialState } from "../src/panelStore";
+import type { FileEntryDto } from "@fileoctopus/ts-api";
 
 const mockMenu: ContextMenuState = {
   panelId: "left",
@@ -18,6 +21,7 @@ const baseProps = {
   isStarred: false,
   onClose: vi.fn(),
   onOpen: vi.fn(),
+  onOpenInNewTab: vi.fn(),
   onRename: vi.fn(),
   onCopy: vi.fn(),
   onCut: vi.fn(),
@@ -167,5 +171,48 @@ describe("ContextMenu keyboard navigation", () => {
     // The first enabled item in pane background menu should trigger its action
     // We can't predict exactly which one, but onClose should have been called
     expect(baseProps.onClose).toHaveBeenCalled();
+  });
+
+  it("opens a folder context target in a new tab through the overlay", () => {
+    const state = createInitialState();
+    const folder: FileEntryDto = {
+      uri: "local:///tmp/docs",
+      name: "docs",
+      kind: "directory",
+      isHidden: false,
+      isSymlink: false,
+      providerId: "local",
+      canRead: true,
+      canList: true,
+      canWrite: true,
+      canDelete: true,
+      canRename: true,
+    };
+    const dispatch = vi.fn();
+
+    render(
+      <ContextMenuOverlay
+        menu={{ panelId: "left", x: 100, y: 100, entry: folder }}
+        state={state}
+        clipboard={null}
+        starredUriSet={new Set()}
+        dispatch={dispatch}
+        onClose={vi.fn()}
+        runPanelCommand={vi.fn()}
+        activateEntry={vi.fn()}
+        revealEntry={vi.fn()}
+        openExternal={vi.fn()}
+        navigatePanel={vi.fn()}
+        navigateOtherPane={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("menuitem", { name: /Open in New Tab/ }));
+
+    expect(dispatch).toHaveBeenCalledWith({
+      type: "openTab",
+      panelId: "left",
+      uri: "local:///tmp/docs",
+    });
   });
 });

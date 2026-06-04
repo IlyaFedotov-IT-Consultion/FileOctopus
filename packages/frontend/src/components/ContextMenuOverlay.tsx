@@ -1,7 +1,12 @@
 import type { FileEntryDto } from "@fileoctopus/ts-api";
 import type { PanelId, FileOctopusState, PanelAction } from "../panelStore";
-import { activeTab } from "../panelStore";
+import {
+  activeTab,
+  countOperationalSelection,
+  selectVisibleEntries,
+} from "../panelStore";
 import { viewModeCommandId } from "../commands/viewModeCommands";
+import { fileMutationState } from "../navigation/fileMutationState";
 import { ContextMenu, type ContextMenuState } from "./ContextMenu";
 import { useTags } from "../app/TagContext";
 
@@ -47,9 +52,33 @@ export function ContextMenuOverlay({
 }: ContextMenuOverlayProps) {
   const panelId = menu?.panelId ?? "left";
   const contextEntry = menu?.entry ?? undefined;
-  const currentTabUri = menu?.panelId
-    ? activeTab(state.panels[menu.panelId]).uri
-    : activeTab(state.panels.left).uri;
+  const tab = menu?.panelId
+    ? activeTab(state.panels[menu.panelId])
+    : activeTab(state.panels.left);
+  const currentTabUri = tab.uri;
+  const visibleSelectedEntries = selectVisibleEntries(tab).filter((entry) =>
+    tab.selectedIds.includes(entry.uri),
+  );
+  const contextSelection =
+    menu?.entry &&
+    !visibleSelectedEntries.some((entry) => entry.uri === menu.entry?.uri)
+      ? [menu.entry]
+      : visibleSelectedEntries;
+  const contextEntriesById = contextSelection.reduce(
+    (entriesById, entry) => ({
+      ...entriesById,
+      [entry.uri]: entry,
+    }),
+    tab.entriesById,
+  );
+  const contextTab = {
+    ...tab,
+    entriesById: contextEntriesById,
+    selectedIds: contextSelection.map((entry) => entry.uri),
+  };
+  const shortcutPlatform = navigator.platform.startsWith("Mac")
+    ? "mac"
+    : "windowsLinux";
   const run = (commandId: string, entry?: FileEntryDto | null) =>
     runPanelCommand(panelId, commandId, entry ?? contextEntry);
 
@@ -64,12 +93,22 @@ export function ContextMenuOverlay({
       currentTabUri={currentTabUri}
       canPaste={Boolean(clipboard)}
       isStarred={menu?.entry ? starredUriSet.has(menu.entry.uri) : false}
+      selectedCount={menu?.entry ? countOperationalSelection(contextTab) : 0}
+      capabilities={
+        menu?.entry
+          ? fileMutationState(contextTab, contextSelection)
+          : undefined
+      }
+      shortcutPlatform={shortcutPlatform}
       showHidden={
         menu?.panelId ? activeTab(state.panels[menu.panelId]).showHidden : false
       }
       onClose={onClose}
       onToggleHidden={() => run("view.toggleHidden")}
       onOpen={(pid, entry) => activateEntry(pid, entry)}
+      onOpenInNewTab={(pid, uri) =>
+        dispatch({ type: "openTab", panelId: pid, uri })
+      }
       onRename={() => run("op.rename")}
       onCopy={() => run("op.copy")}
       onCut={() => run("op.cut")}
@@ -79,9 +118,6 @@ export function ContextMenuOverlay({
       onPermanentDelete={() => run("op.deletePermanent")}
       onCopyPath={() => run("clipboard.copyPath")}
       onCopyName={() => run("clipboard.copyName")}
-      onView={(pid, entry) =>
-        runPanelCommand(pid, "op.view", entry ?? contextEntry ?? null)
-      }
       onProperties={(pid, entry) =>
         runPanelCommand(pid, "op.properties", entry ?? contextEntry ?? null)
       }
@@ -94,7 +130,6 @@ export function ContextMenuOverlay({
       onCreateFolder={() => run("create.folder")}
       onCreateFile={() => run("create.file")}
       onRefresh={() => run("nav.refresh")}
-      onSelectAll={() => run("selection.selectAll")}
       onViewMode={(pid, viewMode) => {
         const commandId = viewModeCommandId(viewMode);
         if (commandId) {
@@ -103,9 +138,6 @@ export function ContextMenuOverlay({
         }
         dispatch({ type: "setViewMode", panelId: pid, viewMode });
       }}
-      onSort={(pid, field) =>
-        runPanelCommand(pid, "view.sort", { sortField: field })
-      }
       onOpenWithDefaultApp={(pid) => {
         if (menu?.panelId !== pid) return;
         const entry = menu?.entry;
@@ -119,7 +151,6 @@ export function ContextMenuOverlay({
       onMoveTo={() => run("op.moveTo")}
       onCopyParentPath={() => run("clipboard.copyParent")}
       onCopyResourceUri={() => run("clipboard.copyUri")}
-      onClearSelection={() => run("selection.clear")}
       onNavigateTo={(pid, uri) => navigatePanel(pid, uri)}
       onNavigateOtherPane={(uri) => navigateOtherPane(uri)}
       onCopyBreadcrumbPath={(path) => {
