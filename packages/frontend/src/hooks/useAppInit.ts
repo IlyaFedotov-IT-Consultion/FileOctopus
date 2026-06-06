@@ -30,21 +30,15 @@ import {
   type PanelTabState,
 } from "../panelStore";
 import {
-  applyAllPreferences,
-  applyDensityPreference,
-  applyLayoutPreferences,
   rowHeightForDensity,
-  viewModeFromPreference,
   type DensityPreference,
 } from "../applyPreferences";
-import { resolveStartupAppInfo } from "./startupAppInfo";
-import { migrateStartupPreferences } from "./startupPreferences";
-import { resolveStartupNavigation } from "./startupNavigation";
 import { useFileSystemWatchers } from "./useFileSystemWatchers";
 import { useJobEventListeners } from "./useJobEventListeners";
 import { useMetadataEventListeners } from "./useMetadataEventListeners";
 import { useNetworkStatusEvents } from "./useNetworkStatusEvents";
 import { useSelectedFileHash } from "./useSelectedFileHash";
+import { useStartupInitialization } from "./useStartupInitialization";
 import type { ToastMessage } from "../components/ToastStack";
 import type { OperationDialog } from "../dialogs/OperationDialogView";
 import type { JobMetrics } from "../app/providers/JobsProvider";
@@ -263,74 +257,23 @@ export function useAppInit({
 
   useSelectedFileHash({ client, state, left, right, dispatch });
 
-  // ── Initialization: preferences, navigation, locations, etc. ────
-  useEffect(() => {
-    if (hasInitializedRef.current) {
-      return;
-    }
-    hasInitializedRef.current = true;
-
-    void (async () => {
-      let showHidden = false;
-      let initialLeftUri = activeTab(state.panels.left).uri;
-      let initialRightUri = activeTab(state.panels.right).uri;
-
-      const startupAppInfo = await resolveStartupAppInfo(client);
-      if (startupAppInfo) {
-        setAppInfo(startupAppInfo.appInfo);
-        if (startupAppInfo.refreshNetworkProfiles) {
-          void refreshNetworkProfiles();
-        }
-      }
-
-      try {
-        const startupNavigation = await resolveStartupNavigation(
-          client,
-          initialLeftUri,
-          initialRightUri,
-        );
-        setLocations(startupNavigation.locations);
-        initialLeftUri = startupNavigation.leftUri;
-        initialRightUri = startupNavigation.rightUri;
-      } catch {
-        void refreshLocations();
-      }
-      void refreshNavigation();
-
-      try {
-        const response = await client.preferences.get();
-        const loadedPreferences = await migrateStartupPreferences(
-          client,
-          response.preferences,
-        );
-        setPreferences(loadedPreferences);
-        applyAllPreferences(loadedPreferences);
-        applyLayoutPreferences(loadedPreferences);
-        setDensity(applyDensityPreference(loadedPreferences.density));
-        setActivityCollapsed(!loadedPreferences.activityPanelVisible);
-        showHidden = loadedPreferences.showHiddenFiles;
-        dispatch({
-          type: "hydratePreferences",
-          showHidden,
-          viewMode: viewModeFromPreference(loadedPreferences.defaultViewMode),
-        });
-      } catch {
-        // Fall back to localStorage-backed defaults in panelStore.
-      }
-
-      await Promise.allSettled([
-        navigatePanel("left", initialLeftUri, {
-          includeHidden: showHidden,
-        }),
-        navigatePanel("right", initialRightUri, {
-          includeHidden: showHidden,
-        }),
-      ]);
-      void refreshLocations();
-      void refreshHistory();
-      void refreshDiagnostics();
-    })();
-  }, []);
+  useStartupInitialization({
+    client,
+    state,
+    dispatch,
+    hasInitializedRef,
+    refreshHistory,
+    refreshLocations,
+    refreshNetworkProfiles,
+    refreshNavigation,
+    refreshDiagnostics,
+    setLocations,
+    setAppInfo,
+    navigatePanel,
+    setPreferences,
+    setDensity,
+    setActivityCollapsed,
+  });
 
   return { starredUriSet, rowHeight, previewEntry };
 }
