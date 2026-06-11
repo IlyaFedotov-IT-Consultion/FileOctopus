@@ -4027,88 +4027,8 @@ dialog.fo-dialog[open] {
   font-size: var(--fo-font-size-sm);
 }
 
-.fo-dialog.fo-network-locations-dialog {
-  width: min(44rem, calc(100vw - 2rem));
-}
-
 .fo-dialog.fo-session-manager-dialog {
   width: min(38rem, calc(100vw - 2rem));
-}
-
-.fo-network-profile-list {
-  display: grid;
-  gap: var(--fo-spacing-sm);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  overflow-y: auto;
-}
-
-.fo-network-profile-item {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--fo-spacing-md);
-  padding: var(--fo-spacing-md) var(--fo-spacing-lg);
-  border: 1px solid var(--fo-workbench-dialog-muted-border);
-  border-radius: var(--fo-radius-sm);
-  background: var(--fo-workbench-dialog-panel-bg);
-}
-
-.fo-network-profile-main {
-  display: flex;
-  align-items: center;
-  gap: var(--fo-spacing-md);
-  min-width: 0;
-}
-
-.fo-network-profile-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-  width: 28px;
-  height: 28px;
-  border-radius: var(--fo-radius-sm);
-  background: var(--fo-workbench-dialog-active-bg);
-  color: var(--fo-accent);
-}
-
-.fo-network-profile-title {
-  font-weight: 600;
-}
-
-.fo-network-profile-meta {
-  color: var(--fo-muted-text);
-  font-size: var(--fo-font-size-sm);
-  overflow-wrap: anywhere;
-}
-
-.fo-network-profile-status {
-  color: var(--fo-muted-text);
-  font-size: var(--fo-font-size-xs);
-}
-
-.fo-network-profile-status-connected {
-  color: var(--fo-success);
-}
-
-.fo-network-profile-status-error {
-  color: var(--fo-danger-text);
-}
-
-.fo-network-profile-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--fo-spacing-sm);
-}
-
-.fo-network-empty {
-  margin: 0;
-  padding: var(--fo-spacing-lg);
-  color: var(--fo-muted-text);
-  text-align: center;
 }
 
 .fo-dialog.fo-multi-rename-dialog {
