@@ -83,6 +83,7 @@ fn entry_for_path(
         accessed_at: metadata.accessed().ok().map(DateTime::<Utc>::from),
         is_hidden: is_hidden(path),
         is_symlink: metadata.file_type().is_symlink(),
+        is_placeholder: false,
         symlink_target: None,
         provider_id: ProviderId::new("local"),
         capabilities,
