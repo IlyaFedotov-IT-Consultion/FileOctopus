@@ -82,6 +82,7 @@ impl LocalFsProvider {
             accessed_at: metadata.accessed().ok().map(DateTime::<Utc>::from),
             is_hidden: is_hidden(path),
             is_symlink,
+            is_placeholder: false,
             symlink_target,
             provider_id: ProviderId::new("local"),
             capabilities,
