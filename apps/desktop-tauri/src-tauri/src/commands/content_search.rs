@@ -60,7 +60,7 @@ pub async fn fs_content_search_start(
         file_pattern: request.file_pattern,
         max_file_size: 10 * 1024 * 1024,
     };
-    let job = start_metadata_job(&metadata_jobs, FileOperationKind::RecursiveSearch)?;
+    let job = start_metadata_job(&metadata_jobs, FileOperationKind::ContentSearch)?;
     let job_id = job.job_id.clone();
     let token = metadata_job_token(&metadata_jobs, job_id.as_str())?;
     let jobs = metadata_jobs.jobs.clone();
@@ -70,7 +70,7 @@ pub async fn fs_content_search_start(
         &app,
         JobEvent::Started(JobStartedEvent {
             job_id: job_id.clone(),
-            operation_kind: FileOperationKind::RecursiveSearch,
+            operation_kind: FileOperationKind::ContentSearch,
             total_items: 0,
             total_bytes: None,
             started_at: job.started_at,
@@ -94,7 +94,7 @@ pub async fn fs_content_search_start(
                     &progress_jobs,
                     &progress_app,
                     &thread_job_id,
-                    FileOperationKind::RecursiveSearch,
+                    FileOperationKind::ContentSearch,
                     item.name.clone(),
                     result.matches.len() as u64,
                     0,
@@ -136,7 +136,7 @@ pub async fn fs_content_search_start(
                     &app,
                     JobEvent::Completed(JobCompletedEvent {
                         job_id: thread_job_id,
-                        operation_kind: FileOperationKind::RecursiveSearch,
+                        operation_kind: FileOperationKind::ContentSearch,
                         completed_items: dto.matches.len() as u64,
                         completed_bytes: 0,
                         completed_at: Utc::now(),
@@ -155,7 +155,7 @@ pub async fn fs_content_search_start(
                     &app,
                     JobEvent::Cancelled(JobCancelledEvent {
                         job_id: thread_job_id,
-                        operation_kind: FileOperationKind::RecursiveSearch,
+                        operation_kind: FileOperationKind::ContentSearch,
                         cancelled_at: Utc::now(),
                     }),
                 );
@@ -174,7 +174,7 @@ pub async fn fs_content_search_start(
                     &app,
                     JobEvent::Failed(JobFailedEvent {
                         job_id: thread_job_id,
-                        operation_kind: FileOperationKind::RecursiveSearch,
+                        operation_kind: FileOperationKind::ContentSearch,
                         error_code: code,
                         message,
                         failed_at: Utc::now(),

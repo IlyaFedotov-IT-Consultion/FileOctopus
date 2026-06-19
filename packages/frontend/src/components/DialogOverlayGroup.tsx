@@ -23,6 +23,7 @@ import type {
   StandardLocationDto,
   RecentEntryDto,
 } from "@fileoctopus/ts-api";
+import type { LocalPathPicker } from "../utils/pathPicker";
 import {
   DialogOverlaySectionWorkspace,
   DialogOverlaySectionNavigation,
@@ -83,6 +84,7 @@ export interface DialogOverlayGroupProps {
   fs: FsClient;
   pluginClient?: PluginClient;
   terminalClient?: TerminalClient;
+  pickLocalPath?: LocalPathPicker;
   updatePreference: (key: string, value: string) => void;
   handleSetAutostart: (enabled: boolean) => Promise<void>;
   onCustomizeToolbar?: () => void;

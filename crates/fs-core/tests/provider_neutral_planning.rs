@@ -1,9 +1,11 @@
 use std::collections::HashMap;
+use std::fs;
 use std::sync::Arc;
 
 use async_trait::async_trait;
 use fs_core::file_ops::plan_file_operation;
 use fs_core::vfs_io::VfsFilesystem;
+use tempfile::tempdir;
 use vfs::{
     ConflictPolicy, DirectoryBatch, DirectorySink, EntryCapabilities, FileEntry, FileKind,
     FileOperationKind, FileOperationRequest, ListOptions, ProviderCapabilities, ProviderId,
@@ -166,6 +168,70 @@ fn plans_same_scheme_remote_copy_through_registered_provider() {
         conflict.destination.as_str()
             == "gdrive://550e8400-e29b-41d4-a716-446655440000/destination/source"
     }));
+}
+
+#[test]
+fn plans_local_to_registered_remote_copy() {
+    let dir = tempdir().unwrap();
+    let source = dir.path().join("alpha.txt");
+    fs::write(&source, b"content").unwrap();
+    let registry = Arc::new(VfsRegistry::new());
+    registry
+        .register(Arc::new(MemoryRemoteProvider::new()))
+        .unwrap();
+    let vfs = VfsFilesystem::local_only(registry);
+
+    let plan = plan_file_operation(
+        &vfs,
+        FileOperationRequest {
+            kind: FileOperationKind::Copy,
+            sources: vec![ResourceUri::from_local_path(&source).unwrap()],
+            destination: Some(uri("/destination")),
+            new_name: None,
+            conflict_policy: ConflictPolicy::Fail,
+        },
+    )
+    .unwrap();
+
+    assert_eq!(plan.total_items, 1);
+    assert_eq!(
+        plan.items[0].destination.as_ref().map(ResourceUri::as_str),
+        Some("gdrive://550e8400-e29b-41d4-a716-446655440000/destination/alpha.txt")
+    );
+    assert_eq!(plan.items[0].size, Some(7));
+}
+
+#[test]
+fn plans_registered_remote_to_local_copy() {
+    let dir = tempdir().unwrap();
+    let destination = ResourceUri::from_local_path(dir.path()).unwrap();
+    let registry = Arc::new(VfsRegistry::new());
+    registry
+        .register(Arc::new(MemoryRemoteProvider::new()))
+        .unwrap();
+    let vfs = VfsFilesystem::local_only(registry);
+
+    let plan = plan_file_operation(
+        &vfs,
+        FileOperationRequest {
+            kind: FileOperationKind::Copy,
+            sources: vec![uri("/source/nested/file.txt")],
+            destination: Some(destination),
+            new_name: None,
+            conflict_policy: ConflictPolicy::Fail,
+        },
+    )
+    .unwrap();
+
+    assert_eq!(plan.total_items, 1);
+    assert_eq!(
+        plan.items[0]
+            .destination
+            .as_ref()
+            .map(ResourceUri::display_path),
+        Some(dir.path().join("file.txt").to_string_lossy().to_string())
+    );
+    assert_eq!(plan.items[0].size, Some(7));
 }
 
 fn uri(path: &str) -> ResourceUri {

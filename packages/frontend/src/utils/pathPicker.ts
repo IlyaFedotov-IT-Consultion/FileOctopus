@@ -1,4 +1,3 @@
-import { open, save } from "@tauri-apps/plugin-dialog";
 import type { FileEntryDto, FsClient } from "@fileoctopus/ts-api";
 
 export interface LocalPathPickerFilter {
@@ -21,35 +20,7 @@ export const SSH_KEY_FILTERS: LocalPathPickerFilter[] = [
   { name: "SSH keys", extensions: ["pem", "key"] },
 ];
 
-export const pickLocalPath: LocalPathPicker = async ({
-  kind,
-  title,
-  currentPath,
-  filters,
-}) => {
-  const defaultPath = currentPath?.trim() || undefined;
-  try {
-    if (kind === "save") {
-      return await save({
-        title,
-        defaultPath,
-        filters,
-      });
-    }
-
-    const selected = await open({
-      title,
-      defaultPath,
-      filters,
-      multiple: false,
-      directory: kind === "directory",
-    });
-
-    return typeof selected === "string" ? selected : null;
-  } catch {
-    return null;
-  }
-};
+export const pickLocalPath: LocalPathPicker = async () => null;
 
 export function localPathToResourceUri(path: string): string {
   const trimmed = path.trim();

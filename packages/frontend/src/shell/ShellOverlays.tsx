@@ -125,6 +125,7 @@ export function ShellOverlays() {
         pluginClient={ctx.client.plugin}
         terminalClient={ctx.client.terminal}
         updatePreference={ctx.updatePreference}
+        pickLocalPath={ctx.pickLocalPath}
         handleSetAutostart={ctx.handleSetAutostart}
         onCustomizeToolbar={() =>
           ctx.handleCommandSelect("app.customizeToolbar")

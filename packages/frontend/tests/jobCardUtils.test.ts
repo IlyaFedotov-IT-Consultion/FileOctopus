@@ -138,6 +138,18 @@ describe("operationVerb", () => {
     expect(operationVerb("writeTextFile")).toBe("Saving");
   });
 
+  it("returns Searching contents for contentSearch", () => {
+    expect(operationVerb("contentSearch")).toBe("Searching contents");
+  });
+
+  it("returns Searching for recursiveSearch", () => {
+    expect(operationVerb("recursiveSearch")).toBe("Searching");
+  });
+
+  it("returns Calculating size for folderSize", () => {
+    expect(operationVerb("folderSize")).toBe("Calculating size");
+  });
+
   it("returns Processing for unknown kind", () => {
     expect(operationVerb("unknown" as unknown as Record<string, unknown>)).toBe(
       "Processing",
@@ -220,6 +232,14 @@ describe("jobTitle", () => {
         makeJob({ operationKind: "writeTextFile", status: "completed" }),
       ),
     ).toBe("Saved");
+  });
+
+  it("uses content search wording for completed jobs", () => {
+    expect(
+      jobTitle(
+        makeJob({ operationKind: "contentSearch", status: "completed" }),
+      ),
+    ).toBe("Searched contents");
   });
 
   it("prefers totalItems > 1 over currentItem", () => {

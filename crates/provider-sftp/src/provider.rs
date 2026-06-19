@@ -10,8 +10,9 @@ use crate::connector::{
     list_directory_blocking, list_directory_incremental_blocking, stat_path_blocking, SftpSession,
 };
 use crate::ops::{
-    create_empty_file_blocking, mkdir_blocking, read_file_prefix_blocking, remove_dir_blocking,
-    remove_file_blocking, rename_blocking, TRANSFER_CHUNK_SIZE,
+    create_empty_file_blocking, download_file_blocking, mkdir_blocking, read_file_prefix_blocking,
+    remove_dir_blocking, remove_file_blocking, rename_blocking, upload_file_blocking,
+    TRANSFER_CHUNK_SIZE,
 };
 
 pub struct SftpProvider {
@@ -270,6 +271,52 @@ impl VfsProvider for SftpProvider {
                 &source_path,
                 &destination_clone,
                 &dest_path,
+                &mut *on_progress,
+            )
+        })
+        .await?;
+        self.sessions.touch_session(&profile_id).await;
+        Ok(total)
+    }
+
+    async fn write_file_from_reader(
+        &self,
+        destination: &ResourceUri,
+        reader: Box<dyn std::io::Read + Send>,
+        mut on_progress: Box<dyn FnMut(u64) + Send>,
+    ) -> Result<u64, VfsError> {
+        let (profile_id, sftp_session) = self.session_for(destination).await?;
+        let dest_path = Self::remote_path_for(destination)?;
+        let destination_clone = destination.clone();
+        let total = run_blocking_io(move || {
+            upload_file_blocking(
+                &sftp_session,
+                &destination_clone,
+                &dest_path,
+                reader,
+                &mut *on_progress,
+            )
+        })
+        .await?;
+        self.sessions.touch_session(&profile_id).await;
+        Ok(total)
+    }
+
+    async fn read_file_to_writer(
+        &self,
+        source: &ResourceUri,
+        writer: Box<dyn std::io::Write + Send>,
+        mut on_progress: Box<dyn FnMut(u64) + Send>,
+    ) -> Result<u64, VfsError> {
+        let (profile_id, sftp_session) = self.session_for(source).await?;
+        let source_path = Self::remote_path_for(source)?;
+        let source_clone = source.clone();
+        let total = run_blocking_io(move || {
+            download_file_blocking(
+                &sftp_session,
+                &source_clone,
+                &source_path,
+                writer,
                 &mut *on_progress,
             )
         })
