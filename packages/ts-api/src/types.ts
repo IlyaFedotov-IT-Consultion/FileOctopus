@@ -1240,7 +1240,8 @@ export type FileOperationKind =
   | "createArchive"
   | "extractArchive"
   | "folderSize"
-  | "recursiveSearch";
+  | "recursiveSearch"
+  | "contentSearch";
 
 export type ConflictPolicy =
   | "fail"

@@ -46,7 +46,8 @@ pub fn plan_file_operation(
         FileOperationKind::ExtractArchive => plan_extract_archive_items(&request)?,
         FileOperationKind::WriteTextFile
         | FileOperationKind::FolderSize
-        | FileOperationKind::RecursiveSearch => {
+        | FileOperationKind::RecursiveSearch
+        | FileOperationKind::ContentSearch => {
             return Err(FileOperationError::InvalidRequest {
                 message: "operation is started through a dedicated filesystem command".to_string(),
             });
@@ -120,7 +121,8 @@ pub fn execute_file_operation(
         }
         FileOperationKind::WriteTextFile
         | FileOperationKind::FolderSize
-        | FileOperationKind::RecursiveSearch => Err(FileOperationError::InvalidRequest {
+        | FileOperationKind::RecursiveSearch
+        | FileOperationKind::ContentSearch => Err(FileOperationError::InvalidRequest {
             message: "operation is started through a dedicated filesystem command".to_string(),
         }),
     }
@@ -236,7 +238,8 @@ fn validate_request_shape(
         }
         FileOperationKind::WriteTextFile
         | FileOperationKind::FolderSize
-        | FileOperationKind::RecursiveSearch => {
+        | FileOperationKind::RecursiveSearch
+        | FileOperationKind::ContentSearch => {
             return Err(FileOperationError::InvalidRequest {
                 message: "operation is started through a dedicated filesystem command".to_string(),
             });

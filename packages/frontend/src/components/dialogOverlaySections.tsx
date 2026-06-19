@@ -64,6 +64,7 @@ export function DialogOverlaySectionWorkspace(props: DialogOverlayGroupProps) {
     appInfo,
     fs,
     pluginClient,
+    pickLocalPath,
     updatePreference,
     handleSetAutostart,
     onCustomizeToolbar,
@@ -108,6 +109,7 @@ export function DialogOverlaySectionWorkspace(props: DialogOverlayGroupProps) {
         }}
         onSetAutostart={handleSetAutostart}
         onCustomizeToolbar={onCustomizeToolbar}
+        pickLocalPath={pickLocalPath}
       />
       <ShortcutsDialog
         open={shortcutsOpen}
@@ -134,6 +136,7 @@ export function DialogOverlaySectionWorkspace(props: DialogOverlayGroupProps) {
         siblings={viewerSiblings}
         onNavigate={onViewerNavigate}
         onEntryChange={setViewerEntry}
+        pickLocalPath={pickLocalPath}
       />
       <EditorDialog
         open={editorOpen}
@@ -142,6 +145,7 @@ export function DialogOverlaySectionWorkspace(props: DialogOverlayGroupProps) {
         onClose={() => setEditorOpen(false)}
         onSaved={() => refreshActivePane?.()}
         onEntryChange={setEditorEntry}
+        pickLocalPath={pickLocalPath}
       />
       <DiffDialog
         open={diffOpen}
@@ -323,6 +327,7 @@ export function DialogOverlaySectionOperations(props: DialogOverlayGroupProps) {
     preferences,
     dialog,
     fs,
+    pickLocalPath,
     setVolumePickerOpen,
     setConnectServerOpen,
     setConnectServerProfile,
@@ -408,6 +413,7 @@ export function DialogOverlaySectionOperations(props: DialogOverlayGroupProps) {
         preferences={preferences ?? FALLBACK_PREFERENCES}
         locations={locations}
         fs={fs}
+        pickLocalPath={pickLocalPath}
       />
       <RemoveServerDialog
         open={removeServerProfile !== null}

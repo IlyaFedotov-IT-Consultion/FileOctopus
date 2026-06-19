@@ -42,6 +42,12 @@ export function operationVerb(kind: FileOperationKind): string {
       return "Renaming";
     case "writeTextFile":
       return "Saving";
+    case "folderSize":
+      return "Calculating size";
+    case "recursiveSearch":
+      return "Searching";
+    case "contentSearch":
+      return "Searching contents";
     default:
       return "Processing";
   }
@@ -59,6 +65,12 @@ function operationPastTense(kind: FileOperationKind): string {
       return "Renamed";
     case "writeTextFile":
       return "Saved";
+    case "folderSize":
+      return "Calculated size";
+    case "recursiveSearch":
+      return "Searched";
+    case "contentSearch":
+      return "Searched contents";
     default:
       return "Completed";
   }

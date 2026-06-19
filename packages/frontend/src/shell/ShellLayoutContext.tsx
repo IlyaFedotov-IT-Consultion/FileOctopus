@@ -33,6 +33,7 @@ import type { MenuBarProps } from "./MenuBar";
 import type { FileClipboardState } from "../hooks/useFileOpHandlers";
 import type { DialogOverlayGroup } from "../components/DialogOverlayGroup";
 import type { WindowControlHandlers } from "./TitleBar";
+import type { LocalPathPicker } from "../utils/pathPicker";
 
 export interface ShellLayoutContextValue {
   workspaceRef: RefObject<HTMLElement | null>;
@@ -54,6 +55,7 @@ export interface ShellLayoutContextValue {
   networkQuickEntries: FileEntryDto[];
   preferences: UserPreferencesDto | null;
   updatePreference: (key: string, value: string) => Promise<void>;
+  pickLocalPath?: LocalPathPicker;
   settingsPreferenceChange: (key: string, value: string) => void;
   closePaneTerminalConfirmOpen: boolean;
   setClosePaneTerminalConfirmOpen: (open: boolean) => void;

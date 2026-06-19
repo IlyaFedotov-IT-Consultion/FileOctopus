@@ -263,9 +263,9 @@ Git commands are local-only metadata helpers backed by `crates/git-intel`. They 
 
 `GitFileStatusDto` values are `clean`, `modified`, `added`, `deleted`, `renamed`, `untracked`, `ignored`, `conflicted`, and `unknown`. Remote Git status remains deferred.
 
-### Metadata jobs: folder size and recursive search
+### Metadata jobs: folder size and search
 
-Folder size and recursive search support synchronous commands for small/preview usage and job-backed commands for longer work. Job-backed metadata commands emit the same `fileOperation:job:*` lifecycle events as file mutations, but their `operationKind` is `folderSize` or `recursiveSearch` and they are tracked in desktop in-memory metadata job state, not persisted to operation history.
+Folder size, recursive search, and content search support synchronous commands for small/preview usage and job-backed commands for longer work. Job-backed metadata commands emit the same `fileOperation:job:*` lifecycle events as file mutations, but their `operationKind` is `folderSize`, `recursiveSearch`, or `contentSearch` and they are tracked in desktop in-memory metadata job state, not persisted to operation history.
 
 | Command                                                   | Request                                                           | Response      | Extra events                                                    |
 | --------------------------------------------------------- | ----------------------------------------------------------------- | ------------- | --------------------------------------------------------------- |
@@ -724,23 +724,24 @@ type FileOperationKind =
   | "createArchive"
   | "extractArchive"
   | "folderSize"
-  | "recursiveSearch";
+  | "recursiveSearch"
+  | "contentSearch";
 ```
 
 Shape rules enforced by the planner (`crates/fs-core/src/file_ops/mod.rs` — `validate_request_shape`):
 
-| Kind                                 | Sources   | Destination           | `newName` |
-| ------------------------------------ | --------- | --------------------- | --------- |
-| `copy`, `move`                       | ≥1        | required directory    | ignored   |
-| `rename`                             | exactly 1 | optional              | required  |
-| `createDirectory`                    | 0         | required final path   | ignored   |
-| `createFile`                         | 0         | required final path   | ignored   |
-| `deleteToTrash`, `deletePermanently` | ≥1        | none                  | none      |
-| `createArchive`                      | ≥1        | required archive path | ignored   |
-| `extractArchive`                     | exactly 1 | required directory    | ignored   |
-| `folderSize`, `recursiveSearch`      | n/a       | n/a                   | n/a       |
+| Kind                                             | Sources   | Destination           | `newName` |
+| ------------------------------------------------ | --------- | --------------------- | --------- |
+| `copy`, `move`                                   | ≥1        | required directory    | ignored   |
+| `rename`                                         | exactly 1 | optional              | required  |
+| `createDirectory`                                | 0         | required final path   | ignored   |
+| `createFile`                                     | 0         | required final path   | ignored   |
+| `deleteToTrash`, `deletePermanently`             | ≥1        | none                  | none      |
+| `createArchive`                                  | ≥1        | required archive path | ignored   |
+| `extractArchive`                                 | exactly 1 | required directory    | ignored   |
+| `folderSize`, `recursiveSearch`, `contentSearch` | n/a       | n/a                   | n/a       |
 
-`folderSize` and `recursiveSearch` are `FileOperationKind` values because metadata jobs reuse `JobSnapshot` and job events. They are not valid `plan_file_operation` requests; start them through `fs_folder_size_start` and `fs_recursive_search_start`.
+`folderSize`, `recursiveSearch`, and `contentSearch` are `FileOperationKind` values because metadata jobs reuse `JobSnapshot` and job events. They are not valid `plan_file_operation` requests; start them through `fs_folder_size_start`, `fs_recursive_search_start`, and `fs_content_search_start`.
 
 ### Conflict policies
 
@@ -826,7 +827,7 @@ Cancellation is cooperative — the worker checks `CancellationToken::is_cancell
 
 ## Operation history
 
-A SQLite database stores one row per started file-operation job; rows are updated to a terminal status when the job ends. Metadata jobs (`folderSize`, `recursiveSearch`) are intentionally in-memory only and do not appear in operation history.
+A SQLite database stores one row per started file-operation job; rows are updated to a terminal status when the job ends. Metadata jobs (`folderSize`, `recursiveSearch`, `contentSearch`) are intentionally in-memory only and do not appear in operation history.
 
 - Default path: `$HOME/.fileoctopus/operation-history.sqlite` (or `%USERPROFILE%\.fileoctopus\operation-history.sqlite`).
 - Schema version: `1`, stored in `schema_meta` and SQLite `user_version`.

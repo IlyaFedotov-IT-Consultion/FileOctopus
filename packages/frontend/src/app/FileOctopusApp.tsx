@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { activeTab, type SortField } from "../panelStore";
 import { applySplitRatio, applyThemePreference } from "../applyPreferences";
 import { useWorkspaceLayout } from "../hooks/useWorkspaceLayout";
@@ -10,14 +10,15 @@ import { createKeyboardShortcutsHandler } from "../hooks/useKeyboardShortcuts";
 import { useFileOpHandlers } from "../hooks/useFileOpHandlers";
 import { useNetworkHandlers } from "../hooks/useNetworkHandlers";
 import { useOperationRefreshTargets } from "../hooks/useOperationRefreshTargets";
+import { usePaneModePreference } from "../hooks/usePaneModePreference";
 import { useCommandDispatch } from "../hooks/useCommandDispatch";
 import type { CommandEntry } from "../components/CommandPalette";
 import { TerminalCommandDialog } from "../components/dialogs/TerminalCommandDialog";
 import { isPreviewable, isTextPreviewable } from "../components/PreviewPanel";
 import { ShellLayout } from "../shell/ShellLayout";
 import { buildPaletteEntries } from "../commands/paletteEntries";
+import type { LocalPathPicker } from "../utils/pathPicker";
 
-import { hasRunningPaneSessions } from "../terminal/terminalSlice";
 import { DebugConsolePanel } from "../dev/DebugConsolePanel";
 import { buildFilePanelProps } from "./filePanelProps";
 import {
@@ -45,10 +46,12 @@ function FileOctopusAppInner({
   onRequestExit,
   onRequestMinimize,
   onRequestToggleMaximize,
+  pickLocalPath,
 }: {
   onRequestExit?: () => void;
   onRequestMinimize?: () => void;
   onRequestToggleMaximize?: () => void;
+  pickLocalPath?: LocalPathPicker;
 }) {
   const { client, state, dispatch, workspaceRef, hasInitializedRef } =
     useShell();
@@ -269,47 +272,16 @@ function FileOctopusAppInner({
     },
   });
 
-  const pendingPaneModeRef = useRef<"single" | "dual" | null>(null);
-
-  const requestPaneModeChange = useCallback(
-    (next: "single" | "dual") => {
-      if (
-        next === "single" &&
-        preferences?.confirmClosePaneWithTerminal !== false &&
-        hasRunningPaneSessions(terminal.sessions, "right")
-      ) {
-        pendingPaneModeRef.current = next;
-        setClosePaneTerminalConfirmOpen(true);
-        return;
-      }
-      void updatePreference("paneMode", next);
-    },
-    [
-      preferences?.confirmClosePaneWithTerminal,
-      setClosePaneTerminalConfirmOpen,
-      terminal.sessions,
-      updatePreference,
-    ],
-  );
-
-  const handleSettingsPreferenceChange = useCallback(
-    (key: string, value: string) => {
-      if (key === "paneMode") {
-        requestPaneModeChange(value as "single" | "dual");
-        return;
-      }
-      void updatePreference(key, value);
-    },
-    [requestPaneModeChange, updatePreference],
-  );
-
-  const confirmClosePaneWithTerminal = useCallback(() => {
-    const next = pendingPaneModeRef.current;
-    pendingPaneModeRef.current = null;
-    if (next) {
-      void updatePreference("paneMode", next);
-    }
-  }, [updatePreference]);
+  const {
+    requestPaneModeChange,
+    handleSettingsPreferenceChange,
+    confirmClosePaneWithTerminal,
+  } = usePaneModePreference({
+    preferences,
+    terminalSessions: terminal.sessions,
+    updatePreference,
+    setClosePaneTerminalConfirmOpen,
+  });
 
   useWorkspaceLayout({
     workspaceRef,
@@ -862,6 +834,7 @@ function FileOctopusAppInner({
         networkQuickEntries={networkQuickEntries}
         preferences={preferences}
         updatePreference={updatePreference}
+        pickLocalPath={pickLocalPath}
         settingsPreferenceChange={handleSettingsPreferenceChange}
         closePaneTerminalConfirmOpen={closePaneTerminalConfirmOpen}
         setClosePaneTerminalConfirmOpen={setClosePaneTerminalConfirmOpen}
@@ -1035,12 +1008,14 @@ export interface FileOctopusShellProps {
   onRequestExit?: () => void;
   onRequestMinimize?: () => void;
   onRequestToggleMaximize?: () => void;
+  pickLocalPath?: LocalPathPicker;
 }
 
 export function FileOctopusApp({
   onRequestExit,
   onRequestMinimize,
   onRequestToggleMaximize,
+  pickLocalPath,
 }: FileOctopusShellProps = {}) {
   return (
     <AppProviders>
@@ -1048,6 +1023,7 @@ export function FileOctopusApp({
         onRequestExit={onRequestExit}
         onRequestMinimize={onRequestMinimize}
         onRequestToggleMaximize={onRequestToggleMaximize}
+        pickLocalPath={pickLocalPath}
       />
       <DebugConsolePanel />
     </AppProviders>

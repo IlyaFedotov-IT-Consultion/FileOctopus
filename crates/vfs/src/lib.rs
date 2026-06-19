@@ -1,5 +1,6 @@
 use std::error::Error;
 use std::fmt;
+use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, RwLock};
@@ -359,6 +360,7 @@ pub enum FileOperationKind {
     ExtractArchive,
     FolderSize,
     RecursiveSearch,
+    ContentSearch,
 }
 
 /// Conflict behavior selected before an operation mutates the filesystem.
@@ -621,6 +623,26 @@ pub trait VfsProvider: Send + Sync {
     ) -> Result<u64, VfsError> {
         let _ = (source, destination, on_progress);
         Err(self.unsupported_operation("copy_file"))
+    }
+
+    async fn write_file_from_reader(
+        &self,
+        destination: &ResourceUri,
+        reader: Box<dyn Read + Send>,
+        on_progress: Box<dyn FnMut(u64) + Send>,
+    ) -> Result<u64, VfsError> {
+        let _ = (destination, reader, on_progress);
+        Err(self.unsupported_operation("write_file_from_reader"))
+    }
+
+    async fn read_file_to_writer(
+        &self,
+        source: &ResourceUri,
+        writer: Box<dyn Write + Send>,
+        on_progress: Box<dyn FnMut(u64) + Send>,
+    ) -> Result<u64, VfsError> {
+        let _ = (source, writer, on_progress);
+        Err(self.unsupported_operation("read_file_to_writer"))
     }
 
     async fn read_file_prefix(
@@ -1191,6 +1213,9 @@ mod tests {
             FileOperationKind::DeletePermanently,
             FileOperationKind::CreateArchive,
             FileOperationKind::ExtractArchive,
+            FileOperationKind::FolderSize,
+            FileOperationKind::RecursiveSearch,
+            FileOperationKind::ContentSearch,
         ];
 
         for kind in kinds {
@@ -1225,6 +1250,13 @@ mod tests {
             assert_eq!(plan.kind, kind);
             assert_eq!(plan.total_items, 1);
         }
+    }
+
+    #[test]
+    fn content_search_is_a_distinct_file_operation_kind() {
+        let kind: FileOperationKind = serde_json::from_str("\"contentSearch\"").unwrap();
+
+        assert_eq!(kind, FileOperationKind::ContentSearch);
     }
 
     #[test]
@@ -1369,6 +1401,28 @@ mod tests {
         let from = ResourceUri::parse("local:///tmp/a").unwrap();
         let to = ResourceUri::parse("local:///tmp/b").unwrap();
         let result = provider.copy_file(&from, &to, Box::new(|_| {})).await;
+        assert_eq!(result.unwrap_err().code(), "unsupported_operation");
+    }
+
+    #[tokio::test]
+    async fn provider_stream_write_defaults_to_unsupported() {
+        let provider = TestProvider;
+        let uri = ResourceUri::parse("local:///tmp/x").unwrap();
+        let result = provider
+            .write_file_from_reader(&uri, Box::new(std::io::empty()), Box::new(|_| {}))
+            .await;
+
+        assert_eq!(result.unwrap_err().code(), "unsupported_operation");
+    }
+
+    #[tokio::test]
+    async fn provider_stream_read_defaults_to_unsupported() {
+        let provider = TestProvider;
+        let uri = ResourceUri::parse("local:///tmp/x").unwrap();
+        let result = provider
+            .read_file_to_writer(&uri, Box::new(std::io::sink()), Box::new(|_| {}))
+            .await;
+
         assert_eq!(result.unwrap_err().code(), "unsupported_operation");
     }
 

@@ -151,6 +151,19 @@ fn planner_reports_missing_destination_parent() {
 }
 
 #[test]
+fn planner_rejects_metadata_job_kinds() {
+    for kind in [
+        FileOperationKind::FolderSize,
+        FileOperationKind::RecursiveSearch,
+        FileOperationKind::ContentSearch,
+    ] {
+        let error = plan_file_operation(&vfs(), request(kind, Vec::new(), None)).unwrap_err();
+
+        assert_eq!(error.code(), "invalid_request");
+    }
+}
+
+#[test]
 fn collect_copy_or_move_items_uses_cataloged_metadata_warning() {
     let dir = tempdir().unwrap();
     let missing = dir.path().join("missing.txt");
