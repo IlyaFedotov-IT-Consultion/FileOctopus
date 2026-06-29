@@ -13,6 +13,22 @@ preferences, diagnostics, Git status, embedded terminal, remote providers, cloud
 provider connectors, plugins, archive browsing, previews, diff/merge, ACLs, and
 sync features are present on `main`.
 
+## Interface Preview
+
+![FileOctopus dual-pane workspace](docs/assets/screenshots/fileoctopus-workspace.png)
+
+| First-run setup                                                                    | Command palette                                                                         |
+| ---------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| ![FileOctopus first-run setup](docs/assets/screenshots/fileoctopus-onboarding.png) | ![FileOctopus command palette](docs/assets/screenshots/fileoctopus-command-palette.png) |
+
+| Settings                                                                         | Jobs and activity                                                                       |
+| -------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| ![FileOctopus settings dialog](docs/assets/screenshots/fileoctopus-settings.png) | ![FileOctopus jobs and activity rail](docs/assets/screenshots/fileoctopus-activity.png) |
+
+Demo videos:
+[workspace walkthrough](docs/assets/videos/fileoctopus-demo.webm) ·
+[settings tour](docs/assets/videos/fileoctopus-settings-tour.webm)
+
 ## What Works Today
 
 - Dual-pane browsing with virtualized large-directory rendering.
