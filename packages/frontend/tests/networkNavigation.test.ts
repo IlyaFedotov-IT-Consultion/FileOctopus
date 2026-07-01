@@ -1,7 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 import { createNavigationController } from "../src/navigation/navigationController";
 import type { NavigationControllerDeps } from "../src/navigation/navigationController";
-import { createInitialState, panelReducer } from "../src/panelStore";
+import {
+  createInitialState,
+  panelReducer,
+  terminalLaunchUri,
+} from "../src/panelStore";
 import type { PanelAction } from "../src/panelStore";
 
 function createClientMock() {
@@ -261,5 +265,20 @@ describe("navigation controller remote navigation", () => {
     await controller.navigatePanel("left", "network:///");
 
     expect(syncTerminalCwd).not.toHaveBeenCalled();
+  });
+
+  it("opens terminals from network virtual locations in the home folder", () => {
+    localStorage.setItem("fileoctopus.homeUri", "local:///Users/ilya");
+
+    expect(terminalLaunchUri("network:///")).toBe("local:///Users/ilya");
+    expect(terminalLaunchUri("network:///lan/smb/fileserver")).toBe(
+      "local:///Users/ilya",
+    );
+    expect(terminalLaunchUri("local:///tmp")).toBe("local:///tmp");
+    expect(
+      terminalLaunchUri("sftp://550e8400-e29b-41d4-a716-446655440000/"),
+    ).toBe("sftp://550e8400-e29b-41d4-a716-446655440000/");
+
+    localStorage.removeItem("fileoctopus.homeUri");
   });
 });
