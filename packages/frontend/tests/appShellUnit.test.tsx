@@ -213,7 +213,7 @@ function makeCtx(
 function appInfoForTargetOs(targetOs: string): AppInfoResponse {
   return {
     name: "FileOctopus",
-    version: "0.1.1",
+    version: "0.1.2",
     buildProfile: "release",
     commitSha: "abcdef1",
     targetOs,

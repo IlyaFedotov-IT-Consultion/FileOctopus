@@ -37,7 +37,7 @@ describe("FileOctopusClient", () => {
         calls.push(command);
         return {
           name: "FileOctopus",
-          version: "0.1.1",
+          version: "0.1.2",
           buildProfile: "debug",
           commitSha: null,
           targetOs: "linux",
