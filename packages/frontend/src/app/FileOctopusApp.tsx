@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { activeTab, type SortField } from "../panelStore";
+import { activeTab, terminalLaunchUri, type SortField } from "../panelStore";
 import { applySplitRatio, applyThemePreference } from "../applyPreferences";
 import { useWorkspaceLayout } from "../hooks/useWorkspaceLayout";
 import { useMenuBarProps } from "../hooks/useMenuBarProps";
@@ -516,7 +516,7 @@ function FileOctopusAppInner({
     handleExtract,
     handleChecksum,
     openEmbeddedTerminal: (panelId) => {
-      const uri = activeTab(state.panels[panelId]).uri;
+      const uri = terminalLaunchUri(activeTab(state.panels[panelId]).uri);
       void openEmbeddedTerminal(uri, panelId).catch((error: unknown) => {
         pushToast({
           tone: "error",
@@ -526,7 +526,7 @@ function FileOctopusAppInner({
       });
     },
     togglePaneTerminal: (panelId) => {
-      const uri = activeTab(state.panels[panelId]).uri;
+      const uri = terminalLaunchUri(activeTab(state.panels[panelId]).uri);
       void togglePaneTerminal(uri, panelId).catch((error: unknown) => {
         pushToast({
           tone: "error",
@@ -536,7 +536,7 @@ function FileOctopusAppInner({
       });
     },
     openTerminalExternal: (panelId) => {
-      const uri = activeTab(state.panels[panelId]).uri;
+      const uri = terminalLaunchUri(activeTab(state.panels[panelId]).uri);
       void openExternalTerminal(uri).catch(() => {
         pushToast({
           tone: "error",
@@ -567,7 +567,7 @@ function FileOctopusAppInner({
       });
     },
     spawnAndRunTerminalCommand: (panelId, command) => {
-      const uri = activeTab(state.panels[panelId]).uri;
+      const uri = terminalLaunchUri(activeTab(state.panels[panelId]).uri);
       void spawnAndRunTerminalCommand(uri, command, panelId).catch(
         (error: unknown) => {
           pushToast({
