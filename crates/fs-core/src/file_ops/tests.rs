@@ -8,7 +8,7 @@ use tempfile::tempdir;
 use vfs::{
     ConflictPolicy, FileKind, FileOperationKind, FileOperationRequest, ResourceUri, VfsRegistry,
 };
-use zip::write::FileOptions;
+use zip::write::SimpleFileOptions;
 
 use super::execution::PROGRESS_BYTE_INTERVAL;
 use super::planning::collect_copy_or_move_items;
@@ -684,7 +684,7 @@ fn extract_archive_rejects_path_traversal_entries() {
     let mut archive = zip::ZipWriter::new(file);
 
     archive
-        .start_file("../escape.txt", FileOptions::default())
+        .start_file("../escape.txt", SimpleFileOptions::default())
         .unwrap();
     archive.write_all(b"nope").unwrap();
     archive.finish().unwrap();

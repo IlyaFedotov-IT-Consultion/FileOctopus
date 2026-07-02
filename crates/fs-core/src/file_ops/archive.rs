@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 
 use jobs::{CancellationToken, JobId, PauseToken};
 use vfs::{ConflictPolicy, FileOperationError, FileOperationPlan};
-use zip::write::FileOptions;
+use zip::write::SimpleFileOptions;
 
 use super::execution::{check_cancelled, resolve_conflict_path, ExecutionProgress};
 use super::paths::map_std_io_error;
@@ -71,7 +71,7 @@ pub(super) fn execute_create_archive(
                 .map_err(|error| map_std_io_error(&destination_path, error))?;
             let mut archive = zip::ZipWriter::new(file);
             let options =
-                FileOptions::default().compression_method(zip::CompressionMethod::Deflated);
+                SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
 
             for item in &plan.items {
                 check_cancelled(cancel, pause, job_id)?;
