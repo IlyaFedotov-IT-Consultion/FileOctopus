@@ -93,22 +93,33 @@ fn list_zip(path: &std::path::Path) -> Result<Vec<FileEntryDto>, IpcError> {
             },
             size: if is_dir { None } else { Some(entry.size()) },
             modified_at: Some({
-                let dt = entry.last_modified();
-                chrono::NaiveDateTime::new(
-                    chrono::NaiveDate::from_ymd_opt(
-                        dt.year() as i32,
-                        dt.month() as u32,
-                        dt.day() as u32,
-                    )
-                    .unwrap_or_else(|| chrono::NaiveDate::from_ymd_opt(2000, 1, 1).unwrap()),
-                    chrono::NaiveTime::from_hms_opt(
-                        dt.hour() as u32,
-                        dt.minute() as u32,
-                        dt.second() as u32,
-                    )
-                    .unwrap_or_else(|| chrono::NaiveTime::from_hms_opt(0, 0, 0).unwrap()),
-                )
-                .and_utc()
+                let date_time = entry.last_modified().map_or_else(
+                    || {
+                        chrono::NaiveDateTime::new(
+                            chrono::NaiveDate::from_ymd_opt(2000, 1, 1).unwrap(),
+                            chrono::NaiveTime::from_hms_opt(0, 0, 0).unwrap(),
+                        )
+                    },
+                    |dt| {
+                        chrono::NaiveDateTime::new(
+                            chrono::NaiveDate::from_ymd_opt(
+                                dt.year() as i32,
+                                dt.month() as u32,
+                                dt.day() as u32,
+                            )
+                            .unwrap_or_else(|| {
+                                chrono::NaiveDate::from_ymd_opt(2000, 1, 1).unwrap()
+                            }),
+                            chrono::NaiveTime::from_hms_opt(
+                                dt.hour() as u32,
+                                dt.minute() as u32,
+                                dt.second() as u32,
+                            )
+                            .unwrap_or_else(|| chrono::NaiveTime::from_hms_opt(0, 0, 0).unwrap()),
+                        )
+                    },
+                );
+                date_time.and_utc()
             }),
             created_at: None,
             accessed_at: None,
@@ -243,8 +254,8 @@ fn make_test_zip(dir: &std::path::Path) -> PathBuf {
     let zip_path = dir.join("test.zip");
     let file = std::fs::File::create(&zip_path).unwrap();
     let mut zip_writer = zip::ZipWriter::new(file);
-    let options =
-        zip::write::FileOptions::default().compression_method(zip::CompressionMethod::Deflated);
+    let options = zip::write::SimpleFileOptions::default()
+        .compression_method(zip::CompressionMethod::Deflated);
 
     zip_writer.start_file("hello.txt", options).unwrap();
     zip_writer.write_all(b"hello world").unwrap();

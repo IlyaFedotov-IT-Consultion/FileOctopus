@@ -139,6 +139,7 @@ impl NavigationRepository {
 
     pub fn remove_favorite(&self, id: u64) -> Result<(), NavigationError> {
         let connection = self.connect()?;
+        let id = Self::favorite_id_to_sql(id)?;
         let deleted = connection.execute("delete from favorites where id = ?1", params![id])?;
         if deleted == 0 {
             return Err(NavigationError::FavoriteNotFound);
@@ -148,6 +149,7 @@ impl NavigationRepository {
 
     pub fn rename_favorite(&self, id: u64, label: &str) -> Result<FavoriteEntry, NavigationError> {
         let connection = self.connect()?;
+        let id = Self::favorite_id_to_sql(id)?;
         let updated = connection.execute(
             "update favorites set label = ?1 where id = ?2",
             params![label, id],
@@ -168,6 +170,13 @@ impl NavigationRepository {
                 },
             )
             .map_err(NavigationError::from)
+    }
+
+    fn favorite_id_to_sql(id: u64) -> Result<i64, NavigationError> {
+        i64::try_from(id).map_err(|_| NavigationError::InvalidValue {
+            field: "id".to_string(),
+            reason: "favorite id exceeds sqlite integer range".to_string(),
+        })
     }
 
     pub fn clear_recent(&self) -> Result<(), NavigationError> {

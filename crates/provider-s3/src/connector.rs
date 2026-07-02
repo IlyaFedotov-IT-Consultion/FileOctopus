@@ -163,7 +163,7 @@ impl S3Connector {
             }
         })?;
 
-        Ok(S3Session::new(bucket, profile.id.clone()))
+        Ok(S3Session::new(*bucket, profile.id.clone()))
     }
 }
 
