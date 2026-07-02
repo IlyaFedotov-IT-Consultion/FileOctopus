@@ -17,7 +17,7 @@ provider-gdrive = { path = "../provider-gdrive" }
 provider-dropbox = { path = "../provider-dropbox" }
 provider-onedrive = { path = "../provider-onedrive" }
 remote-core = { path = "../remote-core" }
-rusqlite = { version = "0.32", features = ["bundled"] }
+rusqlite = { version = "0.40", features = ["bundled"] }
 telemetry = { path = "../telemetry" }
 terminal-core = { path = "../terminal-core" }
 thiserror = "1"
