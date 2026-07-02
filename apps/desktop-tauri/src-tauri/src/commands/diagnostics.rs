@@ -13,7 +13,7 @@ use app_ipc::{
 use tauri::{AppHandle, State};
 use tokio::sync::broadcast::error::RecvError;
 use vfs::ResourceUri;
-use zip::write::FileOptions;
+use zip::write::SimpleFileOptions;
 
 use crate::commands::app_info::app_get_info;
 use crate::emit::emit_event;
@@ -196,7 +196,7 @@ pub(crate) fn write_diagnostics_bundle(
         IpcError::internal(&format!("failed to create diagnostics bundle: {error}"))
     })?;
     let mut archive = zip::ZipWriter::new(file);
-    let options = FileOptions::default().compression_method(zip::CompressionMethod::Deflated);
+    let options = SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
     let mut files = Vec::new();
     let app_info = serde_json::to_vec_pretty(&app_get_info())
         .map_err(|error| IpcError::internal(&format!("failed to serialize app info: {error}")))?;
@@ -259,7 +259,7 @@ pub(crate) fn write_diagnostics_bundle(
 
 fn add_archive_file(
     archive: &mut zip::ZipWriter<File>,
-    options: FileOptions,
+    options: SimpleFileOptions,
     name: &str,
     contents: &[u8],
     files: &mut Vec<String>,
