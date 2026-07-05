@@ -4,4 +4,8 @@
  * Conflict behavior selected before an operation mutates the filesystem.
  */
 export type ConflictPolicy =
-  "fail" | "skip" | "overwrite" | "renameNew" | "renameExisting";
+  | "fail"
+  | "skip"
+  | "overwrite"
+  | "renameNew"
+  | "renameExisting";

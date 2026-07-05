@@ -1,5 +1,11 @@
 export type CaseConversion =
-  "none" | "upper" | "lower" | "title" | "sentence" | "camel" | "snake";
+  | "none"
+  | "upper"
+  | "lower"
+  | "title"
+  | "sentence"
+  | "camel"
+  | "snake";
 
 export interface MultiRenameOptions {
   pattern: string;

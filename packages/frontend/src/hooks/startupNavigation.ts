@@ -23,7 +23,7 @@ async function resolveStartupUri(
 
   try {
     const response = await client.fs.stat({ uri });
-    return response.entry.kind === "directory" ? uri : fallbackUri;
+    return response.entry.kind === "file" ? fallbackUri : uri;
   } catch (error) {
     const normalized = normalizeIpcError(error);
     if (

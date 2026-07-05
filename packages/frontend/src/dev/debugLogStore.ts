@@ -1,5 +1,10 @@
 export type DebugLogLevel =
-  "trace" | "debug" | "info" | "log" | "warn" | "error";
+  | "trace"
+  | "debug"
+  | "info"
+  | "log"
+  | "warn"
+  | "error";
 
 export type DebugLogSource = "frontend" | "backend";
 
