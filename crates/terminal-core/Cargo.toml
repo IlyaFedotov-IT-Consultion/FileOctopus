@@ -8,7 +8,7 @@ data-encoding = "2"
 dashmap = "6"
 portable-pty = "0.8"
 serde = { version = "1", features = ["derive"] }
-sha2 = "0.10"
+sha2 = "0.11"
 ssh2 = { version = "0.9", features = ["vendored-openssl"] }
 thiserror = "2"
 uuid = { version = "1", features = ["v4", "serde"] }
