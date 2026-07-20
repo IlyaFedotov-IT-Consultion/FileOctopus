@@ -228,11 +228,11 @@ jobs:
             <(sed -E 's/^[0-9a-f]{64}  //' payload/SHA256SUMS | LC_ALL=C sort)
           (cd payload && sha256sum --check SHA256SUMS)
       - name: Attest release provenance
-        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6
         with:
           subject-path: payload/*
       - name: Attest release SBOM
-        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6
         with:
           subject-path: |
             payload/FileOctopus-*-macos-*
