@@ -8,7 +8,7 @@ keyring = { version = "3", features = ["apple-native", "linux-native", "windows-
 thiserror = "2"
 
 [target.'cfg(unix)'.dependencies]
-which = "6"
+which = "8"
 
 [dev-dependencies]
 uuid = { version = "1", features = ["v4"] }
