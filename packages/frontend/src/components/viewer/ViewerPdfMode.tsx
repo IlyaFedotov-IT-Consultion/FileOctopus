@@ -61,6 +61,7 @@ export function ViewerPdfMode({ entry, fs }: ViewerPdfModeProps) {
       canvas.width = viewport.width;
 
       const renderTask = page.render({
+        canvas,
         canvasContext: context,
         viewport,
       });
